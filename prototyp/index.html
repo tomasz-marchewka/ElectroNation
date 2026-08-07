@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ElectroNation — prototyp (wersja uproszczona)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <!-- ===== TOP STATUS BAR ===== -->
+  <header id="topbar">
+    <div class="logo-box">
+      <div class="logo">ELECTRO<span>NATION</span></div>
+      <div class="logo-sub" id="date-line">STYCZEŃ · ROK 1 · DOBA ROBOCZA A</div>
+    </div>
+    <div class="turn-strip" id="turn-strip"></div>
+    <div class="balance-box" id="balance-box">
+      <div class="bb-caption">BILANS PLANU</div>
+      <div class="bb-value" id="bb-value">— MW</div>
+      <div class="bb-scale"><div class="bb-needle" id="bb-needle"></div></div>
+      <div class="bb-sub" id="bb-sub">popyt · prognoza</div>
+    </div>
+    <div class="budget-box">
+      <div class="bb-caption">BUDŻET</div>
+      <div class="budget-value" id="budget-value">10.00 mld</div>
+      <div class="budget-day" id="budget-day">doba: +0.00 mln zł</div>
+    </div>
+    <div class="phase-box">
+      <div class="bb-caption" id="turn-caption">TURA 05:00</div>
+      <div class="phase-name" id="phase-name">NASTAWY</div>
+    </div>
+    <button id="action-btn" class="action-btn">ZATWIERDŹ TURĘ ▸</button>
+  </header>
+
+  <!-- ===== MAIN ROW ===== -->
+  <div id="main-row">
+    <div id="map-col">
+      <div id="map-header">
+        <span class="map-title">MAPA — WARSTWA INFRASTRUKTURY</span>
+        <span class="legend">
+          <span class="lg"><i style="background:#3ddc84"></i>&lt;60%</span>
+          <span class="lg"><i style="background:#ffb020"></i>60–85</span>
+          <span class="lg"><i style="background:#ff7a45"></i>85–100</span>
+          <span class="lg"><i style="background:#ff4d4f"></i>&gt;100</span>
+          <span class="lg sep"></span>
+          <span class="lg"><i style="background:#232e27"></i>nizina</span>
+          <span class="lg"><i style="background:#1e3d29"></i>las</span>
+          <span class="lg"><i style="background:#3a3222"></i>wyżyna</span>
+          <span class="lg"><i style="background:#4a4034"></i>góry</span>
+          <span class="lg"><i style="background:#1a3a52"></i>woda</span>
+        </span>
+      </div>
+      <div id="map-wrap">
+        <svg id="map-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div id="map-zoom">
+          <button id="zoom-in">+</button><button id="zoom-out">−</button><button id="zoom-reset">⟲</button>
+        </div>
+        <div id="hint-bar">Tryb: podgląd. Kliknij obiekt, żeby zobaczyć szczegóły.</div>
+        <div id="hex-tip" hidden></div>
+      </div>
+      <div id="day-chart-wrap">
+        <div id="dc-header">
+          <span class="map-title">DOBA — POKRYCIE ZAPOTRZEBOWANIA</span>
+          <span class="legend" id="dc-legend"></span>
+        </div>
+        <svg id="day-chart" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 150" preserveAspectRatio="none"></svg>
+      </div>
+    </div>
+
+    <!-- ===== RIGHT PANEL ===== -->
+    <div id="right-panel">
+      <div id="tab-row">
+        <button class="tab active" data-tab="ops">DYSPOZYTOR</button>
+        <button class="tab" data-tab="build">BUDOWA</button>
+      </div>
+      <div id="panel-scroll">
+        <div id="tab-ops">
+          <div class="card card-forecast" id="card-forecast"></div>
+          <div class="card card-setpoints" id="card-setpoints"></div>
+          <div class="card card-resolve" id="card-resolve"></div>
+          <div class="card card-report" id="card-report"></div>
+        </div>
+        <div id="tab-build" hidden>
+          <div class="card" id="card-selected"></div>
+          <div class="card" id="card-catalog"></div>
+          <div class="card" id="card-queue"></div>
+          <div class="card" id="card-systems"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="modal-layer" hidden></div>
+<script src="sim.js"></script>
+<script src="ui.js"></script>
+</body>
+</html>
