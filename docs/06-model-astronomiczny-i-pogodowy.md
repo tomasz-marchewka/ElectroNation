@@ -2,6 +2,10 @@
 
 **Wersja:** 0.2
 **Data:** 2026-08-07
+**Status:** **obowiązujący** — źródłowy model pogody, produkcji OZE (PV, wiatr) i błędu
+prognozy dla uproszczonej wersji gry (01 v0.8, §2.4 i §5.2). Uproszczenie dotyczy silnika
+przepływu energii w sieci (01 §4) i nie zmienia niczego w tym modelu. Elementy „na przyszłość"
+wymienione w §10 pozostają odłożone ([90-pomysly-na-przyszlosc.md §2](90-pomysly-na-przyszlosc.md)).
 
 **Zmiany 0.1 → 0.2:** dodano **§8.6 — model prognozy i jej błędu** w związku z przejściem na rozgrywkę turową (dok. 01 §2.2–2.5). Kluczowa konsekwencja architektoniczna: prawdziwy przebieg pogody musi być generowany **w całości przy inicjalizacji doby**, a prognoza jest jego zaszumionym widokiem — nie odwrotnie.
 **Dokument nadrzędny:** [01-mechanika-gry.md](01-mechanika-gry.md)
