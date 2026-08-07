@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;padding:0;background:#0b0f14;}
+a{color:#3ddc84;}a:hover{color:#7ef0b0;}
+@keyframes blink{0%,49%{opacity:1;}50%,100%{opacity:0.25;}}
+@keyframes pulse{0%{opacity:0.5;}50%{opacity:1;}100%{opacity:0.5;}}
+input[type="range"]{accent-color:#3ddc84;}
+</style>
+</helmet>
+<div data-screen-label="Pulpit dyspozytorski" style="height:100vh;display:flex;flex-direction:column;background:#0b0f14;color:#c8d4de;font-family:'Barlow Condensed',sans-serif;overflow:hidden;user-select:none;">
+  <div style="display:flex;align-items:center;flex-wrap:wrap;row-gap:6px;column-gap:16px;padding:6px 14px;background:#0e1319;border-bottom:1px solid #1e2733;flex:none;">
+    <div style="min-width:130px;">
+      <div style="font-size:20px;font-weight:700;letter-spacing:3px;color:#e8f1f8;">ELECTRO<span style="color:#3ddc84;">NATION</span></div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#5c6b7a;letter-spacing:1px;">STYCZEŃ · ROK 1 · DOBA ROBOCZA A</div>
+    </div>
+    <div style="flex:none;min-width:0;">
+      <div style="font-size:10px;color:#5c6b7a;letter-spacing:2px;margin-bottom:3px;">TURY DOBY</div>
+      <div style="display:flex;gap:2px;flex-wrap:wrap;max-width:440px;">
+        <sc-for list="{{ turns }}" as="t" hint-placeholder-count="24">
+          <div style="{{ t.style }}" title="{{ t.tip }}">{{ t.label }}</div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="flex:1;min-width:8px;"></div>
+    <div style="text-align:center;flex:none;">
+      <div style="font-size:10px;color:#5c6b7a;letter-spacing:2px;">CZĘSTOTLIWOŚĆ SYSTEMU</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:30px;font-weight:700;line-height:1;color:{{ freqColor }};">{{ freqText }} <span style="font-size:14px;color:#5c6b7a;">Hz</span></div>
+      <div style="position:relative;width:230px;height:8px;background:linear-gradient(90deg,#ff4d4f 0%,#ffb020 18%,#3ddc84 38%,#3ddc84 62%,#ffb020 82%,#ff4d4f 100%);border-radius:2px;margin-top:3px;">
+        <div style="{{ needleStyle }}"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;width:230px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:#5c6b7a;"><span>49.50</span><span>50.00</span><span>50.50</span></div>
+    </div>
+    <div style="flex:1;min-width:8px;"></div>
+    <div style="text-align:right;min-width:100px;">
+      <div style="font-size:10px;color:#5c6b7a;letter-spacing:2px;">BUDŻET</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:600;color:#e8f1f8;">{{ budgetT }}</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:{{ dayNetColor }};">doba: {{ dayNetT }}</div>
+    </div>
+    <div style="text-align:right;min-width:110px;border-left:1px solid #1e2733;padding-left:16px;">
+      <div style="font-size:10px;color:#5c6b7a;letter-spacing:2px;">TURA {{ hourLabel }}</div>
+      <div style="font-size:22px;font-weight:700;color:{{ phaseColor }};letter-spacing:1px;">{{ phaseName }}</div>
+    </div>
+    <button onClick="{{ topClick }}" style="{{ topBtnStyle }}">{{ topLabel }}</button>
+  </div>
+
+  <div style="display:flex;flex:1;min-height:0;">
+    <div data-screen-label="Mapa sieci" style="flex:1;min-width:0;display:flex;flex-direction:column;border-right:1px solid #1e2733;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;padding:6px 14px;border-bottom:1px solid #151d27;">
+        <div style="font-size:12px;letter-spacing:2px;color:#8b9bab;">MAPA — WARSTWA INFRASTRUKTURY <span style="color:#3a4757;font-family:'IBM Plex Mono',monospace;font-size:10px;">· obciążenia wg nastaw bieżących</span></div>
+        <div style="display:flex;gap:12px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#5c6b7a;">
+          <span><span style="color:#3ddc84;">■</span> &lt;60%</span><span><span style="color:#ffb020;">■</span> 60–85%</span><span><span style="color:#ff7a45;">■</span> 85–100%</span><span><span style="color:#ff4d4f;">■</span> &gt;100%</span>
+          <span style="color:#2c3a4a;">|</span>
+          <span><span style="color:#1a3a52;">⬢</span> woda</span><span><span style="color:#232e27;">⬢</span> nizina</span><span><span style="color:#1e3d29;">⬢</span> las</span><span><span style="color:#3a3222;">⬢</span> wyżyna</span><span><span style="color:#3d3444;">⬢</span> miasto</span>
+        </div>
+      </div>
+      <div style="flex:1;min-height:0;padding:4px;position:relative;">
+        <svg viewBox="0 0 620 500" style="width:100%;height:100%;display:block;cursor:grab;touch-action:none;" onWheel="{{ mapWheel }}" onMouseDown="{{ mapDown }}" onMouseMove="{{ mapMove }}" onMouseUp="{{ mapUp }}" onMouseLeave="{{ mapUp }}" onTouchStart="{{ mapTDown }}" onTouchMove="{{ mapTMove }}" onTouchEnd="{{ mapUp }}">
+          <g transform="{{ mapT }}">
+            <sc-for list="{{ hexes }}" as="x" hint-placeholder-count="10">
+              <polygon points="{{ x.pts }}" fill="{{ x.fill }}" stroke="#0a0e12" stroke-width="1"></polygon>
+            </sc-for>
+            <sc-for list="{{ mapLines }}" as="l" hint-placeholder-count="4">
+              <polyline points="{{ l.pts }}" fill="none" stroke="{{ l.color }}" stroke-width="{{ l.w }}" stroke-dasharray="{{ l.dash }}" stroke-linejoin="round" opacity="0.95"></polyline>
+            </sc-for>
+            <sc-for list="{{ mapNodes }}" as="n" hint-placeholder-count="6">
+              <circle cx="{{ n.x }}" cy="{{ n.y }}" r="10" fill="#0c1117" stroke="{{ n.color }}" stroke-width="2"></circle>
+            </sc-for>
+            <g>{{ mapLabels }}</g>
+          </g>
+        </svg>
+        <div style="position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:4px;">
+          <button onClick="{{ zoomIn }}" style="width:34px;height:34px;background:#0e1319;border:1px solid #2c3a4a;color:#c8d4de;font-size:18px;cursor:pointer;border-radius:3px;">+</button>
+          <button onClick="{{ zoomOut }}" style="width:34px;height:34px;background:#0e1319;border:1px solid #2c3a4a;color:#c8d4de;font-size:18px;cursor:pointer;border-radius:3px;">−</button>
+          <button onClick="{{ zoomReset }}" style="width:34px;height:34px;background:#0e1319;border:1px solid #2c3a4a;color:#c8d4de;font-size:14px;cursor:pointer;border-radius:3px;">⟲</button>
+        </div>
+      </div>
+      <div data-screen-label="Wykres doby" style="flex:none;border-top:1px solid #151d27;padding:6px 14px 8px 14px;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;">
+          <div style="font-size:12px;letter-spacing:2px;color:#8b9bab;">PRZEBIEG DOBY — PRODUKCJA / ZAPOTRZEBOWANIE</div>
+          <div style="display:flex;gap:10px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#5c6b7a;">
+            <span><span style="color:#7d8798;">■</span> węgiel</span><span><span style="color:#e0913d;">■</span> gaz</span><span><span style="color:#3ddc84;">■</span> wiatr</span><span><span style="color:#f3d54e;">■</span> PV</span><span><span style="color:#38bdf8;">■</span> magazyn</span><span><span style="color:#b07ce8;">■</span> import</span><span><span style="color:#e8f1f8;">—</span> popyt</span>
+          </div>
+        </div>
+        <svg viewBox="0 0 960 150" preserveAspectRatio="none" style="width:100%;height:120px;display:block;">
+          <line x1="30" y1="130" x2="940" y2="130" stroke="#1e2733" stroke-width="1"></line>
+          <sc-for list="{{ dayAreas }}" as="a" hint-placeholder-count="3">
+            <polygon points="{{ a.pts }}" fill="{{ a.fill }}" opacity="0.8"></polygon>
+          </sc-for>
+          <polyline points="{{ dayDemandPts }}" fill="none" stroke="#e8f1f8" stroke-width="2"></polyline>
+          <polyline points="{{ dayFcPts }}" fill="none" stroke="#e8f1f8" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.5"></polyline>
+          <line x1="{{ dayNowX }}" y1="8" x2="{{ dayNowX }}" y2="130" stroke="#3ddc84" stroke-width="1" stroke-dasharray="3 3"></line>
+          <g>{{ dayTickLabels }}</g>
+        </svg>
+      </div>
+    </div>
+
+    <div data-screen-label="Panel faz" style="width:430px;flex:none;display:flex;flex-direction:column;background:#0e1319;min-height:0;">
+      <div style="flex:1;overflow-y:auto;min-height:0;padding:10px 12px;display:flex;flex-direction:column;gap:10px;">
+
+        <sc-if value="{{ p5 }}" hint-placeholder-val="{{ false }}">
+          <div data-screen-label="Rozliczenie doby" style="border:1px solid #3ddc84;border-radius:4px;background:#0b0f14;padding:10px 12px;">
+            <div style="font-size:15px;font-weight:700;letter-spacing:2px;color:#3ddc84;margin-bottom:8px;">ROZLICZENIE DOBY</div>
+            <sc-for list="{{ dayReport }}" as="r" hint-placeholder-count="5">
+              <div style="display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:12px;padding:4px 0;border-bottom:1px solid #131b24;"><span style="color:#8b9bab;">{{ r.k }}</span><span style="color:{{ r.c }};">{{ r.v }}</span></div>
+            </sc-for>
+            <div style="display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;padding:7px 0 2px 0;"><span style="color:#e8f1f8;">WYNIK × 10,9 DNI</span><span style="color:{{ dayNetColor }};">{{ dayScaledT }}</span></div>
+            <div style="font-size:12px;color:#5c6b7a;margin-top:4px;">Doba robocza reprezentuje 10,9 dnia — wynik przemnożony.</div>
+            <button onClick="{{ newDay }}" style="width:100%;min-height:46px;margin-top:8px;background:#10251a;border:1px solid #3ddc84;color:#3ddc84;font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;letter-spacing:3px;cursor:pointer;border-radius:3px;">NOWA DOBA ▸</button>
+          </div>
+        </sc-if>
+
+        <div data-screen-label="Faza 1 Prognoza" style="{{ ph1Style }}">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+            <span style="font-size:15px;font-weight:700;letter-spacing:2px;color:#38bdf8;">PROGNOZA</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;color:{{ ph1ChipC }};">{{ ph1Chip }}</span>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#5c6b7a;">ZAPOTRZEBOWANIE [MW] · pasmo błędu rośnie z horyzontem</div>
+          <svg viewBox="0 0 380 100" style="width:100%;height:88px;display:block;">
+            <polygon points="{{ fcDemBand }}" fill="#e8f1f8" opacity="0.10"></polygon>
+            <polyline points="{{ fcDemPast }}" fill="none" stroke="#e8f1f8" stroke-width="2"></polyline>
+            <polyline points="{{ fcDemFut }}" fill="none" stroke="#e8f1f8" stroke-width="1.5" stroke-dasharray="4 3"></polyline>
+            <line x1="{{ fcNowX }}" y1="4" x2="{{ fcNowX }}" y2="96" stroke="#3ddc84" stroke-width="1" stroke-dasharray="3 3"></line>
+            <text x="4" y="14" fill="#5c6b7a" font-size="9" font-family="IBM Plex Mono">1050</text>
+            <text x="4" y="94" fill="#5c6b7a" font-size="9" font-family="IBM Plex Mono">550</text>
+          </svg>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#5c6b7a;margin-top:2px;">GENERACJA OZE [MW] — wiatr <span style="color:#3ddc84;">■</span> / PV <span style="color:#f3d54e;">■</span></div>
+          <svg viewBox="0 0 380 90" style="width:100%;height:78px;display:block;">
+            <polygon points="{{ fcWindBand }}" fill="#3ddc84" opacity="0.13"></polygon>
+            <polyline points="{{ fcWindPast }}" fill="none" stroke="#3ddc84" stroke-width="2"></polyline>
+            <polyline points="{{ fcWindFut }}" fill="none" stroke="#3ddc84" stroke-width="1.5" stroke-dasharray="4 3"></polyline>
+            <polyline points="{{ fcPvPts }}" fill="none" stroke="#f3d54e" stroke-width="1.5"></polyline>
+            <line x1="{{ fcNowX }}" y1="4" x2="{{ fcNowX }}" y2="86" stroke="#3ddc84" stroke-width="1" stroke-dasharray="3 3"></line>
+            <text x="4" y="12" fill="#5c6b7a" font-size="9" font-family="IBM Plex Mono">320</text>
+          </svg>
+          <sc-for list="{{ briefing }}" as="b" hint-placeholder-count="3">
+            <div style="display:flex;gap:8px;margin-top:5px;align-items:baseline;">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:{{ b.c }};flex:none;min-width:58px;">{{ b.k }}</span>
+              <span style="font-size:13.5px;color:#c8d4de;line-height:1.25;">{{ b.t }}</span>
+            </div>
+          </sc-for>
+        </div>
+
+        <div data-screen-label="Faza 2 Decyzja" style="{{ ph2Style }}">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+            <span style="font-size:15px;font-weight:700;letter-spacing:2px;color:#3ddc84;">NASTAWY</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;color:{{ ph2ChipC }};">{{ ph2Chip }}</span>
+          </div>
+          <sc-for list="{{ uRows }}" as="u" hint-placeholder-count="4">
+            <div style="border:1px solid #1e2733;border-radius:3px;padding:7px 10px;margin-bottom:6px;background:#0e1319;">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;">
+                <span style="font-size:14px;font-weight:600;color:#e8f1f8;">{{ u.name }}</span>
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:{{ u.stColor }};">{{ u.status }}</span>
+              </div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#5c6b7a;">{{ u.meta }}</div>
+              <sc-if value="{{ u.on }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;align-items:center;gap:10px;margin-top:5px;">
+                  <input type="range" min="{{ u.min }}" max="{{ u.cap }}" step="5" value="{{ u.set }}" onChange="{{ u.onSet }}" style="flex:1;height:26px;">
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;color:#3ddc84;min-width:66px;text-align:right;">{{ u.setT }}</span>
+                  <button onClick="{{ u.onStop }}" style="min-height:30px;background:transparent;border:1px solid #3a4757;color:#8b9bab;font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:1px;cursor:pointer;border-radius:3px;padding:0 8px;">ODSTAW</button>
+                </div>
+              </sc-if>
+              <sc-if value="{{ u.showStart }}" hint-placeholder-val="{{ false }}">
+                <button onClick="{{ u.onStart }}" style="width:100%;min-height:32px;margin-top:5px;background:transparent;border:1px solid #38bdf8;color:#38bdf8;font-family:'Barlow Condensed',sans-serif;font-size:13px;letter-spacing:2px;cursor:pointer;border-radius:3px;">URUCHOM · rozruch {{ u.startT }}</button>
+              </sc-if>
+            </div>
+          </sc-for>
+          <div style="border:1px solid #1e2733;border-radius:3px;padding:7px 10px;margin-bottom:6px;background:#0e1319;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;">
+              <span style="font-size:14px;font-weight:600;color:#e8f1f8;">Magazyn BESS 100 MW / 200 MWh</span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#38bdf8;">SOC {{ socT }}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:5px;">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#5c6b7a;">ŁADUJ</span>
+              <input type="range" min="-100" max="100" step="5" value="{{ battSet }}" onChange="{{ onBatt }}" style="flex:1;height:26px;">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#5c6b7a;">ODDAJ</span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;color:#38bdf8;min-width:66px;text-align:right;">{{ battT }}</span>
+            </div>
+          </div>
+          <div style="border:1px solid #1e2733;border-radius:3px;padding:7px 10px;margin-bottom:8px;background:#0e1319;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;">
+              <span style="font-size:14px;font-weight:600;color:#e8f1f8;">Wymiana transgraniczna</span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#5c6b7a;">imp. 450 / eksp. 300 zł/MWh</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:5px;">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#5c6b7a;">EKSPORT</span>
+              <input type="range" min="-150" max="150" step="5" value="{{ impSet }}" onChange="{{ onImp }}" style="flex:1;height:26px;">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#5c6b7a;">IMPORT</span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;color:#b07ce8;min-width:66px;text-align:right;">{{ impT }}</span>
+            </div>
+          </div>
+          <div style="border:1px solid {{ saldoBorder }};border-radius:3px;padding:7px 12px;background:#0e1319;">
+            <div style="display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8b9bab;"><span>Plan podaży</span><span style="color:#e8f1f8;">{{ planSupplyT }}</span></div>
+            <div style="display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8b9bab;"><span>Prognoza popytu ±{{ demBandT }}</span><span style="color:#e8f1f8;">{{ fcDemNowT }}</span></div>
+            <div style="display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;margin-top:2px;"><span style="color:#8b9bab;">SALDO</span><span style="color:{{ saldoColor }};">{{ saldoT }}</span></div>
+            <div style="display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#5c6b7a;margin-top:1px;"><span>Rezerwa wirująca</span><span style="color:{{ resColor }};">{{ reserveT }}</span></div>
+          </div>
+          <sc-if value="{{ p2 }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ skip }}" style="width:100%;min-height:38px;margin-top:8px;background:transparent;border:1px solid #3a4757;color:#8b9bab;font-family:'Barlow Condensed',sans-serif;font-size:13px;letter-spacing:2px;cursor:pointer;border-radius:3px;" title="Przewija tury z bieżącymi nastawami, zatrzyma się przy alarmie">PRZEWIŃ, AŻ COŚ SIĘ STANIE ▸▸</button>
+          </sc-if>
+        </div>
+
+        <div data-screen-label="Faza 3 Rozstrzygnięcie" style="{{ ph3Style }}">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+            <span style="font-size:15px;font-weight:700;letter-spacing:2px;color:#ffb020;">ROZSTRZYGNIĘCIE</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;color:{{ ph3ChipC }};">{{ ph3Chip }}</span>
+          </div>
+          <sc-if value="{{ hasResult }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:14px;">
+              <div style="text-align:center;flex:none;">
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:38px;font-weight:700;color:{{ freqColor }};line-height:1;">{{ freqText }}</div>
+                <div style="font-size:11px;letter-spacing:3px;color:#5c6b7a;">Hz</div>
+              </div>
+              <div style="flex:1;">
+                <div style="display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:11.5px;padding:2px 0;"><span style="color:#8b9bab;">Popyt: prog. → fakt</span><span style="color:#e8f1f8;">{{ rDemT }}</span></div>
+                <div style="display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:11.5px;padding:2px 0;"><span style="color:#8b9bab;">Wiatr: prog. → fakt</span><span style="color:{{ rWindC }};">{{ rWindT }}</span></div>
+                <div style="display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:11.5px;padding:2px 0;"><span style="color:#8b9bab;">Uchyb bilansu</span><span style="color:{{ rResC }};">{{ rResT }}</span></div>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ noResult }}" hint-placeholder-val="{{ true }}">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#3a4757;padding:6px 0;">— oczekuje na zatwierdzenie tury —</div>
+          </sc-if>
+          <sc-if value="{{ hasEvent }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top:8px;border:1px solid #ff4d4f;border-radius:3px;background:#2a1012;padding:8px 12px;font-size:14px;font-weight:600;color:#ff6b6d;animation:blink 1s infinite;">⚠ {{ eventMsg }}</div>
+          </sc-if>
+        </div>
+
+        <div data-screen-label="Faza 4 Raport" style="{{ ph4Style }}">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+            <span style="font-size:15px;font-weight:700;letter-spacing:2px;color:#e8f1f8;">RAPORT</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;color:{{ ph4ChipC }};">{{ ph4Chip }}</span>
+          </div>
+          <sc-if value="{{ hasStopNote }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-bottom:6px;border:1px solid #ffb020;border-radius:3px;background:#241c0a;padding:7px 10px;font-size:12.5px;color:#ffb020;">{{ stopNote }}</div>
+          </sc-if>
+          <sc-if value="{{ hasResult }}" hint-placeholder-val="{{ false }}">
+            <sc-for list="{{ report }}" as="r" hint-placeholder-count="6">
+              <div style="display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:11.5px;padding:3px 0;border-bottom:1px solid #131b24;"><span style="color:#8b9bab;">{{ r.k }}</span><span style="color:{{ r.c }};">{{ r.v }}</span></div>
+            </sc-for>
+            <div style="display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;padding:6px 0 0 0;"><span style="color:#e8f1f8;">WYNIK TURY</span><span style="color:{{ netColor }};">{{ netT }}</span></div>
+          </sc-if>
+          <sc-if value="{{ noResult }}" hint-placeholder-val="{{ true }}">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#3a4757;padding:6px 0;">— raport pojawi się po rozstrzygnięciu —</div>
+          </sc-if>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1560,&quot;height&quot;:960},&quot;bladPrognozy&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:1,&quot;min&quot;:0.5,&quot;max&quot;:2,&quot;step&quot;:0.1,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Symulacja&quot;,&quot;description&quot;:&quot;Mnożnik błędu prognozy&quot;},&quot;awarie&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Symulacja&quot;,&quot;description&quot;:&quot;Losowe awarie bloków&quot;},&quot;tempoRozstrzygniecia&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:1,&quot;min&quot;:0.5,&quot;max&quot;:2,&quot;step&quot;:0.25,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Prezentacja&quot;,&quot;description&quot;:&quot;Tempo animacji fazy 3&quot;}}">
+class Component extends DCLogic {
+  constructor(p){
+    super(p);
+    this.DEM=[620,600,590,585,590,610,680,780,850,880,890,895,890,885,880,890,930,980,1000,990,950,880,760,670];
+    this.DN=[5,-4,6,-3,2,8,-6,4,10,-5,3,7,-4,2,6,-8,12,15,18,9,-6,-10,4,-3];
+    this.WF=[0.62,0.6,0.58,0.55,0.5,0.48,0.45,0.4,0.38,0.35,0.3,0.28,0.22,0.18,0.15,0.1,0.06,0.04,0.05,0.08,0.12,0.18,0.25,0.3];
+    this.PVF=[0,0,0,0,0,0,0,0,0.04,0.12,0.22,0.3,0.32,0.27,0.16,0.06,0,0,0,0,0,0,0,0];
+    this.ERR=[0.3,-0.5,0.8,-0.2,0.6,-0.7,0.4,0.9,-0.3,0.5,-0.8,0.2,0.7,-0.4,-0.9,0.6,-0.6,0.85,-0.15,0.45,-0.55,0.35,-0.25,0.65];
+    this.WCAP=300;this.PVCAP=150;
+    this.buildMap();
+    this.state=this.freshDay(42.0);
+  }
+  freshDay(budget){
+    const units=[
+      {id:"B1",name:"Węgiel B-1",cap:400,min:160,vc:180,on:true,set:320,starting:0,startH:6,key:"coal",tripped:false},
+      {id:"B2",name:"Węgiel B-2",cap:400,min:160,vc:185,on:false,set:0,starting:-1,startH:6,key:"coal",tripped:false},
+      {id:"G1",name:"Gaz CCGT G-1",cap:250,min:100,vc:380,on:true,set:140,starting:0,startH:2,key:"gas",tripped:false},
+      {id:"S1",name:"Gaz OCGT S-1",cap:80,min:16,vc:700,on:false,set:0,starting:-1,startH:1,key:"ocgt",tripped:false}
+    ];
+    const st={hour:5,phase:2,budget,dayNet:0,units,batt:0,soc:120,imp:0,resolved:[],freqDisp:50,pending:null,eventMsg:"",stopNote:"",ens:0};
+    let soc=120;
+    for(let h=0;h<5;h++){const r=this.compute(h,units,0,0,soc,true);soc=r.socAfter;st.resolved.push(r);st.dayNet+=r.net;st.budget+=r.net;}
+    st.soc=soc;
+    return st;
+  }
+  compute(h,units,batt,imp,soc,quiet){
+    const dem=this.DEM[h]+this.DN[h];
+    let ev="",us=units;
+    if(!quiet&&(this.props.awarie??true)&&Math.random()<0.05){
+      const big=units.filter(u=>u.on&&u.set>100);
+      if(big.length){const t=big[Math.floor(Math.random()*big.length)];ev="AWARIA: "+t.name+" wypada z ruchu";us=units.map(u=>u.id===t.id?{...u,on:false,set:0,tripped:true,starting:-1}:u);}
+    }
+    const wind=Math.round(this.WF[h]*this.WCAP),pv=Math.round(this.PVF[h]*this.PVCAP);
+    const on=us.filter(u=>u.on);
+    const disp=on.reduce((s,u)=>s+u.set,0);
+    const battReal=batt>0?Math.min(batt,soc):Math.max(batt,-(200-soc));
+    const supply=disp+wind+pv+battReal+imp;
+    const primUp=Math.min(150,on.reduce((s,u)=>s+(u.cap-u.set)*0.35,0)+(100-Math.abs(battReal))*0.5);
+    const primDown=Math.min(150,on.reduce((s,u)=>s+(u.set-u.min)*0.35,0)+(100-Math.abs(battReal))*0.5);
+    const gap=dem-supply;
+    const adj=Math.max(-primDown,Math.min(primUp,gap));
+    let resid=gap-adj;
+    let freq=50-resid/600,sco=false,shed=0;
+    if(freq<49){sco=true;shed=Math.round(resid*0.7);freq=49.02;}
+    freq=Math.max(48.6,Math.min(50.5,freq));
+    const served=dem-shed;
+    let cands=on.filter(u=>u.set>5).map(u=>u.vc);
+    if(imp>0)cands.push(450);
+    if(!cands.length)cands=[120];
+    const price=Math.max(...cands);
+    const revenue=served*price/1e6;
+    const fuel=on.reduce((s,u)=>s+u.set*u.vc,0)/1e6;
+    const impC=imp>0?imp*450/1e6:0;
+    const expR=imp<0?-imp*300/1e6:0;
+    let kara=0;const dev=Math.abs(freq-50);
+    if(dev>0.2)kara+=0.25;
+    if(sco)kara+=3+shed*0.01;
+    const net=revenue+expR-fuel-impC-kara;
+    const socAfter=Math.max(0,Math.min(200,battReal>0?soc-battReal:soc-battReal*0.9));
+    const coal=on.filter(u=>u.key==="coal").reduce((s,u)=>s+u.set,0);
+    const gas=on.filter(u=>u.key==="gas"||u.key==="ocgt").reduce((s,u)=>s+u.set,0);
+    return {h,dem,served,wind,pv,batt:battReal,imp,coal,gas,freq,price,revenue:revenue+expR,fuel:fuel+impC,kara,net,ev,shed,resid,adj,units:us,socAfter,fcDem:0,fcWind:0};
+  }
+  tickUnits(units){
+    return units.map(u=>{
+      if(u.starting>0){const s=u.starting-1;return s===0?{...u,starting:0,on:true,set:u.min}:{...u,starting:s};}
+      return u;
+    });
+  }
+  componentDidMount(){if(this.state.phase===1)this.setState({phase:2});}
+  commit=()=>{
+    const s=this.state;
+    if(s.phase>2)return;
+    const r=this.compute(s.hour,s.units,s.batt,s.imp,s.soc,false);
+    r.fcDem=this.fcDemAt(s.hour,s.hour);r.fcWind=this.fcWindAt(s.hour,s.hour);
+    this.setState({phase:3,pending:r,eventMsg:r.ev,stopNote:""});
+    const tempo=this.props.tempoRozstrzygniecia??1;
+    const dur=1800/tempo,t0=performance.now();
+    let done=false;
+    const finish=()=>{if(done)return;done=true;clearInterval(this.tm);clearTimeout(this.tf);this.apply(r);};
+    clearInterval(this.tm);clearTimeout(this.tf);
+    this.tm=setInterval(()=>{
+      const k=Math.min(1,(performance.now()-t0)/dur);
+      const e=k*k*(3-2*k);
+      this.setState({freqDisp:50+(r.freq-50)*e+(k<1?Math.sin(k*22)*0.015*(1-e):0)});
+      if(k>=1)finish();
+    },70);
+    this.tf=setTimeout(finish,dur+600);
+  };
+  apply(r,extra){
+    const units=this.tickUnits(r.units.map(u=>u.tripped?{...u,on:false}:u));
+    this.setState(s=>({
+      phase:4,units,soc:r.socAfter,resolved:[...s.resolved,r],
+      budget:s.budget+r.net,dayNet:s.dayNet+r.net,ens:s.ens+r.shed,
+      pending:r,eventMsg:r.ev,freqDisp:r.freq,...(extra||{})
+    }));
+  }
+  skip=()=>{
+    const s=this.state;if(s.phase>2)return;
+    let h=s.hour,units=s.units,soc=s.soc,resolved=[...s.resolved],budget=s.budget,dayNet=s.dayNet,ens=s.ens,last=null,note="";
+    while(h<=23){
+      const r=this.compute(h,units,s.batt,s.imp,soc,false);
+      r.fcDem=this.fcDemAt(h,h);r.fcWind=this.fcWindAt(h,h);
+      resolved.push(r);budget+=r.net;dayNet+=r.net;ens+=r.shed;soc=r.socAfter;
+      units=this.tickUnits(r.units.map(u=>u.tripped?{...u,on:false}:u));
+      last=r;
+      if(Math.abs(r.freq-50)>=0.12){note="Przewijanie zatrzymane: odchylenie częstotliwości o "+h+":00";break;}
+      if(r.ev){note="Przewijanie zatrzymane: zdarzenie o "+h+":00";break;}
+      h++;
+    }
+    if(!note)note="Przewinięto do końca doby.";
+    this.setState({hour:Math.min(h,23),phase:4,units,soc,resolved,budget,dayNet,ens,pending:last,eventMsg:last.ev,stopNote:note,freqDisp:last.freq});
+  };
+  goDecision=()=>this.setState({phase:2});
+  next=()=>{
+    const s=this.state;
+    if(s.hour>=23){this.setState({phase:5});return;}
+    this.setState({hour:s.hour+1,phase:2,freqDisp:50});
+  };
+  setView(f){this.setState(s=>({view:f(s.view||{x:0,y:0,k:1})}));}
+  svgPt(e){const r=e.currentTarget.getBoundingClientRect();const cx=e.clientX??(e.touches&&e.touches[0]?e.touches[0].clientX:0),cy=e.clientY??(e.touches&&e.touches[0]?e.touches[0].clientY:0);return {x:(cx-r.left)*620/r.width,y:(cy-r.top)*500/r.height};}
+  zoomAt(px,py,f){this.setView(v=>{const k=Math.max(0.6,Math.min(4,v.k*f));return {x:px-(px-v.x)*(k/v.k),y:py-(py-v.y)*(k/v.k),k};});}
+  mapWheel=e=>{const p=this.svgPt(e);this.zoomAt(p.x,p.y,e.deltaY<0?1.15:0.87);};
+  mapDown=e=>{this.drag=this.svgPt(e);};
+  mapMove=e=>{if(!this.drag)return;const p=this.svgPt(e);const d=this.drag;this.drag=p;this.setView(v=>({...v,x:v.x+(p.x-d.x),y:v.y+(p.y-d.y)}));};
+  mapUp=()=>{this.drag=null;};
+  mapTDown=e=>{this.drag=this.svgPt(e);};
+  mapTMove=e=>{this.mapMove(e);};
+  newDay=()=>this.setState(this.freshDay(this.state.budget));
+  setUnit(i,v){this.setState(s=>({units:s.units.map((u,j)=>j===i?{...u,set:v}:u)}));}
+  startUnit(i){this.setState(s=>({units:s.units.map((u,j)=>j===i?{...u,starting:u.startH,tripped:false}:u)}));}
+  stopUnit(i){this.setState(s=>({units:s.units.map((u,j)=>j===i?{...u,on:false,set:0,starting:-1}:u)}));}
+  buildMap(){
+    const T=["wwwwwwpppphh","wwpppppppphh","wpppfffppphh","ppppffppupph","pppppppppppp","phhpppppfppp","phhpppffffpp","pppppppppppp"];
+    const COL={w:"#1a3a52",p:"#232e27",f:"#1e3d29",h:"#3a3222",u:"#3d3444"};
+    const s=32,hx=(q,r)=>({x:40+q*s*1.5,y:42+r*s*1.74+(q%2?s*0.87:0)});
+    this.hexes=[];
+    T.forEach((row,r)=>{row.split("").forEach((c,q)=>{
+      const {x,y}=hx(q,r);let pts="";
+      for(let k=0;k<6;k++){const a=Math.PI/180*(60*k);pts+=(x+s*1.005*Math.cos(a)).toFixed(1)+","+(y+s*1.005*Math.sin(a)).toFixed(1)+" ";}
+      this.hexes.push({pts:pts.trim(),fill:COL[c]});
+    });});
+    const P={coal:hx(2,5),wind:hx(4,1),pv:hx(6,6),gas:hx(9,4),gpz:hx(7,3),city:hx(8,3),batt:hx(6,4),imp:hx(11,2)};
+    this.P=P;
+    this.nodeDefs=[
+      {id:"coal",sym:"C",label:"EL. WĘGLOWA 2×400",color:"#9aa5b1",lpos:"below"},
+      {id:"wind",sym:"W",label:"FW PÓŁNOC 300",color:"#3ddc84",lpos:"below"},
+      {id:"pv",sym:"PV",label:"PV POŁUDNIE 150",color:"#f3d54e",lpos:"below"},
+      {id:"gas",sym:"G",label:"EL. GAZOWA 330",color:"#e0913d",lpos:"below"},
+      {id:"gpz",sym:"▣",label:"GPZ CENTRUM 400/110",color:"#38bdf8",lpos:"above"},
+      {id:"city",sym:"M",label:"M. GRODZIEC",color:"#e8f1f8",lpos:"below"},
+      {id:"batt",sym:"B",label:"BESS 100/200",color:"#38bdf8",lpos:"below"},
+      {id:"imp",sym:"⇄",label:"GRANICA WSCHÓD",color:"#b07ce8",lpos:"below"}
+    ];
+    const QR={coal:[2,5],wind:[4,1],pv:[6,6],gas:[9,4],gpz:[7,3],city:[8,3],batt:[6,4],imp:[11,2]};
+    this.lineDefs=[
+      {a:"coal",b:"gpz",cap:900},{a:"wind",b:"gpz",cap:320},{a:"pv",b:"gpz",cap:160},
+      {a:"gas",b:"gpz",cap:270},{a:"batt",b:"gpz",cap:120},{a:"imp",b:"gpz",cap:150,dash:"6 4"},
+      {a:"gpz",b:"city",cap:1100}
+    ];
+    const toCube=([q,r])=>{const x=q,z=r-(q-(q&1))/2;return [x,-x-z,z];};
+    const hexPath=(a,b)=>{
+      const A=toCube(a),B=toCube(b);
+      const N=Math.max(Math.abs(A[0]-B[0]),Math.abs(A[1]-B[1]),Math.abs(A[2]-B[2]));
+      const pts=[];
+      for(let i=0;i<=N;i++){
+        const t=N?i/N:0;
+        const x=A[0]+(B[0]-A[0])*t,y=A[1]+(B[1]-A[1])*t,z=A[2]+(B[2]-A[2])*t;
+        let rx=Math.round(x),ry=Math.round(y),rz=Math.round(z);
+        const dx=Math.abs(rx-x),dy=Math.abs(ry-y),dz=Math.abs(rz-z);
+        if(dx>dy&&dx>dz)rx=-ry-rz;else if(dy>dz)ry=-rx-rz;else rz=-rx-ry;
+        const q=rx,r=rz+(q-(q&1))/2;
+        pts.push({q,r,...hx(q,r)});
+      }
+      return pts;
+    };
+    const paths=this.lineDefs.map(l=>hexPath(QR[l.a],QR[l.b]));
+    const ekey=(a,b)=>{const ka=a.q+","+a.r,kb=b.q+","+b.r;return ka<kb?ka+"|"+kb:kb+"|"+ka;};
+    const usage={};
+    paths.forEach((path,i)=>{for(let j=0;j<path.length-1;j++){const k=ekey(path[j],path[j+1]);(usage[k]=usage[k]||[]).push(i);}});
+    const GAP=5;
+    this.lineDefs.forEach((l,i)=>{
+      const path=paths[i];
+      const segOff=[];
+      for(let j=0;j<path.length-1;j++){
+        const A=path[j],B=path[j+1];
+        const ka=A.q+","+A.r,kb=B.q+","+B.r;
+        const [C,D]=ka<kb?[A,B]:[B,A];
+        const len=Math.hypot(D.x-C.x,D.y-C.y)||1;
+        const nx=-(D.y-C.y)/len,ny=(D.x-C.x)/len;
+        const users=usage[ekey(A,B)];
+        const off=(users.indexOf(i)-(users.length-1)/2)*GAP;
+        segOff.push({x:nx*off,y:ny*off});
+      }
+      let str="";
+      path.forEach((p,j)=>{
+        let ox,oy;
+        if(j===0){ox=segOff[0].x;oy=segOff[0].y;}
+        else if(j===path.length-1){ox=segOff[j-1].x;oy=segOff[j-1].y;}
+        else{ox=(segOff[j-1].x+segOff[j].x)/2;oy=(segOff[j-1].y+segOff[j].y)/2;}
+        str+=(p.x+ox).toFixed(1)+","+(p.y+oy).toFixed(1)+" ";
+      });
+      l.ptsStr=str.trim();
+      const mi=Math.floor(path.length/2);
+      const mo=mi>0&&mi<path.length-1?{x:(segOff[mi-1].x+segOff[mi].x)/2,y:(segOff[mi-1].y+segOff[mi].y)/2}:{x:0,y:0};
+      l.mx=path[mi].x+mo.x;l.my=path[mi].y+mo.y;
+    });
+  }
+  fcWBandF(d){return Math.min(0.2,0.04+0.0135*Math.max(0,d))*(this.props.bladPrognozy??1);}
+  fcDBandF(d){return Math.min(0.05,0.01+0.0033*Math.max(0,d))*(this.props.bladPrognozy??1);}
+  fcWindAt(h,hour){return h<hour?this.WF[h]*this.WCAP:Math.max(0,Math.min(1,this.WF[h]+this.ERR[h]*this.fcWBandF(h-hour)*0.6))*this.WCAP;}
+  fcDemAt(h,hour){return h<hour?this.DEM[h]+this.DN[h]:(this.DEM[h]+this.DN[h])*(1+this.ERR[23-h]*this.fcDBandF(h-hour)*0.6);}
+  renderVals(){
+    const s=this.state,hour=s.hour,phase=s.phase;
+    const clampF=(v,a,b)=>Math.max(a,Math.min(b,v));
+    const mln=v=>(v>=0?"+":"−")+Math.abs(v).toFixed(2)+" mln zł";
+    const mw=v=>(v>0?"+":v<0?"−":"")+Math.abs(Math.round(v))+" MW";
+    const fcW=h=>this.fcWindAt(h,hour),fcD=h=>this.fcDemAt(h,hour);
+    const fx=h=>26+h*(348/23);
+    const dY=v=>clampF(94-((v-550)/500)*86,4,96);
+    const wY=v=>clampF(86-(v/320)*80,4,86);
+    let fcDemPast="",fcDemFut="",fcDemUp=[],fcDemLo=[],fcWindPast="",fcWindFut="",fcWUp=[],fcWLo=[],fcPvPts="";
+    for(let h=0;h<24;h++){
+      const pd=fx(h)+","+dY(fcD(h)).toFixed(1)+" ";
+      const pw=fx(h)+","+wY(fcW(h)).toFixed(1)+" ";
+      if(h<=hour){fcDemPast+=pd;fcWindPast+=pw;}
+      if(h>=hour){fcDemFut+=pd;fcWindFut+=pw;
+        const bd=(this.DEM[h])*this.fcDBandF(h-hour),bw=this.WCAP*this.fcWBandF(h-hour);
+        fcDemUp.push(fx(h)+","+dY(fcD(h)+bd).toFixed(1));fcDemLo.push(fx(h)+","+dY(fcD(h)-bd).toFixed(1));
+        fcWUp.push(fx(h)+","+wY(clampF(fcW(h)+bw,0,320)).toFixed(1));fcWLo.push(fx(h)+","+wY(clampF(fcW(h)-bw,0,320)).toFixed(1));
+      }
+      fcPvPts+=fx(h)+","+wY(this.PVF[h]*this.PVCAP).toFixed(1)+" ";
+    }
+    const on=s.units.filter(u=>u.on);
+    const disp=on.reduce((a,u)=>a+u.set,0);
+    const fcWindNow=Math.round(fcW(hour)),fcPvNow=Math.round(this.PVF[hour]*this.PVCAP);
+    const fcDemNow=Math.round(fcD(hour));
+    const planSupply=disp+fcWindNow+fcPvNow+s.batt+s.imp;
+    const saldo=planSupply-fcDemNow;
+    const reserve=Math.round(on.reduce((a,u)=>a+(u.cap-u.set),0)+(100-Math.abs(s.batt)));
+    const maxUnit=Math.max(0,...on.map(u=>u.set));
+    const flows={coal:on.filter(u=>u.key==="coal").reduce((a,u)=>a+u.set,0),
+      wind:fcWindNow,pv:fcPvNow,gas:on.filter(u=>u.key==="gas"||u.key==="ocgt").reduce((a,u)=>a+u.set,0),
+      batt:Math.abs(s.batt),imp:Math.abs(s.imp),city:fcDemNow};
+    const lc=p=>p>=100?"#ff4d4f":p>=85?"#ff7a45":p>=60?"#ffb020":"#3ddc84";
+    const mapLines=this.lineDefs.map(l=>{
+      const f=l.b==="city"?flows.city:flows[l.a];
+      const pct=Math.round(f/l.cap*100);
+      return {pts:l.ptsStr,color:lc(pct),w:pct>=85?3.5:2.5,dash:l.dash||"none",pct:pct+"%",tx:l.mx,ty:l.my-5};
+    });
+    const nodeVals={coal:flows.coal+" MW",wind:fcWindNow+" MW",pv:fcPvNow+" MW",gas:flows.gas+" MW",
+      gpz:"",city:fcDemNow+" MW",batt:(s.batt>0?"+":"")+s.batt+" MW",imp:(s.imp>0?"+":"")+s.imp+" MW"};
+    const mapNodes=this.nodeDefs.map(n=>{
+      const p=this.P[n.id],above=n.lpos==="above";
+      return {x:p.x,y:p.y,sy:p.y+2.8,ly:above?p.y-17:p.y+21,vy:above?p.y-27:p.y+31,
+        sym:n.sym,label:n.label,color:n.color,val:nodeVals[n.id]};
+    });
+    const dx=h=>30+h*(910/23),dy2=v=>130-(v/1150)*118;
+    const series=["coal","gas","imp","batt","wind","pv"];
+    const fills={coal:"#7d8798",gas:"#e0913d",imp:"#b07ce8",batt:"#38bdf8",wind:"#3ddc84",pv:"#f3d54e"};
+    const res=s.resolved;
+    const dayAreas=[];
+    if(res.length>1){
+      let prev=res.map(()=>0);
+      series.forEach(k=>{
+        const cur=res.map((r,i)=>prev[i]+Math.max(0,r[k]||0));
+        let top="",bot="";
+        res.forEach((r,i)=>{top+=dx(r.h)+","+dy2(cur[i]).toFixed(1)+" ";});
+        for(let i=res.length-1;i>=0;i--){bot+=dx(res[i].h)+","+dy2(prev[i]).toFixed(1)+" ";}
+        dayAreas.push({pts:(top+bot).trim(),fill:fills[k]});
+        prev=cur;
+      });
+    }
+    let dayDemandPts="",dayFcPts="";
+    res.forEach(r=>{dayDemandPts+=dx(r.h)+","+dy2(r.dem).toFixed(1)+" ";});
+    for(let h=Math.max(0,res.length?res[res.length-1].h:0);h<24;h++){dayFcPts+=dx(h)+","+dy2(fcD(h)).toFixed(1)+" ";}
+    const dayTicks=[0,4,8,12,16,20,23].map(h=>({x:dx(h),t:String(h).padStart(2,"0")}));
+    const E=React.createElement;
+    const halo={paintOrder:"stroke",stroke:"#0b0f14",strokeWidth:3};
+    const mapLabels=[
+      ...mapLines.map((l,i)=>E("text",{key:"lp"+i,x:l.tx,y:l.ty,fill:l.color,fontSize:9,fontWeight:700,fontFamily:"IBM Plex Mono",textAnchor:"middle",...halo},l.pct)),
+      ...mapNodes.flatMap((n,i)=>[
+        E("text",{key:"ns"+i,x:n.x,y:n.sy,fill:n.color,fontSize:8,fontWeight:700,fontFamily:"IBM Plex Mono",textAnchor:"middle"},n.sym),
+        E("text",{key:"nl"+i,x:n.x,y:n.ly,fill:"#e8f1f8",fontSize:9.5,fontWeight:600,fontFamily:"Barlow Condensed",letterSpacing:0.4,textAnchor:"middle",...halo},n.label),
+        n.val?E("text",{key:"nv"+i,x:n.x,y:n.vy,fill:n.color,fontSize:8.5,fontWeight:600,fontFamily:"IBM Plex Mono",textAnchor:"middle",...halo},n.val):null
+      ])
+    ];
+    const dayTickLabels=dayTicks.map((tk,i)=>E("text",{key:"dt"+i,x:tk.x,y:145,fill:"#5c6b7a",fontSize:10,fontFamily:"IBM Plex Mono",textAnchor:"middle"},tk.t));
+    const turns=[];
+    for(let h=0;h<24;h++){
+      const r=res.find(q=>q.h===h);
+      let bg="#131b24",bd="#1e2733",col="#3a4757";
+      if(r){const d=Math.abs(r.freq-50);bg=d>0.2?"#3d1214":d>0.05?"#33260c":"#0f2418";col=d>0.2?"#ff4d4f":d>0.05?"#ffb020":"#3ddc84";}
+      if(h===hour){bd="#3ddc84";col="#e8f1f8";}
+      turns.push({label:h%4===0?String(h):"·",tip:String(h).padStart(2,"0")+":00",
+        style:"width:17px;height:24px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:9px;border-radius:2px;background:"+bg+";border:1px solid "+bd+";color:"+col+";"});
+    }
+    const uRows=s.units.map((u,i)=>({
+      name:u.name,on:u.on,min:u.min,cap:u.cap,set:u.set,setT:u.set+" MW",
+      meta:u.vc+" zł/MWh · min "+u.min+" MW · max "+u.cap+" MW · rozruch "+u.startH+" h",
+      status:u.tripped?"AWARIA":u.on?"W RUCHU":u.starting>0?"ROZRUCH "+u.starting+" h":"POSTÓJ",
+      stColor:u.tripped?"#ff4d4f":u.on?"#3ddc84":u.starting>0?"#38bdf8":"#5c6b7a",
+      showStart:!u.on&&u.starting<=0&&!u.tripped,startT:u.startH+" h",
+      onSet:e=>this.setUnit(i,+e.target.value),onStart:()=>this.startUnit(i),onStop:()=>this.stopUnit(i)
+    }));
+    const r=s.pending;
+    const freqDev=Math.abs(s.freqDisp-50);
+    const report=r?[
+      {k:"Cena krańcowa",v:r.price+" zł/MWh",c:"#e8f1f8"},
+      {k:"Przychód ("+r.served+" MWh)",v:mln(r.revenue),c:"#3ddc84"},
+      {k:"Paliwo + import",v:mln(-r.fuel),c:"#e0913d"},
+      {k:"Kary",v:r.kara>0?mln(-r.kara):"brak",c:r.kara>0?"#ff4d4f":"#5c6b7a"},
+      {k:"Częstotliwość",v:r.freq.toFixed(2)+" Hz",c:Math.abs(r.freq-50)>0.2?"#ff4d4f":Math.abs(r.freq-50)>0.05?"#ffb020":"#3ddc84"},
+      {k:"Regulacja pierwotna",v:mw(r.adj),c:"#8b9bab"},
+      ...(r.shed>0?[{k:"SCO — odbiory odłączone",v:r.shed+" MW",c:"#ff4d4f"}]:[])
+    ]:[];
+    const totRev=res.reduce((a,q)=>a+q.revenue,0),totFuel=res.reduce((a,q)=>a+q.fuel,0),totKara=res.reduce((a,q)=>a+q.kara,0);
+    const dayReport=[
+      {k:"Przychody",v:mln(totRev),c:"#3ddc84"},
+      {k:"Paliwo + import",v:mln(-totFuel),c:"#e0913d"},
+      {k:"Kary",v:totKara>0?mln(-totKara):"brak",c:totKara>0?"#ff4d4f":"#5c6b7a"},
+      {k:"Energia niedostarczona",v:s.ens+" MWh",c:s.ens>0?"#ff4d4f":"#3ddc84"},
+      {k:"Wynik doby",v:mln(s.dayNet),c:s.dayNet>=0?"#3ddc84":"#ff4d4f"}
+    ];
+    const peakHour=this.DEM.indexOf(Math.max(...this.DEM.slice(hour)),hour);
+    const windTrend=fcW(Math.min(23,hour+6))-fcW(hour);
+    const briefing=[
+      {k:"POPYT",c:"#e8f1f8",t:"Szczyt "+Math.round(Math.max(...this.DEM.slice(hour)))+" MW ok. "+String(peakHour).padStart(2,"0")+":00 (±"+Math.round(this.DEM[peakHour]*this.fcDBandF(peakHour-hour))+" MW)"},
+      {k:"WIATR",c:windTrend<-40?"#ffb020":"#3ddc84",t:windTrend<-40?"Prognoza słabnięcia: −"+Math.round(-windTrend)+" MW w 6 h. Pasmo błędu ±"+Math.round(this.WCAP*this.fcWBandF(6))+" MW.":"Stabilny, ok. "+fcWindNow+" MW (±"+Math.round(this.WCAP*this.fcWBandF(3))+" MW)"},
+      {k:"REZERWA",c:reserve<maxUnit?"#ff4d4f":"#3ddc84",t:"Wirująca "+reserve+" MW / kryterium N-1: ≥ "+maxUnit+" MW"},
+      {k:"UWAGA",c:"#38bdf8",t:"Rozruch węgla trwa 6 h — decyzję o szczycie 18:00 podejmij przed 12:00."}
+    ];
+    const card=(n,accent)=>{
+      if(n===1)return "border:1px solid #1e2733;border-radius:4px;background:#0b0f14;padding:10px 12px;";
+      const active=phase===n;
+      return "border:1px solid "+(active?accent:"#1e2733")+";border-radius:4px;background:#0b0f14;padding:10px 12px;"+(active?"box-shadow:0 0 0 1px "+accent+"33;":"opacity:0.62;");
+    };
+    const lastT=r?"TURA "+String(r.h).padStart(2,"0")+":00":"";
+    const chip=n=>{
+      if(n===1)return ["TURA "+String(hour).padStart(2,"0")+":00","#38bdf8"];
+      if(phase===n)return ["● AKTYWNA",["","#38bdf8","#3ddc84","#ffb020","#e8f1f8"][n]];
+      if(n>=3&&r)return [lastT,"#5c6b7a"];
+      return [phase>n||phase===5?"ZAKOŃCZONA":"OCZEKUJE","#3a4757"];
+    };
+    const c1=chip(1),c2=chip(2),c3=chip(3),c4=chip(4);
+    const view=s.view||{x:0,y:0,k:1};
+    return {
+      hourLabel:String(hour).padStart(2,"0")+":00",
+      phaseNum:phase===5?"✓":phase,
+      phaseName:["","PROGNOZA","NASTAWY","ROZSTRZYGNIĘCIE","RAPORT","KONIEC DOBY"][phase],
+      mapT:"translate("+view.x.toFixed(1)+" "+view.y.toFixed(1)+") scale("+view.k.toFixed(3)+")",
+      mapWheel:this.mapWheel,mapDown:this.mapDown,mapMove:this.mapMove,mapUp:this.mapUp,
+      mapTDown:this.mapTDown,mapTMove:this.mapTMove,
+      zoomIn:()=>this.zoomAt(310,250,1.3),zoomOut:()=>this.zoomAt(310,250,0.77),
+      zoomReset:()=>this.setView(()=>({x:0,y:0,k:1})),
+      phaseColor:["","#38bdf8","#3ddc84","#ffb020","#e8f1f8","#3ddc84"][phase],
+      p1:phase===1,p2:phase===2,p3:phase===3,p4:phase===4,p5:phase===5,
+      ph1Style:card(1,"#38bdf8"),ph2Style:card(2,"#3ddc84"),ph3Style:card(3,"#ffb020"),ph4Style:card(4,"#e8f1f8"),
+      ph1Chip:c1[0],ph1ChipC:c1[1],ph2Chip:c2[0],ph2ChipC:c2[1],ph3Chip:c3[0],ph3ChipC:c3[1],ph4Chip:c4[0],ph4ChipC:c4[1],
+      freqText:s.freqDisp.toFixed(2),
+      freqColor:freqDev>0.2?"#ff4d4f":freqDev>0.05?"#ffb020":"#3ddc84",
+      needleStyle:"position:absolute;top:-4px;left:"+clampF((s.freqDisp-49.5)/1*100,0,100)+"%;width:2px;height:16px;background:#e8f1f8;box-shadow:0 0 6px #e8f1f8;",
+      budgetT:s.budget.toFixed(1)+" mln",dayNetT:mln(s.dayNet),
+      dayNetColor:s.dayNet>=0?"#3ddc84":"#ff4d4f",
+      turns,hexes:this.hexes,mapLines,mapNodes,mapLabels,dayTickLabels,
+      dayAreas,dayDemandPts:dayDemandPts.trim(),dayFcPts:dayFcPts.trim(),dayTicks,dayNowX:dx(hour),
+      fcDemPast:fcDemPast.trim(),fcDemFut:fcDemFut.trim(),fcDemBand:(fcDemUp.join(" ")+" "+fcDemLo.reverse().join(" ")).trim(),
+      fcWindPast:fcWindPast.trim(),fcWindFut:fcWindFut.trim(),fcWindBand:(fcWUp.join(" ")+" "+fcWLo.reverse().join(" ")).trim(),
+      fcPvPts:fcPvPts.trim(),fcNowX:fx(hour),
+      briefing,uRows,
+      battSet:s.batt,onBatt:e=>this.setState({batt:+e.target.value}),
+      battT:(s.batt>0?"+":"")+s.batt+" MW",socT:Math.round(s.soc)+" / 200 MWh",
+      impSet:s.imp,onImp:e=>this.setState({imp:+e.target.value}),
+      impT:(s.imp>0?"+":"")+s.imp+" MW",
+      planSupplyT:Math.round(planSupply)+" MW",fcDemNowT:fcDemNow+" MW",
+      demBandT:Math.round(this.DEM[hour]*this.fcDBandF(0)+6)+" MW",
+      saldoT:mw(saldo),saldoColor:Math.abs(saldo)<30?"#3ddc84":Math.abs(saldo)<80?"#ffb020":"#ff4d4f",
+      saldoBorder:Math.abs(saldo)<30?"#1e2733":Math.abs(saldo)<80?"#4a3a10":"#5c1a1c",
+      reserveT:reserve+" MW",resColor:reserve>=maxUnit?"#3ddc84":"#ff4d4f",
+      goDecision:this.goDecision,commit:this.commit,skip:this.skip,next:this.next,newDay:this.newDay,
+      topLabel:phase<=2?"ZATWIERDŹ TURĘ ▸":phase===3?"ROZSTRZYGANIE…":phase===4?(hour>=23?"RAPORT DOBY ▸":"NASTĘPNA TURA ▸"):"NOWA DOBA ▸",
+      topClick:phase<=2?this.commit:phase===4?this.next:phase===5?this.newDay:()=>{},
+      topBtnStyle:"min-height:46px;padding:0 22px;border-radius:3px;font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;letter-spacing:3px;cursor:"+(phase===3?"wait":"pointer")+";background:"+(phase===3?"#1a1408":"#10251a")+";border:1px solid "+(phase===3?"#8a6a1a":"#3ddc84")+";color:"+(phase===3?"#b08a2a":"#3ddc84")+";",
+      hasResult:!!r,noResult:!r,
+      rDemT:r?Math.round(r.fcDem)+" → "+r.dem+" MW":"",
+      rWindT:r?Math.round(r.fcWind)+" → "+r.wind+" MW ("+mw(r.wind-r.fcWind)+")":"",
+      rWindC:r&&r.wind-r.fcWind<-20?"#ffb020":"#3ddc84",
+      rResT:r?mw(-r.resid):"",rResC:r&&Math.abs(r.resid)>30?"#ff4d4f":"#3ddc84",
+      hasEvent:!!s.eventMsg,eventMsg:s.eventMsg,
+      hasStopNote:!!s.stopNote,stopNote:s.stopNote,
+      report,netT:r?mln(r.net):"",netColor:r&&r.net>=0?"#3ddc84":"#ff4d4f",
+      nextLabel:hour>=23?"RAPORT DOBY ▸":"NASTĘPNA TURA · "+String(hour+1).padStart(2,"0")+":00 ▸",
+      dayReport,dayScaledT:mln(s.dayNet*10.9)
+    };
+  }
+  componentWillUnmount(){clearInterval(this.tm);clearTimeout(this.tf);}
+}
+</script>
+</body>
+</html>
