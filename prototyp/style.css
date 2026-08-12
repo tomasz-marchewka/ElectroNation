@@ -45,9 +45,10 @@ body {
 .logo span { color: var(--ok); }
 .logo-sub { font-family: var(--font-m); font-size: 10px; color: var(--dim); letter-spacing: 1px; }
 
-.turn-strip { display: flex; flex-wrap: wrap; gap: 2px; max-width: 460px; }
+.turn-strip { display: flex; gap: 2px; width: 340px; max-width: 340px; }
 .ts-cell {
-  width: 17px; height: 24px; background: #131b24; color: var(--disabled);
+  /* one cell per turn; flex-grow set inline to the block length in hours */
+  flex: 1 0 0; min-width: 22px; height: 24px; background: #131b24; color: var(--disabled);
   font-family: var(--font-m); font-size: 9px; display: flex; align-items: center;
   justify-content: center; border: 1px solid transparent; border-radius: 2px;
 }
@@ -98,11 +99,11 @@ body {
 #map-wrap { flex: 1; position: relative; min-height: 0; background: #0a0e12; }
 #map-svg { width: 100%; height: 100%; display: block; cursor: grab; }
 #map-svg.panning { cursor: grabbing; }
-#map-svg.build { cursor: crosshair; }
 #map-svg text { font-family: var(--font-c); paint-order: stroke; stroke: #0a0e12; stroke-width: 3px; }
 #map-svg text.mono { font-family: var(--font-m); }
 
-#map-zoom { position: absolute; top: 8px; right: 8px; display: flex; flex-direction: column; gap: 4px; }
+/* zoom buttons live top-left so the hex panel (docked right) never covers them */
+#map-zoom { position: absolute; top: 8px; left: 8px; display: flex; flex-direction: column; gap: 4px; }
 #map-zoom button {
   width: 34px; height: 34px; background: var(--panel); color: var(--text);
   border: 1px solid var(--border); border-radius: 3px; font-size: 16px; cursor: pointer;
@@ -110,17 +111,30 @@ body {
 #map-zoom button:hover { border-color: var(--ok); color: var(--ok); }
 
 #hint-bar {
-  position: absolute; left: 8px; bottom: 8px; max-width: 65%;
+  position: absolute; left: 8px; bottom: 8px; max-width: 55%;
   background: rgba(14,19,25,.92); border: 1px solid var(--border); border-radius: 3px;
   padding: 5px 10px; font-family: var(--font-m); font-size: 10.5px; color: var(--muted);
 }
 #hint-bar.active { border-color: var(--ok); color: var(--ok); }
-#hex-tip {
-  position: absolute; pointer-events: none; z-index: 5;
-  background: rgba(11,15,20,.95); border: 1px solid var(--border); border-radius: 3px;
-  padding: 5px 8px; font-family: var(--font-m); font-size: 10px; color: var(--text);
-  line-height: 1.5; white-space: nowrap;
+
+/* hex panel — docked to the map's right edge, overlays part of the map */
+#hex-panel {
+  position: absolute; top: 0; right: 0; bottom: 0; width: 312px; z-index: 6;
+  background: rgba(11,15,20,.96); border-left: 1px solid var(--border);
+  box-shadow: -10px 0 28px rgba(0,0,0,.45);
+  padding: 10px 12px; overflow-y: auto;
 }
+#hex-panel[hidden] { display: none; }
+#hex-panel::-webkit-scrollbar { width: 8px; }
+#hex-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.hp-head { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.hp-head.sub { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); }
+.hp-title { flex: 1; font-size: 15px; font-weight: 700; letter-spacing: 1px; color: var(--bright); }
+.hp-close {
+  background: none; border: none; color: var(--dim); cursor: pointer;
+  font-size: 13px; font-family: var(--font-m); padding: 0 2px;
+}
+.hp-close:hover { color: var(--alarm); }
 
 #day-chart-wrap { height: 158px; border-top: 1px solid var(--border); background: var(--panel); }
 #day-chart { width: 100%; height: 130px; display: block; }
@@ -130,14 +144,10 @@ body {
   width: 428px; min-width: 428px; background: var(--panel);
   border-left: 1px solid var(--border); display: flex; flex-direction: column;
 }
-#tab-row { display: flex; border-bottom: 1px solid var(--border); }
-.tab {
-  flex: 1; padding: 8px 0; background: none; border: none; cursor: pointer;
-  color: var(--dim); font-family: var(--font-c); font-size: 13px; font-weight: 700;
-  letter-spacing: 2px; border-bottom: 2px solid transparent;
+#panel-head {
+  padding: 8px 0; text-align: center; border-bottom: 1px solid var(--border);
+  color: var(--ok); font-size: 13px; font-weight: 700; letter-spacing: 2px;
 }
-.tab.active { color: var(--ok); border-bottom-color: var(--ok); }
-.tab:hover { color: var(--text); }
 #panel-scroll { flex: 1; overflow-y: auto; padding: 8px; }
 #panel-scroll::-webkit-scrollbar { width: 8px; }
 #panel-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
@@ -228,14 +238,15 @@ body {
 .h6.warn { color: var(--warn); border-color: rgba(255,176,32,.5); }
 .h6.alarm { color: var(--alarm); border-color: rgba(255,77,79,.5); }
 
-/* build catalog */
+/* build catalog (inside the hex panel) */
 .cat-item {
   display: flex; justify-content: space-between; align-items: center; gap: 8px;
   border: 1px solid var(--border2); border-radius: 3px; padding: 6px 8px; margin-bottom: 5px;
   cursor: pointer;
 }
 .cat-item:hover { border-color: var(--ok); }
-.cat-item.armed { border-color: var(--ok); background: #10251a; }
+.cat-item.disabled { opacity: .45; cursor: default; }
+.cat-item.disabled:hover { border-color: var(--border2); }
 .cat-item .nm { font-size: 14px; font-weight: 600; color: var(--bright); }
 .cat-item .meta { font-family: var(--font-m); font-size: 9.5px; color: var(--dim); }
 .cat-item .price { font-family: var(--font-m); font-size: 11px; color: var(--text); text-align: right; white-space: nowrap; }

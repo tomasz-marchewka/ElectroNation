@@ -30,7 +30,7 @@
       <div class="budget-day" id="budget-day">doba: +0.00 mln zł</div>
     </div>
     <div class="phase-box">
-      <div class="bb-caption" id="turn-caption">TURA 05:00</div>
+      <div class="bb-caption" id="turn-caption">TURA 00–03 · NOC</div>
       <div class="phase-name" id="phase-name">NASTAWY</div>
     </div>
     <button id="action-btn" class="action-btn">ZATWIERDŹ TURĘ ▸</button>
@@ -59,8 +59,8 @@
         <div id="map-zoom">
           <button id="zoom-in">+</button><button id="zoom-out">−</button><button id="zoom-reset">⟲</button>
         </div>
-        <div id="hint-bar">Tryb: podgląd. Kliknij obiekt, żeby zobaczyć szczegóły.</div>
-        <div id="hex-tip" hidden></div>
+        <div id="hint-bar">Kliknij dowolny heks — zobaczysz szczegóły i to, co można tam zbudować.</div>
+        <div id="hex-panel" hidden></div>
       </div>
       <div id="day-chart-wrap">
         <div id="dc-header">
@@ -71,25 +71,16 @@
       </div>
     </div>
 
-    <!-- ===== RIGHT PANEL ===== -->
+    <!-- ===== RIGHT PANEL (dispatcher, always visible) ===== -->
     <div id="right-panel">
-      <div id="tab-row">
-        <button class="tab active" data-tab="ops">DYSPOZYTOR</button>
-        <button class="tab" data-tab="build">BUDOWA</button>
-      </div>
+      <div id="panel-head">DYSPOZYTOR</div>
       <div id="panel-scroll">
-        <div id="tab-ops">
-          <div class="card card-forecast" id="card-forecast"></div>
-          <div class="card card-setpoints" id="card-setpoints"></div>
-          <div class="card card-resolve" id="card-resolve"></div>
-          <div class="card card-report" id="card-report"></div>
-        </div>
-        <div id="tab-build" hidden>
-          <div class="card" id="card-selected"></div>
-          <div class="card" id="card-catalog"></div>
-          <div class="card" id="card-queue"></div>
-          <div class="card" id="card-systems"></div>
-        </div>
+        <div class="card card-forecast" id="card-forecast"></div>
+        <div class="card card-setpoints" id="card-setpoints"></div>
+        <div class="card card-resolve" id="card-resolve"></div>
+        <div class="card card-report" id="card-report"></div>
+        <div class="card" id="card-queue"></div>
+        <div class="card" id="card-systems"></div>
       </div>
     </div>
   </div>
