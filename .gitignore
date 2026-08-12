@@ -1,2 +1,10 @@
 .idea/
 .DS_Store
+
+# game (npm/vite)
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
