@@ -1,12 +1,13 @@
 # ElectroNation — Model astronomiczny, klimatyczny i pogodowy
 
-**Wersja:** 0.2
-**Data:** 2026-08-07
+**Wersja:** 0.3
+**Data:** 2026-08-12
 **Status:** **obowiązujący** — źródłowy model pogody, produkcji OZE (PV, wiatr) i błędu
 prognozy dla uproszczonej wersji gry (01 v0.8, §2.4 i §5.2). Uproszczenie dotyczy silnika
 przepływu energii w sieci (01 §4) i nie zmienia niczego w tym modelu. Elementy „na przyszłość"
 wymienione w §10 pozostają odłożone ([90-pomysly-na-przyszlosc.md §2](90-pomysly-na-przyszlosc.md)).
 
+**Zmiany 0.2 → 0.3:** poziomy systemów prognostycznych wydłużają też **horyzont prognozy** — bazowo bieżąca doba (24 h), zaawansowany 3 doby, ansamblowy 7 dób; σ rośnie dalej z każdą kolejną dobą (§8.6.3; decyzja 01 v0.13).
 **Zmiany 0.1 → 0.2:** dodano **§8.6 — model prognozy i jej błędu** w związku z przejściem na rozgrywkę turową (dok. 01 §2.2–2.5). Kluczowa konsekwencja architektoniczna: prawdziwy przebieg pogody musi być generowany **w całości przy inicjalizacji doby**, a prognoza jest jego zaszumionym widokiem — nie odwrotnie.
 **Dokument nadrzędny:** [01-mechanika-gry.md](01-mechanika-gry.md)
 **Zakres:** długość dnia, wysokość słońca, nasłonecznienie, wiatr, temperatura, zachmurzenie — jako wejście do modeli produkcji PV i farm wiatrowych oraz do modelu zapotrzebowania.
@@ -88,7 +89,7 @@ B    = 360° · (n − 81) / 364
 EoT  = 9,87·sin(2B) − 7,53·cos(B) − 1,5·sin(B)      [minuty]
 ```
 
-**Rekomendacja: pominąć w wersji podstawowej.** Przy turze godzinowej (dok. 01 §2.2) przesunięcie o kilkanaście minut jest niewidoczne. Zostawić jako flagę do włączenia.
+**Rekomendacja: pominąć w wersji podstawowej.** Przy turach 3-godzinnych (dok. 01 §2.2) przesunięcie o kilkanaście minut jest niewidoczne. Zostawić jako flagę do włączenia.
 
 ### 3.3 Kąt godzinowy ω
 
@@ -468,14 +469,16 @@ Dla farmy 900 MW oznacza to ±56 MW przy +1 h i ±155 MW przy +6 h.
 
 ### 8.6.3 Zwężanie pasma jako inwestycja
 
-Dokładność prognozy jest **kupowalna**: mezoskalowy model pogody, telemetria farm, prognoza ansamblowa. Każdy poziom mnoży współczynniki `σ` przez wartość poniżej 1.
+Dokładność prognozy jest **kupowalna**: mezoskalowy model pogody, telemetria farm, prognoza ansamblowa. Każdy poziom mnoży współczynniki `σ` przez wartość poniżej 1 **i wydłuża horyzont prognozy** (0.3; dok. 01 §2.4):
 
-| Poziom | Mnożnik σ | Efekt |
-|---|---|---|
-| Brak (persystencja) | ×1,6 | prognoza = stan bieżący |
-| Podstawowy | ×1,0 | wartości z tabeli |
-| Zaawansowany | ×0,7 | |
-| Ansamblowy | ×0,5 | |
+| Poziom | Mnożnik σ | Horyzont | Efekt |
+|---|---|---|---|
+| Brak (persystencja) | ×1,6 | — | prognoza = stan bieżący (punkt odniesienia, poza grą) |
+| Podstawowy | ×1,0 | bieżąca doba (24 h) | wartości z tabeli |
+| Zaawansowany | ×0,7 | 3 doby | |
+| Ansamblowy | ×0,5 | 7 dób (maksimum) | |
+
+Poza pierwszą dobą σ **rośnie dalej z horyzontem** — każda kolejna doba prognozy ma szersze pasmo (ograniczenie `min(h, 12)` z §8.6.2 dotyczy przebiegu wewnątrz doby; przyrost międzydobowy, np. +20–30% σ na dobę, do strojenia przy implementacji prognozy wielodobowej). Prognozy dób przyszłych wymagają wygenerowania ich prawdy z wyprzedzeniem — architektonicznie: prawda może powstawać dla całego horyzontu przy inicjalizacji, doba po dobie z tego samego ziarna (§8.6.1 stosuje się bez zmian).
 
 To rzadki przypadek inwestycji, która **nie dodaje ani jednego megawata mocy, a mimo to realnie obniża koszty** — bo pozwala trzymać mniejszą rezerwę. Dobry sposób, by pokazać graczowi, ile warta jest informacja.
 

@@ -1,9 +1,13 @@
 # ElectroNation — Pomysły na przyszłość (mechaniki odłożone)
 
-**Wersja:** 0.2
+**Wersja:** 0.3
 **Data:** 2026-08-07
 **Status:** magazyn projektowy — nic z tego dokumentu **nie wchodzi** do wersji uproszczonej gry
 **Dokument nadrzędny:** [01-mechanika-gry.md](01-mechanika-gry.md) (od wersji 0.7)
+
+**Zmiany 0.2 → 0.3:** po uproszczeniach 01 v0.11 doszły do magazynu: **topologia stacyjna**
+(obiekty przyłączane do stacji w promieniu 1 heksa, linie tylko między stacjami) oraz
+**typy linii wg poziomów napięć** (110/220/400 kV) — oba w §4.
 
 **Zmiany 0.1 → 0.2:** po doprecyzowaniu zakresu uproszczenia (01 v0.8) **wróciły do gry**:
 OZE (PV, wiatr lądowy) z pogodą i całym dokumentem 06, prognozy pogody i zapotrzebowania
@@ -187,10 +191,21 @@ Powiązane mechaniki cyklu życia:
 
 ---
 
-## 4. Stacje elektroenergetyczne — elementy zaawansowane
+## 4. Stacje, typy linii i topologia sieci — elementy zaawansowane
 
-*(Stacja jako węzeł z przepustowością i polami jest w grze — 01 §4.3, §5.4. Tu zostaje
-głębia.)*
+*(Stacja rozdzielcza jako węzeł z przepustowością i przyłączami liniowymi jest w grze —
+01 §4.3, §5.4. Tu zostaje głębia oraz mechaniki uchylone w 01 v0.11.)*
+
+**Typy linii wg poziomów napięć** *(→ **wróciły do gry w 01 v0.13**, §4.2, jako umowne
+NN/SN/WN — 150/500/1500 MW)*: tu zostaje reszta głębi — realna hierarchia napięć,
+transformacja między poziomami (stacje transformatorowe jako warunek łączenia typów),
+ograniczenia „co można wpiąć w jaki poziom".
+
+**Topologia stacyjna** *(w grze 01 v0.8–0.10; zastąpiona topologią bezpośrednią)*:
+obiekty przyłączały się do stacji elektroenergetycznej w promieniu 1 heksa, a linie
+biegły wyłącznie między stacjami. Wymuszała planowanie „stacja najpierw", ale w prototypie
+okazała się nadmiarowym krokiem przy każdej inwestycji. Kandydatka do powrotu razem
+z poziomami napięć (stacja jako miejsce transformacji).
 
 Pełna hierarchia napięć, do której stacje docelowo należą:
 
@@ -203,7 +218,7 @@ Pełna hierarchia napięć, do której stacje docelowo należą:
 | nN | 0,4 kV | odbiorcy końcowi | *abstrahowane* |
 
 Z hierarchią wraca zasada „stacja = jedyne miejsce spotkania dwóch poziomów napięcia"
-(dziś typy linii są kosmetyczne i łączą się swobodnie). Odłożone elementy stacji:
+(dziś w grze jest jeden typ linii, łączący obiekty swobodnie). Odłożone elementy stacji:
 
 - **układ rozdzielni**: pojedynczy system szyn / podwójny / półtorawyłącznikowy —
   N-1 na poziomie stacji (awaria szyn przy tanim układzie = cała stacja w ciemnościach),

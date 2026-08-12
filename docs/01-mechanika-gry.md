@@ -1,8 +1,64 @@
 # ElectroNation — Dokument bazowy mechaniki gry
 
-**Wersja:** 0.10 (dokument koncepcyjny)
-**Data:** 2026-08-07
+**Wersja:** 0.13 (dokument koncepcyjny)
+**Data:** 2026-08-12
 **Status:** obowiązuje **wersja uproszczona** gry; mechaniki odłożone czekają w [90-pomysly-na-przyszlosc.md](90-pomysly-na-przyszlosc.md)
+
+**Zmiany 0.12 → 0.13 (przegląd i zatwierdzenie założeń przez projektanta):**
+
+1. **Trzy typy linii przesyłowych** (§4.2; uchyla „jeden typ linii" z 0.11): niskie
+   napięcie (150 MW — najtańsze, najszybsze w budowie, największe straty), średnie
+   (500 MW) i wysokie (1500 MW — najdroższe, najniższe straty). Czasy budowy **3/6/12 h
+   na heks trasy** wg typu. Przez jeden heks może biec **najwyżej 9 linii jednego typu**.
+2. **Linia przechodząca przez heks z obiektem automatycznie go przyłącza** (§3.3) —
+   obiekt staje się węzłem na trasie; odgałęzienie zajmuje jedno jego przyłącze liniowe.
+3. **OZE: jedyne ręczne sterowanie to wyłączenie/włączenie całej farmy** (§4.1);
+   przycinanie nadwyżek pozostaje automatyczne.
+4. **Prognoza: bazowy horyzont 24 h (bieżąca doba); poziomy systemów prognoz zwężają
+   pasmo i wydłużają horyzont** — do 3 dób (zaawansowany) i 7 dób (ansamblowy, maksimum);
+   każda kolejna doba prognozy ma większy błąd (§2.4, 06 §8.6.3).
+5. **Ekonomia: kanonem zostają wartości wystrojone graniem w prototyp** — taryfa
+   650 zł/MWh, kara 4 000 zł/MWh, CAPEX-y ~×0,6 względem 0.11, przyłącze graniczne
+   1,0 mld (+0,7 mld/moduł), akt przyłączenia miasta 30 mln zł (§4.5, §5, §6);
+   formalizacja i test spójności — dokument 03.
+6. **Rozbudowa nie wykracza poza heks** (doprecyzowanie §7): obiekt zawsze zajmuje
+   dokładnie 1 heks; rozbudowa dodaje bloki/moduły w jego obrębie („ulepszenie").
+7. **Wysycanie wzrostu popytu — tymczasowa formuła logistyczna** (§2.7, §5.6): wzrost
+   roczny miasta = 10% × (1 − szczyt/pojemność), pojemność miasta ≈ 16× szczyt startowy.
+   **Mechanizm wzrostu miast jest świadomie prowizoryczny — do przerobienia w dokumencie 05.**
+
+**Zmiany 0.11 → 0.12 (wnioski z grania w prototyp):**
+
+1. **Doba = 8 tur po 3 godziny** zamiast 24 tur godzinowych (§2.2): tury noszą nazwy pór
+   doby (NOC, RANO, POŁUDNIE, SZCZYT WIECZORNY…). Prawda pogodowa i profil popytu pozostają
+   **godzinowe** (dokument 06 bez zmian) — tura widzi średnie swojego bloku, a energia,
+   pieniądze i postęp budowy linii liczą się jak moc × 3 h. Wniosek z prototypu: 24
+   zatwierdzenia na dobę to za dużo — większość tur nie zawierała decyzji. (Rozważany
+   wariant bloków o nierównej długości 2–5 h odrzucony na rzecz prostoty rachunku.)
+2. **Czasy budowy skrócone ponownie ×2 (K ≈ 40, §2.6)**; linie: **3 h gry na heks trasy**
+   = dokładnie 1 heks na turę.
+3. **Panel heksa zamiast okienka obiektu i zakładki budowy** (§8): klik na dowolny heks
+   (także pusty) otwiera panel dokowany przy prawej krawędzi mapy — informacje o heksie,
+   katalog budowy dostępny w tym miejscu (**jedyna droga budowania**), szczegóły i akcje
+   obiektu; linię prowadzi się z panelu obiektu. Panel dyspozytora jest **stale widoczny**.
+4. **Limit przyłączy liniowych: 6 na obiekt** — po jednym z każdego sąsiedniego heksa
+   (§3.3; wcześniej 2 — wniosek z grania: za mało). Każdy obiekt może rozgałęziać; stacja
+   rozdzielcza przestaje być jedynym węzłem zbiorczo-rozdzielczym, pozostaje dedykowanym
+   węzłem z rozbudową przyłączy (6 +2/moduł, do 18) i własną przepustowością.
+
+**Zmiany 0.10 → 0.11 (wnioski z prototypu):**
+
+1. **Topologia bezpośrednia** zastępuje topologię stacyjną (§3.3): linie przesyłowe łączą
+   obiekty wprost (elektrownia—miasto, magazyn—stacja…), każdy obiekt jest węzłem sieci
+   z ograniczoną liczbą przyłączy liniowych. Stacja elektroenergetyczna zostaje zastąpiona
+   **stacją rozdzielczą** — jedynym obiektem, w którym kilka linii zbiera się w jeden węzeł
+   albo rozdziela na kilka kierunków (§4.3, §5.4). Uchylona decyzja 0.9 „promień obsługi
+   stacji = 1 heks"; dawna topologia stacyjna czeka w 90 §4.
+2. **Jeden typ linii przesyłowej** (§4.2) — typy 110/220/400 kV odłożone do 90 §4.
+3. **Czasy budowy skrócone ×4** względem 0.10 (K ≈ 20, §2.6); linie budują się w godzinach
+   gry: **6 h na heks trasy**.
+4. **Okienko informacyjne obiektu** w UI (§8): klik na miasto, elektrownię, stację
+   rozdzielczą lub linię otwiera okienko ze szczegółami i akcjami.
 
 **Zmiany 0.9 → 0.10:** **start z minimalnym stanem posiadania** zastępuje czysty greenfield
 (§3.4) — gra zaczyna się z małym działającym systemem (elektrownia + stacje + linia + jedno
@@ -49,12 +105,12 @@ z zasadą zachowania proporcji.
 
 Gracz wciela się w rolę operatora systemu elektroenergetycznego w fikcyjnym kraju: buduje
 elektrownie, farmy OZE, magazyny, stacje i linie, przyłącza miasta i dba o to, żeby
-**w każdej godzinie** zapotrzebowanie na moc było pokryte. Zarabia na sprzedanej energii,
+**w każdej turze doby** zapotrzebowanie na moc było pokryte. Zarabia na sprzedanej energii,
 płaci za paliwo, infrastrukturę i każdą niedostarczoną megawatogodzinę.
 
 Sednem gry są trzy proste, fizycznie umocowane ograniczenia:
 
-1. **Bilans musi się domykać co godzinę** — energię trzeba wyprodukować (albo wyjąć
+1. **Bilans musi się domykać w każdej turze** — energię trzeba wyprodukować (albo wyjąć
    z magazynu, albo kupić za granicą) dokładnie wtedy, kiedy jest potrzebna.
 2. **Sieć nie jest przezroczysta** — działa jak sieć wodociągowa: rura (linia) ma maksymalny
    przepływ, a im dłuższa, tym więcej po drodze ginie. Moc „na papierze" to nie to samo
@@ -101,18 +157,30 @@ zaletą: jeden zły dzień kosztuje jak jedenaście — stawka każdej decyzji r
 06 §8.4), dzięki czemu zjawiska wielodniowe, jak Dunkelflaute, są przeżywane jako narastający
 kryzys, a nie pojedynczy zły dzień.
 
-### 2.2 Rozgrywka turowa — doba to 24 tury po godzinie
+### 2.2 Rozgrywka turowa — doba to 8 tur po 3 godziny
 
-**DECYZJA (bez zmian): gra jest turowa.**
+**DECYZJA (0.12): gra jest turowa, doba składa się z 8 tur po 3 godziny.** (24 tury po
+godzinie z wersji 0.4–0.11 nie przetrwały prototypu: za dużo zatwierdzeń, w większości bez
+żadnej decyzji. Rozważany wariant bloków o nierównej długości 2–5 h odrzucony — równe bloki
+upraszczają rachunek i rytm gry.) Tury noszą nazwy pór doby:
 
-```
-1 tura  = 1 godzina czasu gry
-1 doba  = 24 tury
-```
+| # | Blok | Tura | Co się dzieje |
+|---|---|---|---|
+| 1 | 00–03 | **NOC** | dno doliny nocnej; często silny wiatr |
+| 2 | 03–06 | **PRZEDŚWIT** | najniższy popyt; latem wschód słońca |
+| 3 | 06–09 | **RANO** | rampa poranna; zimą wschód słońca |
+| 4 | 09–12 | **PRZEDPOŁUDNIE** | garb poranny dnia roboczego, PV rośnie |
+| 5 | 12–15 | **POŁUDNIE** | maksimum produkcji PV |
+| 6 | 15–18 | **POPOŁUDNIE** | PV opada, popyt wspina się ku szczytowi |
+| 7 | 18–21 | **SZCZYT WIECZORNY** | szczyt dobowy; zimą już po zachodzie (PV = 0) |
+| 8 | 21–24 | **PÓŹNY WIECZÓR** | opadanie do doliny nocnej |
 
-Każda tura wymaga zatwierdzenia — nie ma czasu rzeczywistego ani pauzy. Nocne tury bez
-decyzji zatwierdza się szybko albo przewija (§2.5). Turowość jest spójna z warstwą
-strategiczną i uczciwa wobec danych — profile zapotrzebowania są natywnie godzinowe.
+Każda tura wymaga zatwierdzenia — nie ma czasu rzeczywistego ani pauzy. Turowość pozostaje
+uczciwa wobec danych: **prawda pogodowa i profil zapotrzebowania są nadal godzinowe**
+(dokument 06 obowiązuje bez zmian) — tura widzi **średnie swojego bloku**, a energia,
+koszty i postęp budów liniowych liczą się jak moc × 3 h. Nastawa obowiązuje przez cały
+blok — to na nazwanych porach doby (SZCZYT WIECZORNY vs NOC) gracz uczy się rytmu
+zakładów z prognozą.
 
 ### 2.3 Struktura tury
 
@@ -159,40 +227,50 @@ Własności, które są sednem mechaniki:
 
 1. **Zapotrzebowanie jest niemal pewne, pogoda nie.** Gracz może ufać prognozie popytu
    i musi zabezpieczać się przed prognozą wiatru — zgodnie z rzeczywistością.
-2. **Prognoza godzinowa jest dokładna — trudne są decyzje wielogodzinne.** W wersji
-   uproszczonej (bez czasów rozruchu) dotyczy to głównie **gospodarki magazynem** („ile
-   zostawić na wieczorny szczyt, skoro prognoza wiatru na 19:00 ma pasmo ±120 MW?")
-   i utrzymywania zapasu mocy sterowalnej. Pełna głębia (rozruchy bloków = unit commitment)
-   wraca później — 90 §3.
+2. **Prognoza na najbliższą turę jest dokładna — trudne są decyzje na kilka tur naprzód.**
+   W wersji uproszczonej (bez czasów rozruchu) dotyczy to głównie **gospodarki magazynem**
+   („ile zostawić na wieczorny szczyt, skoro prognoza wiatru na blok 18–21 ma pasmo
+   ±120 MW?") i utrzymywania zapasu mocy sterowalnej. Pełna głębia (rozruchy bloków = unit
+   commitment) wraca później — 90 §3.
 3. **Trudność bierze się z wariancji, nie z poziomu.** Przewidywalny niedobór jest łatwiejszy
    od nieprzewidywalnej obfitości (obserwacja z pierwszego prototypu — 90 §1.8).
 4. **Prawda jest generowana w całości przy inicjalizacji doby**, prognoza jest jej zaszumionym
    widokiem (06 §8.6.1). Doba jest przez to **odtwarzalna z ziarna losowego** — wymóg
    architektoniczny silnika.
 
-**Dokładność prognozy jest kupowalna** (inwestycje w systemy prognostyczne — mnożniki σ,
-06 §8.6.3): rzadki przypadek inwestycji, która nie dodaje ani megawata, a obniża koszty.
-Prognoza jest prezentowana jako **pasmo, nie liczba** (06 §8.6.4).
+**Dokładność i zasięg prognozy są kupowalne** (0.13; inwestycje w systemy prognostyczne —
+06 §8.6.3). Poziom bazowy pokazuje prognozę na **bieżącą dobę (24 h)**; wyższe poziomy
+**zwężają pasmo** (mnożniki σ ×0,7 / ×0,5) **i wydłużają horyzont** — zaawansowany do
+**3 dób**, ansamblowy do **7 dób** (maksimum). Każda kolejna doba prognozy niesie większy
+błąd — σ rośnie dalej z horyzontem. Ceny poziomów (parametr, doc 03): ~600 mln / ~1,2 mld zł.
+Rzadki przypadek inwestycji, która nie dodaje ani megawata, a obniża koszty. Prognoza jest
+prezentowana jako **pasmo, nie liczba** (06 §8.6.4).
 
 ### 2.5 Przewijanie tur
 
 Gracz steruje przewijaniem sam:
 
-- „przewiń do godziny X",
+- „przewiń do wybranej tury",
 - „przewiń, aż coś się stanie" — zatrzymanie przy niedoborze, przeciążeniu linii powyżej
   progu, odchyleniu od prognozy albo zmianie bilansu przekraczającej zadany próg.
 
 W przewijanych turach nastawy pozostają bez zmian — przewijanie to świadome przyjęcie ryzyka,
 nie darmowe pominięcie. Tempo gry z przewijaniem: **rok gry ≈ 2–2,5 h przy stole**.
 
-### 2.6 Czasy budowy — zasada zachowania proporcji (K ≈ 5)
+### 2.6 Czasy budowy (K ≈ 40; linie 3–12 h na heks wg typu)
 
-Napięcie strategiczne tworzy nie bezwzględny czas budowy, lecz **stosunek czasu budowy do
-horyzontu, w którym zapotrzebowanie istotnie urośnie**. Czasy budowy są skrócone ~5× względem
-rzeczywistości, a w zamian roczny wzrost zapotrzebowania podniesiony do **~10%/rok**:
+Pierwotna zasada zachowania proporcji (K ≈ 5: jądrowa 2 lata przy wzroście 10%/rok ≈ ten
+sam zakład co realnie 10 lat przy 2%/rok) **nie przetrwała prototypu**: przy K ≈ 5 czekanie
+na budowy dominowało rozgrywkę — gracz przewijał całe miesiące bez żadnej decyzji. Wersja
+0.11 skróciła czasy ×4 (K ≈ 20); granie w prototyp pokazało, że to nadal za wolno.
 
-> Realnie: jądrowa 10 lat przy wzroście 2%/rok → na starcie bloku popyt +22%.
-> W grze: jądrowa 2 lata przy 10%/rok → +21%. Ten sam zakład, przeżyty 5× szybciej.
+**DECYZJA (0.12): czasy budowy skrócone ponownie ×2 (K ≈ 40).** Jądrowa = 9 dób gry
+(~3 miesiące gry), węgiel 5 dób, CCGT 3 doby; pełny katalog w §5. **Linie przesyłowe budują
+się w godzinach gry, w tempie zależnym od typu (0.13, §4.2): NN 3 h, SN 6 h, WN 12 h na
+heks trasy** — postęp nalicza się długością rozegranego bloku (3 h), więc linia NN powstaje
+heks na turę, a magistrala WN wymaga 4 tur na heks. Świadomy kompromis: zakład „budowa vs
+wzrost popytu" słabnie dalej (3 miesiące budowy ≈ +2,5% popytu), ale tempo gry wygrywa;
+ponowne strojenie napięcia strategicznego — dokument 03/04.
 
 Czasy budowy obiektów — w §5 przy katalogach. Rozpoczętej budowy nie da się bezkosztowo
 porzucić (anulowanie = utrata poniesionych nakładów).
@@ -202,9 +280,13 @@ porzucić (anulowanie = utrata poniesionych nakładów).
 **DECYZJA: kampania jest nieskończona** — piaskownica bez zadanego horyzontu. Gracz kończy,
 kiedy chce, albo gdy uzna cele z §9 za osiągnięte. Nie ma wariantów długości.
 
-Konsekwencja do rozwiązania w dokumencie 05: przy wzroście ~10%/rok liczby rosną wykładniczo
-(30 lat → ×17), więc **wzrost musi się długofalowo wysycać** — mapa ma skończoną liczbę
-miast, a miasto skończoną pojemność; sufit wyznacza skala docelowa 20–30 GW (§3.4).
+Przy stałym wzroście ~10%/rok liczby rosłyby wykładniczo (30 lat → ×17), a mapa ma skończoną
+liczbę miast — wzrost musi się długofalowo wysycać. **DECYZJA (0.13, tymczasowa): wzrost
+logistyczny** — roczny przyrost szczytu miasta = `10% × (1 − szczyt / pojemność_miasta)`,
+gdzie **pojemność miasta ≈ 16× szczyt startowy** (parametr). Młode miasto rośnie ~10%/rok,
+w połowie pojemności ~5%, przy suficie wzrost zamiera; pełna mapa zbiega do ~20–30 GW (§3.4)
+bez twardego progu. **Mechanizm wzrostu miast jest prowizoryczny i będzie przerobiony
+w dokumencie 05** (klasy miast, czynniki wzrostu, ewentualne sprzężenie z jakością zasilania).
 
 Auto-dyspozycja powtarzalnych dób jako zawór bezpieczeństwa — odłożona (90 §11).
 Scenariusze z ustalonym horyzontem i celami — 90 §11.
@@ -235,28 +317,42 @@ typu park narodowy — 90 §2.)*
 
 ### 3.3 Obiekty i topologia sieci
 
-- **Punktowe** (zajmują heks): elektrownie, farmy OZE, magazyny, **stacje elektroenergetyczne**,
+- **Punktowe** (zajmują heks): elektrownie, farmy OZE, magazyny, **stacje rozdzielcze**,
   miasta, punkty graniczne (krawędź mapy).
 - **Liniowe**: linie przesyłowe biegnące łańcuchem heksów. Koszt = długość trasy × koszt/km
-  typu linii × mnożniki terenu. Trasuje gracz albo automat („najtańsza trasa") z ręczną korektą.
+  × mnożniki terenu. Trasuje gracz albo automat („najtańsza trasa") z ręczną korektą.
 
-**Zasada topologii (wersja uproszczona):**
+**Zasada topologii — DECYZJA (0.11, zastępuje topologię stacyjną z 0.8–0.10):**
 
 ```
-[elektrownia/OZE/magazyn/miasto] ──przyłącze── [STACJA] ══linia══ [STACJA] ──przyłącze── [...]
+[elektrownia] ══linia══ [miasto] ══linia══ [STACJA ROZDZIELCZA] ══linia══ [...]
 ```
 
-- **Linie biegną między stacjami** (punkt graniczny ma stację wbudowaną w przyłącze graniczne).
-- **Obiekty przyłączają się do stacji** znajdującej się na tym samym heksie lub sąsiednim —
-  **DECYZJA: promień obsługi stacji = 1 heks** (przyłącze lokalne wliczone w koszt obiektu).
-  Dalej = potrzebna kolejna stacja i linia.
-- Stacja jest **węzłem sieci** z własną przepustowością — szczegóły w §4.3 i §5.4.
+- **Linie łączą obiekty bezpośrednio** — elektrownię z miastem, farmę z magazynem itd.
+  Każdy obiekt jest węzłem sieci; osobnego przyłącza nie ma.
+- Każdy obiekt ma **6 przyłączy liniowych** — po jednym z każdego sąsiedniego heksa
+  (0.12; wcześniej 2 — za mało, krępowało topologię). Każdy obiekt może więc zbierać
+  i rozdzielać linie. **Stacja rozdzielcza** pozostaje wyspecjalizowanym węzłem sieci:
+  6 przyłączy **+2 za moduł** (do 18) i własna przepustowość MW — buduje się ją tam,
+  gdzie korytarze mają się łączyć z dala od istniejących obiektów (§4.3).
+- **Linia przechodząca przez heks z obiektem automatycznie go przyłącza** (0.13):
+  obiekt staje się węzłem na trasie (odgałęzienie w przelocie) i zajmuje to jedno jego
+  przyłącze liniowe. Jeśli mijany obiekt nie ma wolnego przyłącza, trasa przez ten heks
+  jest niedozwolona — trzeba ominąć.
+- **Limit korytarza:** przez jeden heks może biec **najwyżej 9 linii jednego typu** (0.13).
+- Punkt graniczny wymaga zbudowania przyłącza granicznego, które jest węzłem z własną
+  przepustowością (§5.7).
+- **Przyłączenie miasta** = doprowadzenie gotowej linii do miasta + akt przyłączenia
+  (§3.4; koszt aktu ~30 mln zł, parametr).
+
+**Uchylona decyzja 0.9:** „promień obsługi stacji = 1 heks" i „linie tylko między stacjami" —
+dawna topologia stacyjna czeka w 90 §4 (kandydatka do powrotu razem z poziomami napięć).
 
 ### 3.4 Stan początkowy — minimalny stan posiadania
 
 **DECYZJA (0.10, zastępuje czysty greenfield z 0.3): gracz zawsze zaczyna z minimalnym
 stanem posiadania** — od pierwszej tury na mapie działa mały system: **jedna elektrownia
-średniej wielkości (np. CCGT ~400 MW), stacje, linia i jedno przyłączone małe miasto**.
+średniej wielkości (np. CCGT ~400 MW), linia i jedno przyłączone małe miasto**.
 Stan startowy jest darmowy (nie pomniejsza kapitału startowego) i należy do definicji
 scenariusza — scenariusze mogą go różnicować.
 
@@ -270,9 +366,9 @@ pusta — do zbudowania.
 
 - Miasto niepodłączone nie generuje przychodu i nie wlicza się do bilansu — nie jest karą,
   po prostu jeszcze nie jest klientem.
-- **Przyłączenie to akt gracza**: postaw stację przy mieście, doprowadź linię, załącz.
-  Od tej chwili miasto płaci za energię, ale też **trwale dokłada swoje zapotrzebowanie** —
-  odłączyć się nie da.
+- **Przyłączenie to akt gracza**: doprowadź do miasta gotową linię i załącz (topologia
+  bezpośrednia — §3.3, stacja nie jest wymagana). Od tej chwili miasto płaci za energię,
+  ale też **trwale dokłada swoje zapotrzebowanie** — odłączyć się nie da.
 - Pierwsza decyzja strategiczna: **rozbudować zalążek** (druga jednostka, magazyn), czy
   **ciągnąć sieć** do kolejnego miasta.
 
@@ -288,28 +384,31 @@ w pierwszych latach do **20–30 GW** w późnej grze (wzrost ~10%/rok + kolejne
 
 ---
 
-## 4. Rdzeń mechaniki — bilans godzinowy i przepływ „wodociągowy"
+## 4. Rdzeń mechaniki — bilans turowy i przepływ „wodociągowy"
 
 To jest serce wersji uproszczonej. Wszystko inne jest wokół tego zbudowane.
 
 ### 4.1 Równanie tury
 
-W każdej turze suma zapotrzebowania przyłączonych miast musi zostać pokryta:
+W każdej turze suma zapotrzebowania przyłączonych miast musi zostać pokryta (wielkości
+w MW są **średnimi bloku tury**; energia i pieniądze = moc × 3 h, §2.2):
 
 ```
 POKRYCIE:  produkcja sterowalna + produkcja OZE (z pogody) + rozładowanie magazynów + import
 ZUŻYCIE:   zapotrzebowanie miast + ładowanie magazynów + eksport + straty przesyłowe
 ```
 
-> **Przykład.** Tura 18:00 w listopadzie, zapotrzebowanie trzech miast łącznie **1500 MW**.
+> **Przykład.** Tura SZCZYT WIECZORNY (18–21) w listopadzie, zapotrzebowanie trzech miast
+> łącznie **1500 MW**.
 > Prognoza wiatru: 320 MW ±60. Gracz nastawia: węgiel 800 MW, gaz 250 MW, rozładowanie
 > magazynu 100 MW, import 100 MW — razem ze spodziewanym wiatrem ~1570 MW na pokrycie
 > 1500 MW plus ~45 MW strat. Rozstrzygnięcie: wiatr wchodzi 280 MW (dolna część pasma),
 > PV = 0 (po zachodzie). Dostarczone: 1485 MW → **15 MW niedoboru** w najdalszym mieście.
 > Raport: kara + notatka, że zabrakło zapasu na dolne pasmo prognozy.
 
-- **Produkcja OZE jest niesterowalna** — wynika z pogody. Można ją tylko **przyciąć**
-  (curtailment, bez kary — tracona jest darmowa energia).
+- **Produkcja OZE jest niesterowalna** — wynika z pogody. Nadwyżki przycina automatyka
+  (curtailment, bez kary — tracona jest darmowa energia). Jedyna ręczna kontrola gracza
+  (0.13): **wyłączenie/włączenie całej farmy** — częściowego zadawania mocy OZE nie ma.
 - **Nadwyżka** produkcji sterowalnej jest przycinana automatycznie u źródła.
 - **Niedobór** — patrz §4.5.
 
@@ -322,37 +421,51 @@ ma maksymalny przepływ i gubi część tego, co płynie, proporcjonalnie do dł
 moc_odebrana = moc_nadana × (1 − k_strat · długość_km / 100)
 ```
 
-| Typ linii | Maks. przesył | Straty k_strat | Koszt budowy | Czas budowy |
-|---|---|---|---|---|
-| **Lokalna (110 kV)** | 150 MW | 4% / 100 km | ~2 mln zł/km | 3 mies. |
-| **Przesyłowa (220 kV)** | 500 MW | 2% / 100 km | ~4 mln zł/km | 6 mies. |
-| **Magistrala (400 kV)** | 1500 MW | 1% / 100 km | ~7 mln zł/km | 9 mies. |
+**DECYZJA (0.13, uchyla „jeden typ linii" z 0.11): trzy typy linii przesyłowych** —
+umowne poziomy napięć (realne odpowiedniki ~110/220/400 kV):
 
-*(wartości orientacyjne, do strojenia w dokumencie 04; długość = liczba heksów trasy × 25 km;
-nazwy napięć są kosmetyczne — logiki poziomów napięć w wersji uproszczonej nie ma)*
+| Typ | Maks. przesył | Straty /100 km | Koszt budowy | Czas budowy (§2.6) |
+|---|---|---|---|---|
+| **Niskie napięcie (NN)** | 150 MW | 4% | ~1,2 mln zł/km | 3 h/heks |
+| **Średnie napięcie (SN)** | 500 MW | 2% | ~2,5 mln zł/km | 6 h/heks |
+| **Wysokie napięcie (WN)** | 1500 MW | 1% | ~6 mln zł/km | 12 h/heks |
+
+*(wartości orientacyjne, do strojenia w dokumencie 04; długość = liczba heksów trasy
+× 25 km; koszt × mnożnik terenu)*
+
+Wszystkie typy wpinają się w te same przyłącza obiektów — transformacji NN/SN/WN nie
+modelujemy (90 §4). Przez jeden heks biegnie ⩽9 linii jednego typu (§3.3). Drugi tor
+= osobna linia na tej samej trasie.
 
 Wynikające z tego decyzje gracza:
 
 - **Elektrownia blisko miasta** = tania linia i małe straty, ale drogi teren. **Elektrownia
   daleko** (tani teren, dobry wiatr) = straty zjadają marżę co godzinę.
-- **Cienka linia jest tańsza dziś, ale za rok szczyt urośnie o 10%** i korytarz się zatka.
-- Przykład skali strat: trasa 220 kV o długości 8 heksów (200 km) traci **4% przesyłanej
+- **Wybór typu to zakład o przyszłość korytarza**: NN szybko i tanio spina bliskie obiekty,
+  ale nie uniesie rosnącego szczytu; WN to droga, powolna magistrala „na zapas". Korytarz
+  wymiaruje się typem i liczbą równoległych torów — za rok szczyt urośnie o 10%.
+- Przykład skali strat (SN): trasa o długości 8 heksów (200 km) traci **4% przesyłanej
   mocy**. Żeby dostarczyć 300 MW, trzeba nadać 312,5 MW — różnicę gracz opłaca co godzinę.
+  Ta sama trasa w NN traci 8%, w WN — 2%.
 
-### 4.3 Stacje: węzły z przepustowością
+### 4.3 Stacje rozdzielcze: węzły zbiorczo-rozdzielcze z przepustowością
 
-Stacja to trójnik/rozdzielacz w wodociągu — spina linie i obsługuje obiekty w promieniu
-1 heksa. Ma **własną przepustowość [MW]** (moc transformatorów): suma mocy przepływającej
-przez stację nie może jej przekroczyć.
+Stacja rozdzielcza to trójnik/rozdzielacz w wodociągu — **dedykowany węzeł sieci** do
+łączenia korytarzy z dala od istniejących obiektów. Od 0.12 rozgałęziać może każdy obiekt
+(6 przyłączy — §3.3); stację wyróżnia rozbudowa przyłączy (+2 za moduł, do 18) oraz
+**własna przepustowość [MW]**: suma mocy przepływającej przez stację nie może jej
+przekroczyć.
 
-Klasyczna pułapka projektowa, którą ta jedna liczba tworzy: **gruba linia, cienka stacja** —
-gracz buduje magistralę 1500 MW, a wąskim gardłem zostaje stacja 250 MW na jej końcu.
-Parametry i rozbudowa — §5.4. *(Układy rozdzielni, kompensacja, poziomy napięć — 90 §4.)*
+Klasyczna pułapka projektowa, którą ta jedna liczba tworzy: **grube linie, cienka stacja** —
+gracz zbiera trzy korytarze po 500 MW w stacji o przepustowości 250 MW i to ona zostaje
+wąskim gardłem. Parametry i rozbudowa — §5.4. *(Układy rozdzielni, kompensacja, poziomy
+napięć, dawna topologia stacyjna — 90 §4.)*
 
 ### 4.4 Model przepływu — transportowy, nie fizyczny
 
-Silnik traktuje sieć jako **graf przepustowości** (stacje = węzły, linie = krawędzie ze
-stratami): znajduje najtańszy wykonalny rozpływ od źródeł do odbiorów, zamiast liczyć fizyczny
+Silnik traktuje sieć jako **graf przepustowości** (obiekty = węzły, linie = krawędzie ze
+stratami; przepustowość węzła mają stacje rozdzielcze i przyłącza graniczne): znajduje
+najtańszy wykonalny rozpływ od źródeł do odbiorów, zamiast liczyć fizyczny
 rozpływ prądu. Gracz nie steruje trasami bezpośrednio — ustawia źródła, a energia „płynie
 sama" najtańszymi dostępnymi drogami, jak woda pod ciśnieniem.
 
@@ -373,8 +486,9 @@ pozostaje grą samą w sobie, tylko bez praw Kirchhoffa.
 Jeśli pokrycie (po stratach i limitach sieci) nie wystarcza, brakująca energia staje się
 **energią niedostarczoną** w konkretnych miastach:
 
-- kara finansowa za każdą MWh niedostarczoną (rząd wielkości **10 000 zł/MWh** — wielokrotnie
-  drożej niż jakakolwiek produkcja; parametr do strojenia),
+- kara finansowa za każdą MWh niedostarczoną: **4 000 zł/MWh** (0.13; parametr do strojenia
+  w doc 03). Wciąż wielokrotnie drożej niż jakakolwiek produkcja; pierwotne 10 000 zł/MWh
+  tworzyło w prototypie nieodwracalną spiralę zadłużenia po jednym złym dniu,
 - licznik energii niedostarczonej w statystykach doby i roku (miara jakości gry gracza).
 
 Niedobór nie kończy gry — rujnuje wynik finansowy i ma być **widowiskowo zawstydzający**
@@ -392,12 +506,12 @@ W wersji uproszczonej elektrownia ma tylko: **moc maksymalną [MW]**, **koszt zm
 zmieniać co turę w pełnym zakresie 0–100%. *(Minima techniczne, rozruchy, rampy,
 dyspozycyjność, emisje — 90 §3.)*
 
-| Technologia | Typowy blok | CAPEX | Czas budowy | Koszt zmienny | Rola |
+| Technologia | Typowy blok | CAPEX | Czas budowy (doby gry) | Koszt zmienny | Rola |
 |---|---|---|---|---|---|
-| **Jądrowa** | 1000–1600 MW | ~35 mln zł/MW | 2 lata | ~60 zł/MWh | tania podstawa, wielki próg wejścia |
-| **Węgiel** | 200–1000 MW | ~15 mln zł/MW | 1 rok | ~250 zł/MWh | podstawa |
-| **Gaz CCGT** | 100–500 MW | ~9 mln zł/MW | 6 mies. | ~350 zł/MWh | elastyczne wypełnienie |
-| **Gaz OCGT** | 25–150 MW | ~5 mln zł/MW | 3 mies. | ~600 zł/MWh | szczyt, mały i szybki w budowie |
+| **Jądrowa** | 1000–1600 MW | ~21 mln zł/MW | 9 (~3 miesiące gry) | ~60 zł/MWh | tania podstawa, wielki próg wejścia |
+| **Węgiel** | 200–1000 MW | ~9 mln zł/MW | 5 | ~250 zł/MWh | podstawa |
+| **Gaz CCGT** | 100–500 MW | ~5,5 mln zł/MW | 3 | ~350 zł/MWh | elastyczne wypełnienie |
+| **Gaz OCGT** | 25–150 MW | ~3 mln zł/MW | 1 | ~600 zł/MWh | szczyt, mały i szybki w budowie |
 
 *(wartości orientacyjne, do strojenia w dokumentach 03–04; wodna przepływowa i biomasa —
 90 §2)*
@@ -408,10 +522,10 @@ dyspozycyjność, emisje — 90 §3.)*
 wyznaczanej przez [dokument 06](06-model-astronomiczny-i-pogodowy.md) (krzywa mocy turbiny:
 06 §6.3, produkcja PV: 06 §5, reżimy pogodowe: 06 §8). Można je tylko przycinać (§4.1).
 
-| Technologia | Typowa farma | CAPEX | Czas budowy | Roczny CF (kontrola: 06 §12) | Charakter |
+| Technologia | Typowa farma | CAPEX | Czas budowy (doby gry) | Roczny CF (kontrola: 06 §12) | Charakter |
 |---|---|---|---|---|---|
-| **Wiatr lądowy** | 50–300 MW | ~6 mln zł/MW | 3 mies. | ~24–30% (zależnie od heksa) | najmocniej wieje zimą; **wyłączenie sztormowe przy 25 m/s** |
-| **PV** | 10–200 MW | ~3 mln zł/MW | 1–1,5 mies. | ~11–12% | szczyt w letnie południe, **zero w nocy**; grudzień = ~8–10% czerwca |
+| **Wiatr lądowy** | 50–300 MW | ~3,6 mln zł/MW | 1 | ~24–30% (zależnie od heksa) | najmocniej wieje zimą; **wyłączenie sztormowe przy 25 m/s** |
+| **PV** | 10–200 MW | ~1,8 mln zł/MW | 1 | ~11–12% | szczyt w letnie południe, **zero w nocy**; grudzień = ~8–10% czerwca |
 
 Dwa wpisane w fizykę zjawiska, które są rdzeniem trudności (nie wymagają osobnych mechanik
 „zdarzeń" — wynikają z reżimów pogodowych 06 §8.2):
@@ -421,7 +535,7 @@ Dwa wpisane w fizykę zjawiska, które są rdzeniem trudności (nie wymagają os
   gazowy i import.
 - **Sztorm** — najpierw nadprodukcja wiatru, potem kaskadowe wyłączenia turbin przy 25 m/s.
 
-Tanie MWh z OZE są kuszące (koszt zmienny ~0 przy taryfie ~450 zł/MWh), ale niepewne
+Tanie MWh z OZE są kuszące (koszt zmienny ~0 przy taryfie 650 zł/MWh), ale niepewne
 i wymagają zabezpieczenia mocą sterowalną, magazynem lub importem — to jest właściwa decyzja
 portfelowa gry. *(Wiatr morski — 90 §2.)*
 
@@ -431,27 +545,27 @@ Magazyn rozdziela dwa parametry, które gracz musi rozumieć osobno: **moc [MW]*
 oddaje/pobiera) i **pojemność [MWh]** (ile mieści). Bateria 100 MW / 200 MWh oddaje pełną
 moc przez 2 godziny. UI musi to wyraźnie pokazywać.
 
-| Typ | Sprawność cyklu | Typowy stosunek pojemność:moc | Budowa | Wymagania terenu |
+| Typ | Sprawność cyklu | Typowy stosunek pojemność:moc | Budowa (doby gry) | Wymagania terenu |
 |---|---|---|---|---|
-| **Bateria (BESS)** | ~90% | 1–4 h | 1–1,5 mies. | brak — wszędzie |
-| **Szczytowo-pompowa** | ~75% | 6–20 h | 1 rok | góry/wyżyna + woda (§3.2) |
+| **Bateria (BESS)** | ~90% | 1–4 h | 1 | brak — wszędzie |
+| **Szczytowo-pompowa** | ~75% | 6–20 h | 5 | góry/wyżyna + woda (§3.2) |
 
 Moc i pojemność baterii rozbudowuje się **osobno** (moduły). Zastosowania w wersji
 uproszczonej: przenoszenie taniej energii (nocna jądrowa/węgiel, nadwyżki wiatru) na szczyt
 oraz **bufor na błąd prognozy** — magazyn z zapasem energii to polisa na dolne pasmo wiatru.
 
-### 5.4 Stacje elektroenergetyczne
+### 5.4 Stacje rozdzielcze
 
 Rola w topologii — §3.3, mechanika węzła — §4.3. Parametry (orientacyjne, do strojenia):
 
 | Parametr | Wartość startowa | Rozbudowa | Limit lokalizacji |
 |---|---|---|---|
-| **Przepustowość (transformatory)** | 250 MW | +250 MW za moduł | 6 modułów (1500 MW) |
-| **Pola liniowe** (ile linii można wpiąć) | 4 | +2 pola za moduł | 12 pól |
-| CAPEX / czas budowy | ~200 mln zł, 3 mies. | moduł: ~120 mln zł, 1,5 mies. | — |
+| **Przepustowość** | 250 MW | +250 MW za moduł | 6 modułów (1750 MW) |
+| **Przyłącza liniowe** (ile linii można wpiąć) | 6 | +2 za moduł | 18 przyłączy |
+| CAPEX / czas budowy | ~150 mln zł, 1 doba gry | moduł: ~90 mln zł, 1 doba | — |
 
-Zasięg obsługi: obiekty na heksie stacji i 6 sąsiednich (§3.3). *(Układy rozdzielni,
-kompensacja mocy biernej, telemechanika, transformacja między poziomami napięć — 90 §4.)*
+*(Układy rozdzielni, kompensacja mocy biernej, telemechanika, poziomy napięć i dawna
+topologia stacyjna z przyłączem w promieniu 1 heksa — 90 §4.)*
 
 ### 5.5 Linie przesyłowe
 
@@ -467,7 +581,9 @@ duże ~500–1500 MW) i **jeden zagregowany profil dobowy**:
 - **Doba wolna:** profil bardziej płaski, szczyt ~80% szczytu doby roboczej.
 - **Sezonowość:** mnożnik miesięczny od ~0,85 (maj) do ~1,15 (styczeń); dodatkowo reżim
   pogodowy modyfikuje popyt (mróz podnosi — 06 §8.2, §9).
-- **Wzrost:** ~10%/rok (§2.6) + skokowe przyrosty przy przyłączaniu kolejnych miast.
+- **Wzrost:** logistyczny (0.13, tymczasowy — §2.7): rocznie 10% × (1 − szczyt/pojemność),
+  pojemność ≈ 16× szczyt startowy; do tego skokowe przyrosty przy przyłączaniu kolejnych
+  miast. Mechanizm do przerobienia w dokumencie 05.
 - Prawdziwe zapotrzebowanie tury ≠ prognoza (§2.4) — błąd σ_popyt wg 06 §8.6.2.
 
 Dokładne profile godzinowe i model wzrostu miast — dokument 05. *(Segmenty odbiorców,
@@ -476,12 +592,13 @@ DSR, prosumenci — 90 §9.)*
 ### 5.7 Punkty graniczne — import i eksport
 
 Na krawędziach mapy leżą **punkty graniczne**. Żeby handlować, gracz buduje **przyłącze
-graniczne** (interkonektor, z wbudowaną stacją) i dociąga do niego linię:
+graniczne** (interkonektor — węzeł z własną przepustowością, jak stacja rozdzielcza)
+i dociąga do niego linię:
 
 | Parametr | Wartość orientacyjna |
 |---|---|
-| CAPEX przyłącza | ~1,5 mld zł za 500 MW zdolności (rozbudowywalne) |
-| Czas budowy | 9 mies. |
+| CAPEX przyłącza | ~1,0 mld zł za 500 MW zdolności (moduł +500 MW: ~0,7 mld zł) |
+| Czas budowy | 4 doby gry (moduł: 2 doby) |
 | **Cena importu** | ~800 zł/MWh — drożej niż każda własna produkcja |
 | **Cena eksportu** | ~150 zł/MWh — mniej niż koszt zmienny gazu |
 
@@ -500,8 +617,9 @@ kryzysy pogodowe — 90 §6.)*
 **DECYZJA (bez zmian): walutą gry jest złoty (PLN)** — etykieta i kurs są parametrem
 konfiguracji.
 
-- **Przychód:** każda MWh **dostarczona** do miast × stała taryfa (~**450 zł/MWh**, parametr
-  scenariusza). Straty przesyłowe nie są opłacane — gracz płaci za nie paliwem.
+- **Przychód:** każda MWh **dostarczona** do miast × stała taryfa (**650 zł/MWh** — 0.13,
+  wartość wystrojona graniem; parametr scenariusza, weryfikacja w doc 03). Straty przesyłowe
+  nie są opłacane — gracz płaci za nie paliwem.
 - **Koszty zmienne:** paliwo (koszt zmienny × produkcja), zakup importu.
 - **Koszty stałe:** utrzymanie obiektów [zł/MW/rok], naliczane dobowo (roczne/365 × liczba
   reprezentowanych dni doby).
@@ -522,6 +640,9 @@ LCOE — 90 §5.)*
 
 - **Nowe obiekty:** wybór heksa → koszt (CAPEX × mnożnik terenu) → czas budowy w dobach gry →
   uruchomienie. Płatność z góry; anulowanie = utrata nakładów (§2.6).
+- **Rozbudowa nie wykracza poza heks (0.13):** obiekt zawsze zajmuje dokładnie jeden heks;
+  rozbudowa dodaje bloki/moduły w jego obrębie — to „ulepszenie" obiektu, nie ekspansja
+  terenowa.
 - **DECYZJA (bez zmian): istniejące obiekty można rozbudowywać, z twardym limitem lokalizacji:**
   elektrownia do 4–6 bloków na heksie, farma wiatrowa/PV do limitu mocy heksa, magazyn do
   limitu modułów (moc i pojemność osobno), stacja wg §5.4, przyłącze graniczne o kolejne
@@ -545,12 +666,23 @@ starzenie majątku i remonty, kolejka przyłączeniowa — 90 §3, §7, §10.)*
 4. **Panel nastaw** — jednostki z suwakami, magazyny (ładuj/oddawaj), import/eksport,
    saldo bilansu. **DECYZJA: bez auto-nastaw** — wszystkie nastawy ustawia gracz ręcznie,
    nie ma przycisku „obsadź najtaniej".
-5. **Panel finansowo-inwestycyjny** — budżet, wynik doby, katalog budowy, harmonogram budów.
+5. **Panel dyspozytora jest stale widoczny** (0.12) — prognoza, nastawy, rozstrzygnięcie,
+   raport oraz harmonogram budów i systemy prognostyczne; budżet i wynik doby w pasku
+   górnym. Nie ma osobnej zakładki budowy.
+6. **Panel heksa (0.12, zastępuje okienko obiektu z 0.11)** — klik na **dowolny heks**
+   (także pusty) otwiera panel dokowany przy prawej krawędzi mapy, nad jej częścią:
+   parametry heksa (teren, mnożnik kosztu, wiatr/słońce, lokalizacja szczytowo-pompowa),
+   **katalog budowy dostępny na tym heksie — jedyna droga budowania** (ceny z mnożnikiem
+   terenu), a gdy stoi tu obiekt — jego parametry, stan bieżący (przepływ/obciążenie,
+   pobór, SOC) i akcje kontekstowe (przyłączenie miasta, rozbudowa, **poprowadzenie
+   linii**: klik „poprowadź linię stąd" + klik heksu obiektu docelowego, anulowanie
+   budowy). Panel pokazuje też linie przechodzące przez heks.
 
 **Handoff UI (`design_handoff_electronation_turn_ui/`) jest wskazówką wyłącznie wizualną** —
 paleta, typografia, układ ekranu, styl mapy i kart. Zakres funkcjonalny gry wynika z tego
 dokumentu: np. wskaźnik częstotliwości widoczny w handoffie **nie istnieje** w wersji
-uproszczonej (wraca z 90 §1), a karty prognozy i pasek 24 tur obowiązują.
+uproszczonej (wraca z 90 §1), a karty prognozy obowiązują; pasek 24 tur z handoffu staje
+się paskiem 8 tur (§2.2).
 
 ---
 
@@ -577,7 +709,7 @@ Wersja uproszczona jest **piaskownicą z celami**:
 | DC power flow, częstotliwość, inercja, rezerwy, N-1, kaskady/SCO/blackout | 90 §1 |
 | OZE pozostałe: wiatr morski, wodna, biomasa; hydrologia, złoża, strefy klimatyczne | 90 §2 |
 | Unit commitment: minima, rozruchy, remonty, starzenie majątku | 90 §3 |
-| Stacje zaawansowane: układy rozdzielni, kompensacja, poziomy napięć | 90 §4 |
+| Stacje zaawansowane: układy rozdzielni, kompensacja, poziomy napięć, typy linii, topologia stacyjna | 90 §4 |
 | Merit order, cena krańcowa, PPA, kredyty, LCOE | 90 §5 |
 | Sąsiedzi z charakterami, NTC, przepływy kołowe, ryzyko polityczne | 90 §6 |
 | Regulator, rząd, opinia publiczna, kolejka przyłączeniowa | 90 §7 |
@@ -604,11 +736,16 @@ indeksem ceny.
 
 | # | Decyzja | Gdzie |
 |---|---|---|
-| ✅ | **Uproszczony przepływ (0.7/0.8)**: model „wodociągowy" — bilans godzinowy, przepustowości linii i stacji, straty liniowe od długości; bez praw Kirchhoffa | 4 |
-| ✅ | **W wersji uproszczonej są: PV, wiatr lądowy, magazyny, stacje, prognozy z błędem** (0.8) | 5, 2.4 |
+| ✅ | **Uproszczony przepływ (0.7/0.8)**: model „wodociągowy" — bilans turowy, przepustowości linii i stacji, straty liniowe od długości; bez praw Kirchhoffa | 4 |
+| ✅ | **W wersji uproszczonej są: PV, wiatr lądowy, magazyny, stacje rozdzielcze, prognozy z błędem** (0.8) | 5, 2.4 |
+| ✅ | **Topologia bezpośrednia (0.11)**: linie łączą obiekty wprost; **6 przyłączy liniowych na obiekt** (0.12; wcześniej 2 i stacja jako jedyny węzeł zbiorczy); stacja rozdzielcza = dedykowany węzeł z rozbudową przyłączy i własną przepustowością; **linia w przelocie przyłącza mijane obiekty, ⩽9 linii jednego typu na heks** (0.13) | 3.3, 4.3 |
+| ✅ | **Trzy typy linii przesyłowych NN/SN/WN** (0.13; uchyla „jeden typ" z 0.11): 150/500/1500 MW, straty 4/2/1%/100 km, budowa 3/6/12 h/heks | 4.2 |
+| ✅ | **OZE: ręczne sterowanie tylko włącz/wyłącz całą farmę**; przycinanie nadwyżek automatyczne (0.13) | 4.1 |
+| ✅ | **Horyzont prognozy: 24 h bazowo, poziomy wydłużają do 3 / 7 dób** i zwężają pasmo (0.13) | 2.4 |
+| ✅ | **Wartości ekonomiczne = strojenie z prototypu (0.13)**: taryfa 650, kara 4 000 zł/MWh, CAPEX ~×0,6, graniczne 1,0 mld, przyłączenie miasta 30 mln — baseline dla doc 03 | 4.5, 5, 6 |
 | ✅ | Pogoda wg dokumentu 06 (reżimy, prawda przy init doby, seed) | 2.4, 06 |
 | ✅ | Skala czasu — 3 doby reprezentatywne na miesiąc (36 dób/rok) | 2.1 |
-| ✅ | Gra turowa — 24 tury po godzinie | 2.2 |
+| ✅ | Gra turowa — **doba = 8 tur po 3 h** (tury nazwane od pór doby; prawda pozostaje godzinowa) (0.12) | 2.2 |
 | ✅ | Prognoza z błędem zamiast stanu bieżącego — źródło napięcia | 2.4 |
 | ✅ | Przewijanie tur sterowane przez gracza | 2.5 |
 | ✅ | **Start z minimalnym stanem posiadania** (elektrownia + sieć + jedno miasto, darmowe); pozostałe miasta niepodłączone | 3.4 |
@@ -616,28 +753,32 @@ indeksem ceny.
 | ✅ | Waluta — złoty (PLN), parametr | 6 |
 | ✅ | Przelicznik 25 km/heks | 3.1 |
 | ✅ | Kapitał startowy 10 mld zł, konfigurowalny | 3.4 |
-| ✅ | Czasy budowy K ≈ 5, wzrost zapotrzebowania ~10%/rok | 2.6 |
-| ✅ | Rozbudowa istniejących obiektów z twardymi limitami | 7 |
+| ✅ | Czasy budowy K ≈ 40 (0.12; wcześniej K ≈ 5 → 20), linie 3/6/12 h/heks wg typu (0.13) | 2.6 |
+| ✅ | **Wzrost popytu logistyczny** (0.13, formuła tymczasowa): 10% × (1 − szczyt/pojemność), pojemność miasta ≈ 16× szczytu startowego; **mechanizm do przerobienia w doc 05** | 2.7, 5.6 |
+| ✅ | Rozbudowa istniejących obiektów z twardymi limitami; obiekt zawsze zajmuje 1 heks (0.13) | 7 |
 | ✅ | Handoff UI = wskazówka wyłącznie wizualna; wymagania z dokumentów | 8 |
 | ✅ | Algorytm rozpływu: **min-cost flow**, deterministyczny | 4.4 |
 | ✅ | Prototyp: pogoda etapami — krok 1 bez reżimów, krok 2 reżimy z 06 §8 | 12 |
 | ✅ | Import i eksport dostępne od startu | 5.7 |
 | ✅ | Bez auto-nastaw — wszystkie nastawy ręczne | 8 |
-| ✅ | Promień obsługi stacji = 1 heks | 3.3 |
+| ✅ | Panel heksa (0.12): klik na dowolny heks = informacje + katalog budowy (jedyna droga budowania) + akcje obiektu; panel dyspozytora stale widoczny, bez zakładki budowy | 8 |
 | ✅ | Brak twardego stanu przegranej — porażka zawsze miękka | 9 |
 | ✅ | **Kampania nieskończona**, bez wariantów długości | 2.7 |
 
-### Zawieszone (decyzje z 0.6 odłożone, nie cofnięte)
+### Zawieszone (odłożone, nie cofnięte)
 
 | Decyzja | Status |
 |---|---|
 | Model elektryczny: DC power flow (z częstotliwością i rezerwami) | wraca jako poziom „Standard" — 90 §1 |
+| Topologia stacyjna (przyłącze w promieniu 1 heksa, linie tylko między stacjami) | uchylona w 0.11 na rzecz topologii bezpośredniej — 90 §4 |
+| Typy linii wg poziomów napięć | **przywrócone w 0.13** jako NN/SN/WN (§4.2); w 90 §4 zostają transformacja i układy rozdzielni |
 
 ### Otwarte
 
-1. **Platforma i silnik docelowy** — nie blokuje prototypu (prototyp jest kodem jednorazowym).
-2. **Krzywa nasycenia wzrostu** w nieskończonej kampanii (§2.7): jak spowalniać wzrost, gdy
-   system zbliża się do sufitu 20–30 GW — do dokumentu 05.
+1. **Platforma i silnik docelowy** — nie blokuje prototypu (prototyp jest kodem
+   jednorazowym); decyzja planowana wkrótce.
+2. **Docelowy mechanizm wzrostu miast** — obecna formuła logistyczna (§2.7) jest
+   tymczasowa; pełny model (klasy miast, czynniki wzrostu) — dokument 05.
 
 ---
 
