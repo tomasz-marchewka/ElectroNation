@@ -1,8 +1,24 @@
 # ElectroNation — Dokument bazowy mechaniki gry
 
-**Wersja:** 0.13 (dokument koncepcyjny)
-**Data:** 2026-08-12
+**Wersja:** 0.14 (dokument koncepcyjny)
+**Data:** 2026-08-13
 **Status:** obowiązuje **wersja uproszczona** gry; mechaniki odłożone czekają w [90-pomysly-na-przyszlosc.md](90-pomysly-na-przyszlosc.md)
+
+**Zmiany 0.13 → 0.14 (zatwierdzenie dokumentu 05 — model zapotrzebowania):**
+
+1. **Dokument 05 napisany i obowiązuje** ([05-model-zapotrzebowania.md](05-model-zapotrzebowania.md)):
+   miasto opisują **dwie liczby stanu — gospodarstwa domowe i firmy**, każdy segment
+   z własnym profilem godzinowym i zużyciem jednostkowym (10 / 50 kWh na dobę roboczą;
+   w dobę wolną firmy ~30% poboru). Sezonowość i czynnik pogodowy sformalizowane (05 §4).
+2. **Docelowy mechanizm wzrostu miast** (05 §6; **uchyla tymczasową formułę logistyczną
+   z 0.13**): miesięczna ocena dostarczenia `U` — przy `U > 99%` wzrost losowy 0–4%/mies.
+   osobno dla gospodarstw i firm, tłumiony logistycznie pojemnością (16× stan startowy);
+   90–99% stagnacja; poniżej 90% kurczenie o połowę niedostarczonego udziału; podłoga
+   100 gospodarstw / 10 firm; **miasta niepodłączone zamrożone**. Młode miasta rosną
+   ~25%/rok — ostrzejszy zakład „budowa vs popyt" (§2.6); walidacja w dokumencie 03.
+3. **§5.6 odsyła do dokumentu 05**; klasy wielkości miast zostają jako etykiety pochodne
+   od szczytu; profil miasta jest emergentny z segmentów (dolina nocna ~48% szczytu,
+   szczyt doby wolnej ~90% roboczego — 05 §3.3).
 
 **Zmiany 0.12 → 0.13 (przegląd i zatwierdzenie założeń przez projektanta):**
 
@@ -280,13 +296,13 @@ porzucić (anulowanie = utrata poniesionych nakładów).
 **DECYZJA: kampania jest nieskończona** — piaskownica bez zadanego horyzontu. Gracz kończy,
 kiedy chce, albo gdy uzna cele z §9 za osiągnięte. Nie ma wariantów długości.
 
-Przy stałym wzroście ~10%/rok liczby rosłyby wykładniczo (30 lat → ×17), a mapa ma skończoną
-liczbę miast — wzrost musi się długofalowo wysycać. **DECYZJA (0.13, tymczasowa): wzrost
-logistyczny** — roczny przyrost szczytu miasta = `10% × (1 − szczyt / pojemność_miasta)`,
-gdzie **pojemność miasta ≈ 16× szczyt startowy** (parametr). Młode miasto rośnie ~10%/rok,
-w połowie pojemności ~5%, przy suficie wzrost zamiera; pełna mapa zbiega do ~20–30 GW (§3.4)
-bez twardego progu. **Mechanizm wzrostu miast jest prowizoryczny i będzie przerobiony
-w dokumencie 05** (klasy miast, czynniki wzrostu, ewentualne sprzężenie z jakością zasilania).
+Przy stałym wzroście procentowym liczby rosłyby wykładniczo, a mapa ma skończoną liczbę
+miast — wzrost musi się długofalowo wysycać. **DECYZJA (0.14): mechanizm wzrostu miast
+definiuje [dokument 05](05-model-zapotrzebowania.md) §6** (uchyla tymczasową formułę
+logistyczną z 0.13): przy pełnym zasilaniu wzrost losowy 0–4%/mies., osobno dla gospodarstw
+domowych i firm, tłumiony logistycznie względem pojemności (**16× stan startowy**,
+parametr); niedobory kurczą miasto (sprzężenie z jakością zasilania). Przy suficie wzrost
+zamiera; pełna mapa zbiega do ~20–30 GW (§3.4) bez twardego progu.
 
 Auto-dyspozycja powtarzalnych dób jako zawór bezpieczeństwa — odłożona (90 §11).
 Scenariusze z ustalonym horyzontem i celami — 90 §11.
@@ -380,7 +396,8 @@ z zalążkiem kapitał w całości finansuje pierwszą falę rozbudowy; czy nie 
 komfortowy — do weryfikacji w dokumencie 03.
 
 **DECYZJA (bez zmian): skala systemu wynika z przyłączonych miast** — od ~1 GW szczytu
-w pierwszych latach do **20–30 GW** w późnej grze (wzrost ~10%/rok + kolejne przyłączenia).
+w pierwszych latach do **20–30 GW** w późnej grze (wzrost miast wg dokumentu 05 §6
++ kolejne przyłączenia).
 
 ---
 
@@ -573,21 +590,23 @@ Katalog i mechanika — §4.2. Drugi tor na tej samej trasie = osobna linia (mo�
 
 ### 5.6 Miasta
 
-Miasto ma **klasę wielkości** (szczyt zapotrzebowania: małe ~50–150 MW, średnie ~150–500 MW,
-duże ~500–1500 MW) i **jeden zagregowany profil dobowy**:
+**DECYZJA (0.14): miasto opisują dwie liczby stanu — gospodarstwa domowe i firmy**
+([dokument 05](05-model-zapotrzebowania.md) §2); każdy segment ma własny profil godzinowy
+i zużycie jednostkowe (05 §3). **Klasa wielkości** pozostaje etykietą pochodną od szczytu
+zapotrzebowania (małe ~50–150 MW, średnie ~150–500 MW, duże ~500–1500 MW; kalibracja
+liczby jednostek — 05 §5).
 
-- **Doba robocza:** dolina nocna ~55–65% szczytu, garb poranny ~85–90% (8:00–12:00),
-  szczyt wieczorny 100% (17:00–21:00).
-- **Doba wolna:** profil bardziej płaski, szczyt ~80% szczytu doby roboczej.
-- **Sezonowość:** mnożnik miesięczny od ~0,85 (maj) do ~1,15 (styczeń); dodatkowo reżim
-  pogodowy modyfikuje popyt (mróz podnosi — 06 §8.2, §9).
-- **Wzrost:** logistyczny (0.13, tymczasowy — §2.7): rocznie 10% × (1 − szczyt/pojemność),
-  pojemność ≈ 16× szczyt startowy; do tego skokowe przyrosty przy przyłączaniu kolejnych
-  miast. Mechanizm do przerobienia w dokumencie 05.
+- **Profil dobowy — emergentny z segmentów** (05 §3.3): szczyt wieczorny (18–19),
+  garb przedpołudniowy ~90% szczytu, dolina nocna ~48% szczytu; doba wolna — energia
+  ~82% doby roboczej, szczyt ~90% szczytu roboczego (firmy schodzą do poboru bazowego).
+- **Sezonowość i pogoda:** mnożnik miesięczny od ~0,85 (maj) do ~1,15 (styczeń) oraz
+  temperaturowa krzywa „V" — tabele i formuły w 05 §4; reżim pogodowy modyfikuje popyt
+  (mróz podnosi — 06 §8.2, §9).
+- **Wzrost i kurczenie:** miesięczna ocena dostarczenia — 05 §6 (0.14; uchyla formułę
+  tymczasową z 0.13); do tego skokowe przyrosty przy przyłączaniu kolejnych miast.
 - Prawdziwe zapotrzebowanie tury ≠ prognoza (§2.4) — błąd σ_popyt wg 06 §8.6.2.
 
-Dokładne profile godzinowe i model wzrostu miast — dokument 05. *(Segmenty odbiorców,
-DSR, prosumenci — 90 §9.)*
+*(Segmenty dodatkowe — przemysł ciężki, DSR, prosumenci — 90 §9.)*
 
 ### 5.7 Punkty graniczne — import i eksport
 
@@ -754,7 +773,7 @@ indeksem ceny.
 | ✅ | Przelicznik 25 km/heks | 3.1 |
 | ✅ | Kapitał startowy 10 mld zł, konfigurowalny | 3.4 |
 | ✅ | Czasy budowy K ≈ 40 (0.12; wcześniej K ≈ 5 → 20), linie 3/6/12 h/heks wg typu (0.13) | 2.6 |
-| ✅ | **Wzrost popytu logistyczny** (0.13, formuła tymczasowa): 10% × (1 − szczyt/pojemność), pojemność miasta ≈ 16× szczytu startowego; **mechanizm do przerobienia w doc 05** | 2.7, 5.6 |
+| ✅ | **Model zapotrzebowania i wzrost miast wg dokumentu 05** (0.14; uchyla formułę tymczasową z 0.13): miasto = gospodarstwa + firmy; wzrost 0–4%/mies. przy `U > 99%`, wysycanie pojemnością 16×, kurczenie o połowę niedoboru przy `U < 90%`, podłoga 100/10; miasta niepodłączone zamrożone | 2.7, 5.6, doc 05 |
 | ✅ | Rozbudowa istniejących obiektów z twardymi limitami; obiekt zawsze zajmuje 1 heks (0.13) | 7 |
 | ✅ | Handoff UI = wskazówka wyłącznie wizualna; wymagania z dokumentów | 8 |
 | ✅ | Algorytm rozpływu: **min-cost flow**, deterministyczny | 4.4 |
@@ -777,8 +796,8 @@ indeksem ceny.
 
 1. **Platforma i silnik docelowy** — nie blokuje prototypu (prototyp jest kodem
    jednorazowym); decyzja planowana wkrótce.
-2. **Docelowy mechanizm wzrostu miast** — obecna formuła logistyczna (§2.7) jest
-   tymczasowa; pełny model (klasy miast, czynniki wzrostu) — dokument 05.
+
+*(Pytanie o docelowy mechanizm wzrostu miast rozstrzygnięte w 0.14 — dokument 05 §6.)*
 
 ---
 
@@ -789,7 +808,7 @@ indeksem ceny.
 | 02 | **Model symulacji uproszczonej** | graf sieci (stacje/linie), rozpływ **min-cost flow** (§4.4), straty, niedobory, integracja pogody i prognoz z 06, krok tury | do napisania — **pierwszy** |
 | 03 | **Model ekonomiczny v1** | strojenie taryfy, kosztów, kar; test „czy 10 mld domyka otwarcie" | do napisania |
 | 04 | **Katalog obiektów v1** | ostateczne liczby: elektrownie, OZE, linie, stacje, magazyny, przyłącza graniczne | do napisania |
-| 05 | **Model zapotrzebowania** | profile godzinowe, sezonowość, czynnik pogodowy, wzrost i przyłączanie miast | do napisania |
+| 05 | [Model zapotrzebowania](05-model-zapotrzebowania.md) | profile godzinowe, sezonowość, czynnik pogodowy, wzrost i przyłączanie miast | ✅ napisany |
 | 06 | [Model astronomiczny i pogodowy](06-model-astronomiczny-i-pogodowy.md) | pogoda, produkcja OZE, model błędu prognozy — **obowiązuje w wersji uproszczonej** | ✅ napisany |
 | 07 | **Model mapy i generator** | struktura danych heksa (w tym potencjał wiatru/nasłonecznienie), generacja proceduralna, trasowanie linii | do napisania |
 | 08 | **Projekt interfejsu** | przełożenie handoffu wizualnego na zakres funkcjonalny §8 | handoff wizualny istnieje |
