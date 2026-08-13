@@ -12,23 +12,88 @@ export {
   sunsetHourAngleDeg,
 } from "./astronomy";
 export {
+  CITY_GROWTH,
   CONFIG,
+  DAY_WEIGHTS,
+  DEMAND_PROFILES,
+  DEMAND_SEASONAL,
+  FARM_TECHS,
+  KM_PER_HEX,
+  LINE_TYPES,
+  PLANT_TECHS,
+  PV,
+  STORAGE_TECHS,
+  TURBINE,
+  UNIT_ENERGY_KWH,
+  WIND_CLASSES,
+  WIND_MONTHLY_MEAN_MS,
+  type FarmTech,
+  type LineType,
+  type PlantTech,
+  type StorageTech,
+  type WindClass,
+} from "./config";
+export {
+  cityDemandDayMw,
+  cityDemandMwAtHour,
+  weatherDemandMultiplier,
+  type DayType,
+} from "./demand";
+export {
   applyAction,
   dayOfYearForGameDay,
+  dayTypeForGameDay,
+  monthForGameDay,
   newGame,
-  quantize01,
   resolveTurn,
   type Action,
 } from "./engine";
-export { nextFloat01, nextUint32, seedStream, type PrngState } from "./prng";
+export { evaluateMonthlyGrowth } from "./growth";
 export {
+  buildSegments,
+  emptyResidual,
+  hexKey,
+  runFlowPass,
+  type FlowResidual,
+  type FlowResult,
+  type FlowSink,
+  type FlowSource,
+  type HexCoord,
+  type NetworkLine,
+  type NetworkNode,
+  type Segment,
+} from "./network";
+export { nextFloat01, nextUint32, seedStream, type PrngState } from "./prng";
+export { quantize001, quantize01 } from "./quantize";
+export { DEFAULT_SCENARIO, scenarioToStateFields, type Scenario } from "./scenario";
+export {
+  DAYS_PER_MONTH,
   DAYS_PER_YEAR,
   HOURS_PER_TURN,
   STATE_SCHEMA_VERSION,
   TURNS_PER_DAY,
   TURN_PHASES,
+  type BorderState,
   type Calendar,
+  type CityState,
   type DayTruth,
+  type FarmState,
   type GameState,
+  type JunctionState,
+  type LineState,
+  type PlantState,
+  type StorageMode,
+  type StorageState,
   type TurnPhase,
+  type WeatherTruth,
 } from "./state";
+export {
+  dailyMeanTempC,
+  generateWeatherDay,
+  hourlyTempC,
+  pvPowerMw,
+  turbinePowerFraction,
+  windLambda,
+  windSpeedFromQuantile,
+  type WeatherDay,
+} from "./weather";

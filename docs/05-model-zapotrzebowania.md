@@ -191,7 +191,7 @@ U = Σ_d w_d × E_dostarczona(d)  /  Σ_d w_d × E_zapotrzebowana(d)
 ```
 
 po trzech dobach reprezentatywnych z wagami `w_d` = 10,9 / 10,9 / 8,7 (01 §2.1).
-Obie energie z **prawdy** (faza rozstrzygnięcia): zapotrzebowanie wg §4, dostarczenie
+Obie energie z **prawdy** (rozstrzygnięcie tury): zapotrzebowanie wg §4, dostarczenie
 z rozpływu; energia niedostarczona = `1 − U` (spójne z 01 §4.5). Ocena jest **per
 miasto** — silnik dowozi moc do węzła i nie rozróżnia, czy prąd trafił do gospodarstw
 czy firm; wynik `U` stosuje się do obu segmentów.
@@ -267,7 +267,7 @@ miesiąca wchodzi do oceny od **pierwszego pełnego miesiąca** po przyłączeni
 Panel heksa miasta (01 §8) pokazuje **stan źródłowy**: liczbę gospodarstw domowych
 i liczbę firm; do tego pochodne: etykietę klasy, szczyt MW, nasycenie (`N / N_max`),
 `U` poprzedniego miesiąca i status (**wzrost / stagnacja / kurczenie / niepodłączone**).
-Raport tury (01 §2.3 faza 4) bez zmian; zmiana wielkości miasta to zdarzenie raportu
+Raport tury (01 §2.3) bez zmian; zmiana wielkości miasta to zdarzenie raportu
 końca miesiąca.
 
 ## 8. Parametry do strojenia — zestawienie

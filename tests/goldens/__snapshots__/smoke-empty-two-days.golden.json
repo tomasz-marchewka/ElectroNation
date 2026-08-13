@@ -6,98 +6,98 @@
       "turn": 0,
       "phase": "night",
       "day": 0,
-      "moneyPln": 10000000000
+      "moneyPln": 9994615400
     },
     {
       "turn": 1,
       "phase": "preDawn",
       "day": 0,
-      "moneyPln": 10000000000
+      "moneyPln": 9989191560
     },
     {
       "turn": 2,
       "phase": "morningRamp",
       "day": 0,
-      "moneyPln": 10000000000
+      "moneyPln": 9980872680
     },
     {
       "turn": 3,
       "phase": "lateMorning",
       "day": 0,
-      "moneyPln": 10000000000
+      "moneyPln": 9971498680
     },
     {
       "turn": 4,
       "phase": "noon",
       "day": 0,
-      "moneyPln": 10000000000
+      "moneyPln": 9962163920
     },
     {
       "turn": 5,
       "phase": "afternoon",
       "day": 0,
-      "moneyPln": 10000000000
+      "moneyPln": 9952593720
     },
     {
       "turn": 6,
       "phase": "eveningPeak",
       "day": 0,
-      "moneyPln": 10000000000
+      "moneyPln": 9942461080
     },
     {
       "turn": 7,
       "phase": "lateEvening",
       "day": 1,
-      "moneyPln": 10000000000
+      "moneyPln": 9933427026
     },
     {
       "turn": 8,
       "phase": "night",
       "day": 1,
-      "moneyPln": 10000000000
+      "moneyPln": 9928077306
     },
     {
       "turn": 9,
       "phase": "preDawn",
       "day": 1,
-      "moneyPln": 10000000000
+      "moneyPln": 9922692706
     },
     {
       "turn": 10,
       "phase": "morningRamp",
       "day": 1,
-      "moneyPln": 10000000000
+      "moneyPln": 9914391266
     },
     {
       "turn": 11,
       "phase": "lateMorning",
       "day": 1,
-      "moneyPln": 10000000000
+      "moneyPln": 9904991106
     },
     {
       "turn": 12,
       "phase": "noon",
       "day": 1,
-      "moneyPln": 10000000000
+      "moneyPln": 9895612746
     },
     {
       "turn": 13,
       "phase": "afternoon",
       "day": 1,
-      "moneyPln": 10000000000
+      "moneyPln": 9885972786
     },
     {
       "turn": 14,
       "phase": "eveningPeak",
       "day": 1,
-      "moneyPln": 10000000000
+      "moneyPln": 9875818346
     },
     {
       "turn": 15,
       "phase": "lateEvening",
       "day": 2,
-      "moneyPln": 10000000000
+      "moneyPln": 9866801732
     }
   ],
-  "finalStateHash": "7a36d195f2f71c5f9786e5827ea65453af774d2d67bfcecabc2f16ab1212bdf0"
+  "finalStateHash": "2f0aafc3073fe3b28fd3458b62af497fb956dd261169ca155a160913bf7ff17e"
 }

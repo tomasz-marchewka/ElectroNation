@@ -1,8 +1,33 @@
 # ElectroNation — Dokument bazowy mechaniki gry
 
-**Wersja:** 0.14 (dokument koncepcyjny)
+**Wersja:** 0.16 (dokument koncepcyjny)
 **Data:** 2026-08-13
 **Status:** obowiązuje **wersja uproszczona** gry; mechaniki odłożone czekają w [90-pomysly-na-przyszlosc.md](90-pomysly-na-przyszlosc.md)
+
+**Zmiany 0.15 → 0.16 (zatwierdzenie dokumentu 02 — model symulacji):**
+
+1. **Dokument 02 napisany i obowiązuje** ([02-model-symulacji.md](02-model-symulacji.md)):
+   graf sieci (linia w przelocie = segmentacja na węzłach), rozpływ = **kolejne najtańsze
+   ścieżki** (koszt dostarczenia = koszt zmienny źródła / sprawność trasy, deterministyczne
+   tie-breaki), krok rozstrzygnięcia w trzech przebiegach (**miasta → ładowanie magazynów →
+   eksport**), **niedobór emergentnie w miastach najdalszych** i za wąskimi gardłami (§4.5).
+2. **Nadwyżka sterowalna przestaje być darmowa** (§4.1): **kara bilansowa 400 zł/MWh
+   zrzutu** (kalibracja: optymalne pokrycie ~92. percentyl pasma prognozy — 02 §5.2);
+   paliwo płatne tylko od energii wykorzystanej; import take-or-pay (od nastawy).
+   Zrzut OZE pozostaje bez kary.
+3. **Uzupełnione parametry** (02 §8): mnożniki terenu (linie mogą biec przez jezioro ×2,5
+   i morze ×3,5), CAPEX magazynów, koszty stałe wszystkich obiektów, rozbudowa **70% czasu /
+   85% CAPEX-u / limit 6 bloków**, limity OZE **wiatr 300 / PV 200 MW na heks**;
+   **mapa v1 = jedna ręczna 24×16 z 8–12 miastami** (generator — dokument 07).
+
+**Zmiany 0.14 → 0.15 (doprecyzowanie struktury tury):**
+
+1. **Tura nie jest sekwencją faz** (§2.3; uchyla ekranową sekwencję FAZA 1–4 z 0.4):
+   prognoza, raport **ostatniej** tury i nastawy współistnieją w jednym stałym widoku,
+   nastawy są edytowalne cały czas, a jedyną akcją przechodzącą czas jest klik
+   **„następna tura"**, który uruchamia rozstrzygnięcie (krok silnika — doc 02 §4).
+   Pojęcia prognoza/decyzja/rozstrzygnięcie/raport zostają jako elementy widoku
+   i kontraktu silnika, nie jako kolejne ekrany.
 
 **Zmiany 0.13 → 0.14 (zatwierdzenie dokumentu 05 — model zapotrzebowania):**
 
@@ -198,33 +223,38 @@ koszty i postęp budów liniowych liczą się jak moc × 3 h. Nastawa obowiązuj
 blok — to na nazwanych porach doby (SZCZYT WIECZORNY vs NOC) gracz uczy się rytmu
 zakładów z prognozą.
 
-### 2.3 Struktura tury
+### 2.3 Struktura tury — jeden ciągły widok, jedno kliknięcie
+
+**DECYZJA (0.15, doprecyzowuje 0.4): tura nie jest sekwencją faz.** Prognoza, raport
+i decyzje nie następują po sobie jako osobne ekrany — współistnieją w jednym stałym
+widoku, a czas przesuwa wyłącznie klik **„następna tura"**:
 
 ```
-┌────────────────────────────────────────────────────────────┐
-│  FAZA 1 — PROGNOZA        (automatyczna)                   │
-│  Gra pokazuje prognozę na najbliższe godziny, Z BŁĘDEM.    │
-│  Wraz z horyzontem pasmo niepewności się rozszerza.        │
-├────────────────────────────────────────────────────────────┤
-│  FAZA 2 — DECYZJA         (gracz, bez limitu czasu)        │
-│  Nastawy elektrowni, magazyny (ładuj/oddawaj),             │
-│  import/eksport, ewentualne przycięcie OZE.                │
-├────────────────────────────────────────────────────────────┤
-│  FAZA 3 — ROZSTRZYGNIĘCIE (automatyczne, animowane)        │
-│  Ujawnia się prawdziwa pogoda i zapotrzebowanie.           │
-│  Silnik wyznacza przepływy: co dopłynęło do miast, ile     │
-│  zjadły straty, gdzie zabrakło przepustowości lub mocy.    │
-├────────────────────────────────────────────────────────────┤
-│  FAZA 4 — RAPORT                                           │
-│  Wynik finansowy tury, energia niedostarczona, kary.       │
-│  Ile kosztowała pomyłka prognozy.                          │
-└────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│  WIDOK CIĄGŁY (między kliknięciami)                          │
+│                                                              │
+│  PROGNOZA  panel prognozy: popyt i OZE na kolejne godziny,   │
+│            Z BŁĘDEM — pasmo rozszerza się z horyzontem       │
+│  RAPORT    panel raportu OSTATNIEJ tury: wynik finansowy,    │
+│            energia niedostarczona, koszt pomyłki prognozy    │
+│  DECYZJA   nastawy edytowalne CAŁY CZAS: elektrownie,        │
+│            magazyny (ładuj/oddawaj), import/eksport,         │
+│            wyłączenia farm OZE                               │
+│                                                              │
+│                     [ NASTĘPNA TURA ]                        │
+│                            │                                 │
+│  ROZSTRZYGNIĘCIE (silnik, animowane): ujawnia się prawdziwa  │
+│  pogoda i popyt; rozpływ wyznacza, co dopłynęło do miast,    │
+│  ile zjadły straty, gdzie zabrakło mocy lub przepustowości   │
+│  (krok silnika — dokument 02 §4). Widok wraca do stanu       │
+│  ciągłego z odświeżoną prognozą i raportem.                  │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-Faza rozstrzygnięcia ma być **pokazana, nie tylko podliczona**: przepływy na mapie, linie
+Rozstrzygnięcie ma być **pokazane, nie tylko podliczone**: przepływy na mapie, linie
 zmieniające kolor z obciążeniem, miasto w niedoborze gasnące na oczach gracza. Dramat polega
-na tym, że gracz **patrzy, jak rozstrzyga się jego zakład z prognozą**. Jeśli ta faza będzie
-tylko odświeżeniem liczb, mechanika umrze.
+na tym, że gracz **patrzy, jak rozstrzyga się jego zakład z prognozą**. Jeśli ten moment
+będzie tylko odświeżeniem liczb, mechanika umrze.
 
 ### 2.4 Prognoza z błędem — źródło napięcia
 
@@ -328,6 +358,9 @@ Scenariusze z ustalonym horyzontem i celami — 90 §11.
 | **Góry/wyżyna + woda** | jedyne miejsca pod elektrownię szczytowo-pompową (§5.3) |
 | **Zawartość** | miasto, elektrownia, farma OZE, magazyn, stacja, punkt graniczny |
 
+Mnożniki kosztu terenu — tabela w 02 §8.1 (0.16). Linie mogą przechodzić przez wodę:
+jezioro ×2,5, morze ×3,5 (kabel podwodny); obiektów na wodzie budować nie można.
+
 *(Odłożone właściwości: cieki wodne i chłodzenie bloków, złoża paliw, ograniczenia terenowe
 typu park narodowy — 90 §2.)*
 
@@ -426,7 +459,9 @@ ZUŻYCIE:   zapotrzebowanie miast + ładowanie magazynów + eksport + straty prz
 - **Produkcja OZE jest niesterowalna** — wynika z pogody. Nadwyżki przycina automatyka
   (curtailment, bez kary — tracona jest darmowa energia). Jedyna ręczna kontrola gracza
   (0.13): **wyłączenie/włączenie całej farmy** — częściowego zadawania mocy OZE nie ma.
-- **Nadwyżka** produkcji sterowalnej jest przycinana automatycznie u źródła.
+- **Nadwyżka produkcji sterowalnej jest przycinana u źródła i karana (0.16, 02 §5):
+  kara bilansowa 400 zł/MWh zrzutu** — nadstawianie „na zapas" ma kosztować. Paliwo
+  płaci się tylko od energii wykorzystanej; import jest take-or-pay (płatny od nastawy).
 - **Niedobór** — patrz §4.5.
 
 ### 4.2 Linie: przepustowość i straty
@@ -486,9 +521,11 @@ najtańszy wykonalny rozpływ od źródeł do odbiorów, zamiast liczyć fizyczn
 rozpływ prądu. Gracz nie steruje trasami bezpośrednio — ustawia źródła, a energia „płynie
 sama" najtańszymi dostępnymi drogami, jak woda pod ciśnieniem.
 
-**DECYZJA: algorytm rozpływu = min-cost flow.** Koszt krawędzi odzwierciedla straty (i koszt
-energii u źródła), wynik jest deterministyczny i powtarzalny przy identycznym stanie sieci.
-Formalizacja (reprezentacja grafu, funkcja kosztu, obsługa strat) — dokument 02.
+**DECYZJA: algorytm rozpływu = min-cost flow** w przybliżeniu **kolejnych najtańszych
+ścieżek** (0.16): koszt dostarczenia = koszt zmienny źródła / sprawność trasy (straty
+wliczone), najpierw maksymalizacja energii dostarczonej, przy remisie minimalizacja
+kosztu; deterministyczne tie-breaki. Formalizacja (reprezentacja grafu, funkcja kosztu,
+obsługa strat, priorytety przebiegów) — [dokument 02](02-model-symulacji.md) §2–4.
 
 Kluczowa własność pierwotnej wizji przeżywa uproszczenie w łagodniejszej formie: **można mieć
 dość mocy i mimo to nie dostarczyć jej tam, gdzie trzeba** — bo korytarz albo stacja mają
@@ -501,7 +538,9 @@ pozostaje grą samą w sobie, tylko bez praw Kirchhoffa.
 ### 4.5 Niedobór — energia niedostarczona
 
 Jeśli pokrycie (po stratach i limitach sieci) nie wystarcza, brakująca energia staje się
-**energią niedostarczoną** w konkretnych miastach:
+**energią niedostarczoną** w konkretnych miastach. **Alokacja jest emergentna (0.16,
+02 §6): konsumują najbliżsi** — niedobór kumuluje się w miastach najdalszych od źródeł,
+za wąskimi gardłami i za innymi miastami:
 
 - kara finansowa za każdą MWh niedostarczoną: **4 000 zł/MWh** (0.13; parametr do strojenia
   w doc 03). Wciąż wielokrotnie drożej niż jakakolwiek produkcja; pierwotne 10 000 zł/MWh
@@ -566,6 +605,10 @@ moc przez 2 godziny. UI musi to wyraźnie pokazywać.
 |---|---|---|---|---|
 | **Bateria (BESS)** | ~90% | 1–4 h | 1 | brak — wszędzie |
 | **Szczytowo-pompowa** | ~75% | 6–20 h | 5 | góry/wyżyna + woda (§3.2) |
+
+**CAPEX (0.16, 02 §8.2):** bateria — moduł mocy **1,6 mln zł/MW** + moduł pojemności
+**1,1 mln zł/MWh** (kupowane osobno; limit 500 MW / 2 000 MWh na heks); szczytowo-pompowa —
+bloki **250 MW / 2 500 MWh** po **~1,1 mld zł** (do 4 bloków na heksie).
 
 Moc i pojemność baterii rozbudowuje się **osobno** (moduły). Zastosowania w wersji
 uproszczonej: przenoszenie taniej energii (nocna jądrowa/węgiel, nadwyżki wiatru) na szczyt
@@ -639,10 +682,12 @@ konfiguracji.
 - **Przychód:** każda MWh **dostarczona** do miast × stała taryfa (**650 zł/MWh** — 0.13,
   wartość wystrojona graniem; parametr scenariusza, weryfikacja w doc 03). Straty przesyłowe
   nie są opłacane — gracz płaci za nie paliwem.
-- **Koszty zmienne:** paliwo (koszt zmienny × produkcja), zakup importu.
+- **Koszty zmienne:** paliwo od energii **wykorzystanej** (0.16 — zrzucona MWh nie pali
+  paliwa, ale jest karana, §4.1); import take-or-pay (płatny od nastawy).
 - **Koszty stałe:** utrzymanie obiektów [zł/MW/rok], naliczane dobowo (roczne/365 × liczba
-  reprezentowanych dni doby).
-- **Kary:** energia niedostarczona (§4.5).
+  reprezentowanych dni doby); tabela stawek — 02 §8.3 (0.16).
+- **Kary:** energia niedostarczona (§4.5) oraz zrzut energii sterowalnej — 400 zł/MWh
+  (§4.1, 02 §5).
 - **Skalowanie doby:** wynik doby × 10,9 (robocza) / × 8,7 (wolna) — §2.1.
 - **Finansowanie:** wyłącznie kapitał startowy (10 mld zł) i zyski. Kredytów, obligacji
   i bankructwa w wersji uproszczonej nie ma *(90 §5)* — kto wyda wszystko, czeka na wpływy
@@ -663,10 +708,11 @@ LCOE — 90 §5.)*
   rozbudowa dodaje bloki/moduły w jego obrębie — to „ulepszenie" obiektu, nie ekspansja
   terenowa.
 - **DECYZJA (bez zmian): istniejące obiekty można rozbudowywać, z twardym limitem lokalizacji:**
-  elektrownia do 4–6 bloków na heksie, farma wiatrowa/PV do limitu mocy heksa, magazyn do
-  limitu modułów (moc i pojemność osobno), stacja wg §5.4, przyłącze graniczne o kolejne
-  moduły zdolności. Rozbudowa jest szybsza (~60–75% czasu greenfield) i tańsza (~10–20%
-  CAPEX-u) od nowej lokalizacji. Po osiągnięciu limitu jedyną drogą jest nowa lokalizacja.
+  elektrownia do **6 bloków** na heksie (0.16), farma OZE do limitu mocy heksa (**wiatr
+  300 MW, PV 200 MW** — 02 §8.4), magazyn do limitu modułów (moc i pojemność osobno —
+  02 §8.2), stacja wg §5.4, przyłącze graniczne o kolejne moduły zdolności. Rozbudowa =
+  **70% czasu i 85% CAPEX-u** nowej lokalizacji (0.16, przygważdża widełki z 0.13).
+  Po osiągnięciu limitu jedyną drogą jest nowa lokalizacja.
 - Nowy blok ma własny licznik budowy; linie można dobudowywać równolegle na tej samej trasie.
 
 *(Malejące przychody krańcowe na farmach — wake effect, ryzyko koncentracji, opór społeczny,
@@ -685,9 +731,10 @@ starzenie majątku i remonty, kolejka przyłączeniowa — 90 §3, §7, §10.)*
 4. **Panel nastaw** — jednostki z suwakami, magazyny (ładuj/oddawaj), import/eksport,
    saldo bilansu. **DECYZJA: bez auto-nastaw** — wszystkie nastawy ustawia gracz ręcznie,
    nie ma przycisku „obsadź najtaniej".
-5. **Panel dyspozytora jest stale widoczny** (0.12) — prognoza, nastawy, rozstrzygnięcie,
-   raport oraz harmonogram budów i systemy prognostyczne; budżet i wynik doby w pasku
-   górnym. Nie ma osobnej zakładki budowy.
+5. **Panel dyspozytora jest stale widoczny** (0.12) — prognoza, nastawy (edytowalne
+   cały czas — §2.3), raport ostatniej tury oraz harmonogram budów i systemy
+   prognostyczne; budżet i wynik doby w pasku górnym; przycisk **„następna tura"**
+   — jedyna akcja przechodząca czas. Nie ma osobnej zakładki budowy.
 6. **Panel heksa (0.12, zastępuje okienko obiektu z 0.11)** — klik na **dowolny heks**
    (także pusty) otwiera panel dokowany przy prawej krawędzi mapy, nad jej częścią:
    parametry heksa (teren, mnożnik kosztu, wiatr/słońce, lokalizacja szczytowo-pompowa),
@@ -776,7 +823,9 @@ indeksem ceny.
 | ✅ | **Model zapotrzebowania i wzrost miast wg dokumentu 05** (0.14; uchyla formułę tymczasową z 0.13): miasto = gospodarstwa + firmy; wzrost 0–4%/mies. przy `U > 99%`, wysycanie pojemnością 16×, kurczenie o połowę niedoboru przy `U < 90%`, podłoga 100/10; miasta niepodłączone zamrożone | 2.7, 5.6, doc 05 |
 | ✅ | Rozbudowa istniejących obiektów z twardymi limitami; obiekt zawsze zajmuje 1 heks (0.13) | 7 |
 | ✅ | Handoff UI = wskazówka wyłącznie wizualna; wymagania z dokumentów | 8 |
-| ✅ | Algorytm rozpływu: **min-cost flow**, deterministyczny | 4.4 |
+| ✅ | Algorytm rozpływu: **min-cost flow** w przybliżeniu kolejnych najtańszych ścieżek; priorytet **miasta → magazyny → eksport**; niedobór emergentnie u najdalszych (0.16) | 4.4, 4.5, doc 02 |
+| ✅ | **Kara bilansowa za zrzut sterowalnych 400 zł/MWh** (0.16): paliwo od wykorzystania, import take-or-pay, zrzut OZE darmowy | 4.1, 02 §5 |
+| ✅ | **Mapa v1 ręczna 24×16, 8–12 miast** (0.16); generator proceduralny — doc 07; parametry uzupełniające (teren, magazyny, koszty stałe, rozbudowa, limity OZE) — 02 §8 | 02 §8 |
 | ✅ | Prototyp: pogoda etapami — krok 1 bez reżimów, krok 2 reżimy z 06 §8 | 12 |
 | ✅ | Import i eksport dostępne od startu | 5.7 |
 | ✅ | Bez auto-nastaw — wszystkie nastawy ręczne | 8 |
@@ -805,7 +854,7 @@ indeksem ceny.
 
 | # | Dokument | Zakres | Status |
 |---|---|---|---|
-| 02 | **Model symulacji uproszczonej** | graf sieci (stacje/linie), rozpływ **min-cost flow** (§4.4), straty, niedobory, integracja pogody i prognoz z 06, krok tury | do napisania — **pierwszy** |
+| 02 | [Model symulacji uproszczonej](02-model-symulacji.md) | graf sieci (stacje/linie), rozpływ **min-cost flow** (§4.4), straty, niedobory, integracja pogody i prognoz z 06, krok tury | ✅ napisany |
 | 03 | **Model ekonomiczny v1** | strojenie taryfy, kosztów, kar; test „czy 10 mld domyka otwarcie" | do napisania |
 | 04 | **Katalog obiektów v1** | ostateczne liczby: elektrownie, OZE, linie, stacje, magazyny, przyłącza graniczne | do napisania |
 | 05 | [Model zapotrzebowania](05-model-zapotrzebowania.md) | profile godzinowe, sezonowość, czynnik pogodowy, wzrost i przyłączanie miast | ✅ napisany |
