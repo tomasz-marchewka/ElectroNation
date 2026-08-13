@@ -12,17 +12,25 @@ export {
   sunsetHourAngleDeg,
 } from "./astronomy";
 export {
+  BATTERY,
+  BORDER_SPEC,
+  CITY_CONNECTION_COST_PLN,
   CITY_GROWTH,
   CONFIG,
   DAY_WEIGHTS,
   DEMAND_PROFILES,
   DEMAND_SEASONAL,
   FARM_TECHS,
+  JUNCTION_SPEC,
   KM_PER_HEX,
+  LINE_SLOTS_PER_OBJECT,
   LINE_TYPES,
+  MAX_LINES_PER_HEX_PER_TYPE,
   PLANT_TECHS,
+  PUMPED_BLOCK,
   PV,
   STORAGE_TECHS,
+  TERRAIN,
   TURBINE,
   UNIT_ENERGY_KWH,
   WIND_CLASSES,
@@ -31,6 +39,7 @@ export {
   type LineType,
   type PlantTech,
   type StorageTech,
+  type TerrainId,
   type WindClass,
 } from "./config";
 export {
@@ -83,7 +92,12 @@ export {
   type MonthRegimes,
   type RegimeId,
 } from "./regimes";
-export { DEFAULT_SCENARIO, scenarioToStateFields, type Scenario } from "./scenario";
+export {
+  DEFAULT_SCENARIO,
+  finishedLine,
+  scenarioToStateFields,
+  type Scenario,
+} from "./scenario";
 export {
   DAYS_PER_MONTH,
   DAYS_PER_YEAR,
@@ -91,14 +105,17 @@ export {
   STATE_SCHEMA_VERSION,
   TURNS_PER_DAY,
   TURN_PHASES,
+  isLineBuilt,
   type BorderState,
   type Calendar,
   type CityState,
+  type ConstructionState,
   type DayTruth,
   type FarmState,
   type GameState,
   type JunctionState,
   type LineState,
+  type PendingObject,
   type PlantState,
   type StorageMode,
   type StorageState,

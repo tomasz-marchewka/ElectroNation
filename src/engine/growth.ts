@@ -10,6 +10,8 @@ import type { CityState } from "./state";
 export function evaluateMonthlyGrowth(
   cities: CityState[],
   rng: PrngState,
+  /** First game day of the evaluated month — cities connected later skip it (05 §6.5). */
+  monthStartDay: number,
 ): { cities: CityState[]; rng: PrngState } {
   let state = rng;
   const draws = new Map<string, { households: number; firms: number }>();
@@ -28,7 +30,8 @@ export function evaluateMonthlyGrowth(
 
   const updated = cities.map((city): CityState => {
     const reset = { ...city, monthDemandMwh: 0, monthDeliveredMwh: 0 };
-    if (!city.connected || city.monthDemandMwh <= 0) return reset;
+    if (!city.connected || city.connectedSinceDay > monthStartDay) return reset;
+    if (city.monthDemandMwh <= 0) return reset;
 
     const served = city.monthDeliveredMwh / city.monthDemandMwh;
     if (served > CITY_GROWTH.growThresholdU) {

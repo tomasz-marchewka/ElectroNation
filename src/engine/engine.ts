@@ -5,6 +5,16 @@
 // growth after the free day.
 
 import {
+  buildBattery,
+  buildBorder,
+  buildFarm,
+  buildJunction,
+  buildLine,
+  buildPlant,
+  buildPumpedStorage,
+  connectCity,
+} from "./build";
+import {
   CONFIG,
   DAY_WEIGHTS,
   FARM_TECHS,
@@ -13,6 +23,9 @@ import {
   PLANT_TECHS,
   STORAGE_TECHS,
   KM_PER_HEX,
+  type FarmTech,
+  type LineType,
+  type PlantTech,
 } from "./config";
 import { cityDemandDayMw, type DayType } from "./demand";
 import { evaluateMonthlyGrowth } from "./growth";
@@ -22,6 +35,7 @@ import {
   runFlowPass,
   type FlowSink,
   type FlowSource,
+  type HexCoord,
   type NetworkNode,
 } from "./network";
 import { nextFloat01, seedStream, type PrngState } from "./prng";
@@ -34,6 +48,7 @@ import {
   HOURS_PER_TURN,
   STATE_SCHEMA_VERSION,
   TURNS_PER_DAY,
+  isLineBuilt,
   type CityState,
   type DayTruth,
   type GameState,
@@ -109,9 +124,10 @@ function generateDayTruth(
   };
   const forecastZ = { wind: drawZ(), pv: drawZ(), demand: drawZ() };
 
+  // Truth is generated for every city (unconnected included), so a city
+  // connected mid-day starts consuming from the very next turn.
   const cityDemandMw: Record<string, number[]> = {};
   for (const city of cities) {
-    if (!city.connected) continue;
     cityDemandMw[city.id] = cityDemandDayMw(
       city.households,
       city.firms,
@@ -166,6 +182,14 @@ export type Action =
   | { type: "setFarmEnabled"; farmId: string; enabled: boolean }
   | { type: "setImport"; borderId: string; mw: number }
   | { type: "setExport"; borderId: string; mw: number }
+  | { type: "buildPlant"; tech: PlantTech; capacityMw: number; hex: HexCoord }
+  | { type: "buildFarm"; tech: FarmTech; capacityMw: number; hex: HexCoord }
+  | { type: "buildBattery"; powerMw: number; capacityMwh: number; hex: HexCoord }
+  | { type: "buildPumpedStorage"; hex: HexCoord }
+  | { type: "buildJunction"; hex: HexCoord }
+  | { type: "buildBorder"; hex: HexCoord }
+  | { type: "buildLine"; lineType: LineType; path: HexCoord[] }
+  | { type: "connectCity"; cityId: string }
   | { type: "noop" };
 
 function clampMw(mw: number, max: number): number {
@@ -219,6 +243,22 @@ export function applyAction(state: GameState, action: Action): GameState {
             : b,
         ),
       };
+    case "buildPlant":
+      return buildPlant(state, action.tech, action.capacityMw, action.hex);
+    case "buildFarm":
+      return buildFarm(state, action.tech, action.capacityMw, action.hex);
+    case "buildBattery":
+      return buildBattery(state, action.powerMw, action.capacityMwh, action.hex);
+    case "buildPumpedStorage":
+      return buildPumpedStorage(state, action.hex);
+    case "buildJunction":
+      return buildJunction(state, action.hex);
+    case "buildBorder":
+      return buildBorder(state, action.hex);
+    case "buildLine":
+      return buildLine(state, action.lineType, action.path);
+    case "connectCity":
+      return connectCity(state, action.cityId);
     case "noop":
       return state;
   }
@@ -244,6 +284,7 @@ function yearlyFixedCostsPln(state: GameState): number {
   yearly += state.junctions.length * NODE_FIXED_PLN_PER_YEAR.junction;
   yearly += state.borders.length * NODE_FIXED_PLN_PER_YEAR.border;
   for (const line of state.lines) {
+    if (!isLineBuilt(line)) continue; // under construction: no maintenance yet
     const km = (line.path.length - 1) * KM_PER_HEX;
     yearly += km * LINE_TYPES[line.type].fixedPlnPerKmYear;
   }
@@ -289,7 +330,7 @@ export function resolveTurn(state: GameState): GameState {
     ...state.junctions.map((j) => ({ id: j.id, hex: j.hex, throughputMw: j.throughputMw })),
     ...state.borders.map((b) => ({ id: b.id, hex: b.hex, throughputMw: b.throughputMw })),
   ];
-  const segments = buildSegments(nodes, state.lines);
+  const segments = buildSegments(nodes, state.lines.filter(isLineBuilt));
 
   const sources: FlowSource[] = [];
   for (const farm of state.farms) {
@@ -432,6 +473,13 @@ export function resolveTurn(state: GameState): GameState {
 
   let moneyPln = state.moneyPln + Math.round((revenuePln - costsPln) * weight);
 
+  // Line construction advances by the played block (01 §2.6).
+  const lines = state.lines.map((line) =>
+    isLineBuilt(line)
+      ? line
+      : { ...line, builtHours: Math.min(line.totalHours, line.builtHours + HOURS_PER_TURN) },
+  );
+
   const nextTurn = state.calendar.turnIndex + 1;
   if (nextTurn < TURNS_PER_DAY) {
     return {
@@ -440,19 +488,60 @@ export function resolveTurn(state: GameState): GameState {
       moneyPln,
       cities,
       storages,
+      lines,
     };
   }
 
   // Day end: fixed costs (yearly / 365 × represented days — 01 §6), then the
-  // month boundary after the free day (05 §6.1), then the next day's truth.
+  // month boundary after the free day (05 §6.1), construction countdowns, and
+  // the next day's truth.
   moneyPln -= Math.round((yearlyFixedCostsPln(state) / 365) * weight);
 
   let nextCities = cities;
   let cityGrowthRng = state.rng.cityGrowth;
   if (truth.dayType === "free") {
-    const growth = evaluateMonthlyGrowth(cities, cityGrowthRng);
+    // Month start day = free day index − 2 (05 §6.5: first FULL month counts).
+    const growth = evaluateMonthlyGrowth(
+      cities,
+      cityGrowthRng,
+      state.calendar.dayIndex - (DAYS_PER_MONTH - 1),
+    );
     nextCities = growth.cities;
     cityGrowthRng = growth.rng;
+  }
+
+  const done = { ...state };
+  const stillBuilding: typeof state.constructions = [];
+  const spawned = {
+    plants: [...state.plants],
+    farms: [...state.farms],
+    storages: [...storages],
+    junctions: [...state.junctions],
+    borders: [...state.borders],
+  };
+  for (const construction of state.constructions) {
+    if (construction.remainingDays > 1) {
+      stillBuilding.push({ ...construction, remainingDays: construction.remainingDays - 1 });
+      continue;
+    }
+    const pending = construction.pending;
+    switch (pending.kind) {
+      case "plant":
+        spawned.plants.push(pending.plant);
+        break;
+      case "farm":
+        spawned.farms.push(pending.farm);
+        break;
+      case "storage":
+        spawned.storages.push(pending.storage);
+        break;
+      case "junction":
+        spawned.junctions.push(pending.junction);
+        break;
+      case "border":
+        spawned.borders.push(pending.border);
+        break;
+    }
   }
 
   const nextDay = state.calendar.dayIndex + 1;
@@ -464,13 +553,19 @@ export function resolveTurn(state: GameState): GameState {
     state.monthRegimes,
   );
   return {
-    ...state,
+    ...done,
     calendar: { dayIndex: nextDay, turnIndex: 0 },
     moneyPln,
     rng: { weather: gen.weatherRng, forecast: gen.forecastRng, cityGrowth: cityGrowthRng },
     monthRegimes: gen.monthRegimes,
     cities: nextCities,
-    storages,
+    plants: spawned.plants,
+    farms: spawned.farms,
+    storages: spawned.storages,
+    junctions: spawned.junctions,
+    borders: spawned.borders,
+    lines,
+    constructions: stillBuilding,
     dayTruth: gen.truth,
   };
 }

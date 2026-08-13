@@ -3,6 +3,7 @@ import {
   DAY_WEIGHTS,
   TURNS_PER_DAY,
   applyAction,
+  finishedLine,
   newGame,
   resolveTurn,
   type GameState,
@@ -24,6 +25,7 @@ function makeScenario(overrides: Partial<Scenario> = {}): Scenario {
         firms: 6_900,
         householdsStart: 80_000,
         firmsStart: 6_900,
+        connectedSinceDay: 0,
         monthDemandMwh: 0,
         monthDeliveredMwh: 0,
       },
@@ -43,17 +45,13 @@ function makeScenario(overrides: Partial<Scenario> = {}): Scenario {
     junctions: [],
     borders: [],
     lines: [
-      {
-        id: "line-1",
-        type: "mv",
-        path: [
-          { q: 0, r: 0 },
-          { q: 1, r: 0 },
-          { q: 2, r: 0 },
-          { q: 3, r: 0 },
-          { q: 4, r: 0 },
-        ],
-      },
+      finishedLine("line-1", "mv", [
+        { q: 0, r: 0 },
+        { q: 1, r: 0 },
+        { q: 2, r: 0 },
+        { q: 3, r: 0 },
+        { q: 4, r: 0 },
+      ]),
     ],
     ...overrides,
   };
@@ -188,6 +186,7 @@ describe("doc 02 §9.10: ENS counters feed the monthly U of doc 05 §6.1", () =>
       firms: 4_000,
       householdsStart: 50_000,
       firmsStart: 4_000,
+      connectedSinceDay: 0,
       monthDemandMwh: 0,
       monthDeliveredMwh: 0,
     });

@@ -3,6 +3,7 @@
 // (02 §8.6) lands as a separate scenario file once doc 07-adjacent map data is
 // designed. City names are player-facing data, hence Polish.
 
+import { LINE_TYPES, type TerrainId, type WindClass } from "./config";
 import type {
   BorderState,
   CityState,
@@ -23,6 +24,10 @@ export interface Scenario {
   junctions: JunctionState[];
   borders: BorderState[];
   lines: LineState[];
+  /** Terrain per hex key ("q,r"); missing hexes are plains. */
+  terrain?: Record<string, TerrainId>;
+  /** Wind class per hex key; missing hexes are open terrain. */
+  windClasses?: Record<string, WindClass>;
 }
 
 function city(
@@ -43,9 +48,20 @@ function city(
     firms,
     householdsStart: households,
     firmsStart: firms,
+    connectedSinceDay: 0,
     monthDemandMwh: 0,
     monthDeliveredMwh: 0,
   };
+}
+
+/** A finished line for scenario data (built hours = total). */
+export function finishedLine(
+  id: string,
+  type: LineState["type"],
+  path: LineState["path"],
+): LineState {
+  const totalHours = (path.length - 1) * LINE_TYPES[type].buildHoursPerHex;
+  return { id, type, path, builtHours: totalHours, totalHours };
 }
 
 /**
@@ -74,16 +90,12 @@ export const DEFAULT_SCENARIO: Scenario = {
   junctions: [],
   borders: [],
   lines: [
-    {
-      id: "line-start",
-      type: "mv",
-      path: [
-        { q: 3, r: 4 },
-        { q: 4, r: 4 },
-        { q: 5, r: 4 },
-        { q: 6, r: 4 },
-      ],
-    },
+    finishedLine("line-start", "mv", [
+      { q: 3, r: 4 },
+      { q: 4, r: 4 },
+      { q: 5, r: 4 },
+      { q: 6, r: 4 },
+    ]),
   ],
 };
 
@@ -91,7 +103,18 @@ export function scenarioToStateFields(
   scenario: Scenario,
 ): Pick<
   GameState,
-  "moneyPln" | "cities" | "plants" | "farms" | "storages" | "junctions" | "borders" | "lines"
+  | "moneyPln"
+  | "cities"
+  | "plants"
+  | "farms"
+  | "storages"
+  | "junctions"
+  | "borders"
+  | "lines"
+  | "constructions"
+  | "nextObjectId"
+  | "terrain"
+  | "windClasses"
 > {
   // Deep copy through JSON: scenarios are plain data and the copy guarantees
   // a fresh game never aliases scenario constants.
@@ -105,6 +128,10 @@ export function scenarioToStateFields(
       junctions: scenario.junctions,
       borders: scenario.borders,
       lines: scenario.lines,
+      constructions: [],
+      nextObjectId: 1,
+      terrain: scenario.terrain ?? ({} as Record<string, TerrainId>),
+      windClasses: scenario.windClasses ?? ({} as Record<string, WindClass>),
     }),
   ) as ReturnType<typeof scenarioToStateFields>;
 }

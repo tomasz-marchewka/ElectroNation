@@ -20,44 +20,82 @@ export const CONFIG = {
 /** 01 §2.1: representative-day weights (how many real days a played day stands for). */
 export const DAY_WEIGHTS = { working: 10.9, free: 8.7 } as const;
 
-/** 01 §5.1: dispatchable plant technologies. */
+/** 01 §5.1, §2.6: dispatchable plant technologies. */
 export const PLANT_TECHS = {
-  nuclear: { varCostPlnPerMwh: 60, fixedPlnPerMwYear: 500_000 },
-  coal: { varCostPlnPerMwh: 250, fixedPlnPerMwYear: 260_000 },
-  ccgt: { varCostPlnPerMwh: 350, fixedPlnPerMwYear: 120_000 },
-  ocgt: { varCostPlnPerMwh: 600, fixedPlnPerMwYear: 70_000 },
+  nuclear: { varCostPlnPerMwh: 60, fixedPlnPerMwYear: 500_000, capexPlnPerMw: 21_000_000, buildDays: 9, maxBlockMw: 1_600 },
+  coal: { varCostPlnPerMwh: 250, fixedPlnPerMwYear: 260_000, capexPlnPerMw: 9_000_000, buildDays: 5, maxBlockMw: 1_000 },
+  ccgt: { varCostPlnPerMwh: 350, fixedPlnPerMwYear: 120_000, capexPlnPerMw: 5_500_000, buildDays: 3, maxBlockMw: 500 },
+  ocgt: { varCostPlnPerMwh: 600, fixedPlnPerMwYear: 70_000, capexPlnPerMw: 3_000_000, buildDays: 1, maxBlockMw: 150 },
 } as const;
 export type PlantTech = keyof typeof PLANT_TECHS;
 
-/** 01 §5.2, 02 §8.3: weather-dependent farm technologies. */
+/** 01 §5.2, 02 §8.3–8.4: weather-dependent farm technologies. */
 export const FARM_TECHS = {
-  wind: { fixedPlnPerMwYear: 130_000 },
-  pv: { fixedPlnPerMwYear: 50_000 },
+  wind: { fixedPlnPerMwYear: 130_000, capexPlnPerMw: 3_600_000, buildDays: 1, maxMwPerHex: 300 },
+  pv: { fixedPlnPerMwYear: 50_000, capexPlnPerMw: 1_800_000, buildDays: 1, maxMwPerHex: 200 },
 } as const;
 export type FarmTech = keyof typeof FARM_TECHS;
 
 /** 01 §5.3, 02 §8.2: storage technologies (cycle efficiency split half per leg). */
 export const STORAGE_TECHS = {
-  battery: { cycleEfficiency: 0.9, fixedPlnPerMwYear: 40_000 },
-  pumped: { cycleEfficiency: 0.75, fixedPlnPerMwYear: 80_000 },
+  battery: { cycleEfficiency: 0.9, fixedPlnPerMwYear: 40_000, buildDays: 1 },
+  pumped: { cycleEfficiency: 0.75, fixedPlnPerMwYear: 80_000, buildDays: 5 },
 } as const;
 export type StorageTech = keyof typeof STORAGE_TECHS;
 
+/** 02 §8.2: battery modules are bought separately; hard per-hex limits. */
+export const BATTERY = {
+  powerCapexPlnPerMw: 1_600_000,
+  energyCapexPlnPerMwh: 1_100_000,
+  maxPowerMwPerHex: 500,
+  maxCapacityMwhPerHex: 2_000,
+} as const;
+
+/** 02 §8.2: pumped storage comes in fixed 10-hour blocks. */
+export const PUMPED_BLOCK = {
+  powerMw: 250,
+  capacityMwh: 2_500,
+  capexPln: 1_100_000_000,
+  maxBlocks: 4,
+} as const;
+
 /** 01 §4.2: line types; loss is % of transmitted power per 100 km. */
 export const LINE_TYPES = {
-  lv: { capacityMw: 150, lossPctPer100km: 4, fixedPlnPerKmYear: 18_000 },
-  mv: { capacityMw: 500, lossPctPer100km: 2, fixedPlnPerKmYear: 37_500 },
-  hv: { capacityMw: 1500, lossPctPer100km: 1, fixedPlnPerKmYear: 90_000 },
+  lv: { capacityMw: 150, lossPctPer100km: 4, fixedPlnPerKmYear: 18_000, capexPlnPerKm: 1_200_000, buildHoursPerHex: 3 },
+  mv: { capacityMw: 500, lossPctPer100km: 2, fixedPlnPerKmYear: 37_500, capexPlnPerKm: 2_500_000, buildHoursPerHex: 6 },
+  hv: { capacityMw: 1500, lossPctPer100km: 1, fixedPlnPerKmYear: 90_000, capexPlnPerKm: 6_000_000, buildHoursPerHex: 12 },
 } as const;
 export type LineType = keyof typeof LINE_TYPES;
 
 export const KM_PER_HEX = 25; // 01 §3.1
+
+/** 01 §5.4, §5.7, §3.4: node objects and the city connection act. */
+export const JUNCTION_SPEC = { capexPln: 150_000_000, buildDays: 1, throughputMw: 250 } as const;
+export const BORDER_SPEC = { capexPln: 1_000_000_000, buildDays: 4, throughputMw: 500 } as const;
+export const CITY_CONNECTION_COST_PLN = 30_000_000;
 
 /** 02 §8.3: node objects pay 2% of CAPEX yearly; base CAPEX per 01 §5.4, §5.7. */
 export const NODE_FIXED_PLN_PER_YEAR = {
   junction: 3_000_000, // 2% × 150 mln
   border: 20_000_000, // 2% × 1.0 mld
 } as const;
+
+/** 02 §8.1: terrain cost multipliers; `object: null` = building impossible. */
+export const TERRAIN = {
+  plains: { line: 1.0, object: 1.0 as number | null },
+  forest: { line: 1.3, object: 1.3 as number | null },
+  highlands: { line: 1.5, object: 1.5 as number | null },
+  swamp: { line: 2.0, object: 2.0 as number | null },
+  urban: { line: 2.0, object: 2.0 as number | null },
+  mountains: { line: 2.5, object: 2.5 as number | null },
+  lake: { line: 2.5, object: null as number | null },
+  sea: { line: 3.5, object: null as number | null },
+} as const;
+export type TerrainId = keyof typeof TERRAIN;
+
+/** 01 §3.3 (0.13): topology hard limits. */
+export const MAX_LINES_PER_HEX_PER_TYPE = 9;
+export const LINE_SLOTS_PER_OBJECT = 6;
 
 /**
  * 06 §6.1: Weibull parameters per wind location class (@100 m), λ calibrated

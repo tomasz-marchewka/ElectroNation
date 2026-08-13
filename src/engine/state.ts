@@ -1,4 +1,11 @@
-import type { FarmTech, LineType, PlantTech, StorageTech, WindClass } from "./config";
+import type {
+  FarmTech,
+  LineType,
+  PlantTech,
+  StorageTech,
+  TerrainId,
+  WindClass,
+} from "./config";
 import type { DayType } from "./demand";
 import type { HexCoord } from "./network";
 import type { PrngState } from "./prng";
@@ -8,7 +15,7 @@ import type { MonthRegimes, RegimeId } from "./regimes";
 // functions. Serializability is load-bearing: saves, replay, golden tests and
 // (later) a server all rely on JSON.parse(JSON.stringify(s)) being lossless.
 
-export const STATE_SCHEMA_VERSION = 3;
+export const STATE_SCHEMA_VERSION = 4;
 
 export const TURNS_PER_DAY = 8;
 export const HOURS_PER_TURN = 3;
@@ -47,6 +54,11 @@ export interface CityState {
   /** Growth capacity anchors: segment cap = 16 × start (05 §6.2). */
   householdsStart: number;
   firmsStart: number;
+  /**
+   * Game day the city was connected on; growth evaluation starts with the
+   * first FULL month after connection (05 §6.5). 0 for start-connected.
+   */
+  connectedSinceDay: number;
   /** Day-weighted monthly accumulators feeding U (05 §6.1). */
   monthDemandMwh: number;
   monthDeliveredMwh: number;
@@ -108,6 +120,27 @@ export interface LineState {
   type: LineType;
   /** Hex chain between endpoint objects, inclusive (02 §2). */
   path: HexCoord[];
+  /** Construction progress (01 §2.6): +3 h per resolved turn; done at total. */
+  builtHours: number;
+  totalHours: number;
+}
+
+export function isLineBuilt(line: LineState): boolean {
+  return line.builtHours >= line.totalHours;
+}
+
+/** An object under construction — appears in the world when the countdown ends. */
+export type PendingObject =
+  | { kind: "plant"; plant: PlantState }
+  | { kind: "farm"; farm: FarmState }
+  | { kind: "storage"; storage: StorageState }
+  | { kind: "junction"; junction: JunctionState }
+  | { kind: "border"; border: BorderState };
+
+export interface ConstructionState {
+  id: string;
+  remainingDays: number;
+  pending: PendingObject;
 }
 
 /** Hourly weather truth for one day, generated fully at day init (06 §8.6.1). */
@@ -156,5 +189,12 @@ export interface GameState {
   junctions: JunctionState[];
   borders: BorderState[];
   lines: LineState[];
+  constructions: ConstructionState[];
+  /** Monotonic counter for engine-assigned object ids (replay-stable). */
+  nextObjectId: number;
+  /** Map data (doc 07 territory): terrain per hex key; missing = plains. */
+  terrain: Record<string, TerrainId>;
+  /** Wind location class per hex key; missing = open. */
+  windClasses: Record<string, WindClass>;
   dayTruth: DayTruth;
 }
