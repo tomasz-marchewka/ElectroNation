@@ -1,8 +1,7 @@
-// Weather truth per docs/06 §5–§7: temperature, wind speeds (Weibull per
-// location class with §6.4 seasonality shape) and production models for PV and
-// wind turbines. Stage-1 weather (01 §12): hourly draws are independent — the
-// regime generator and intraday variability (06 §8) land on top of this layer
-// without changing its interface.
+// Weather truth per docs/06 §5–§8: temperature model, regime-driven wind and
+// cloud with Ornstein–Uhlenbeck intraday variability (§8.5), and production
+// models for PV and wind turbines. Truth is generated fully at day init and
+// quantized at the generation boundary (§8.6.1).
 
 import { clearSkyGhiW, cloudAttenuation, solarAltitudeDeg } from "./astronomy";
 import {
@@ -12,16 +11,25 @@ import {
   TURBINE,
   WIND_CLASSES,
   WIND_MONTHLY_MEAN_MS,
+  type FarmTech,
   type WindClass,
 } from "./config";
 import { nextFloat01, type PrngState } from "./prng";
 import { quantize001, quantize01 } from "./quantize";
+import { REGIMES, type RegimeId } from "./regimes";
 
 /** 06 §6.4 shape, normalized to its own annual mean (see config note). */
 const WIND_SEASONAL_FACTOR = (() => {
   const mean = WIND_MONTHLY_MEAN_MS.reduce((a, b) => a + b, 0) / 12;
   return WIND_MONTHLY_MEAN_MS.map((v) => v / mean);
 })();
+
+/** §8.5: OU noise for wind — ±20–30% amplitude, ~2.5 h correlation time. */
+const WIND_OU = { rho: Math.exp(-1 / 2.5), sd: 0.13, floor: 0.5, ceil: 1.5 };
+/** Cloud jitter: short correlation (~30–60 min), hourly draws ~independent. */
+const CLOUD_JITTER = 0.24;
+/** Per-day lognormal factor: days within a regime differ (§8.4 pt 3). */
+const DAY_FACTOR = { sigma: 0.12, floor: 0.7, ceil: 1.4 };
 
 /** 06 §7.1: daily mean temperature for day of year n. */
 export function dailyMeanTempC(dayOfYear: number): number {
@@ -50,19 +58,10 @@ export function hourlyTempC(
   );
 }
 
-/** Weibull λ for a class in a month: class λ × normalized §6.4 seasonality. */
-export function windLambda(windClass: WindClass, month: number): number {
-  return WIND_CLASSES[windClass].lambda * (WIND_SEASONAL_FACTOR[month] ?? 1);
-}
-
-/** Inverse Weibull CDF: quantile q ∈ [0,1) → wind speed [m/s]. */
-export function windSpeedFromQuantile(
-  windClass: WindClass,
-  month: number,
-  quantile: number,
-): number {
-  const { k } = WIND_CLASSES[windClass];
-  return windLambda(windClass, month) * Math.pow(-Math.log(1 - quantile), 1 / k);
+/** Mean wind speed of a location class in a month [m/s] (λ·Γ(1+1/k) × §6.4 shape). */
+export function meanWindSpeedMs(windClass: WindClass, month: number): number {
+  const spec = WIND_CLASSES[windClass];
+  return spec.lambda * spec.meanFactor * (WIND_SEASONAL_FACTOR[month] ?? 1);
 }
 
 /** 06 §6.3: turbine power curve with storm cutout, as a fraction of P_nom. */
@@ -86,6 +85,18 @@ export function pvPowerMw(
   return capacityMw * (ghiW / 1000) * etaTemp * PV.etaSystem;
 }
 
+/** Production of one farm at one truth hour [MW]. */
+export function farmPowerMwAtHour(
+  farm: { tech: FarmTech; capacityMw: number; windClass: WindClass },
+  weather: { ghiW: number[]; tempC: number[]; windMs: Record<WindClass, number[]> },
+  hour: number,
+): number {
+  if (farm.tech === "wind") {
+    return farm.capacityMw * turbinePowerFraction(weather.windMs[farm.windClass][hour] ?? 0);
+  }
+  return pvPowerMw(farm.capacityMw, weather.ghiW[hour] ?? 0, weather.tempC[hour] ?? 15);
+}
+
 /** Hourly weather truth for one day (see state.ts WeatherTruth). */
 export interface WeatherDay {
   cloudCover: number[];
@@ -96,42 +107,57 @@ export interface WeatherDay {
 }
 
 /**
- * Generates one day of weather truth from the weather stream. The draw count
- * is fixed (1 + 24 + 24) regardless of state, so stream alignment never
- * depends on the map or on player actions.
- *
- * Placeholder structure until 06 §8 regimes land: a daily cloud base with
- * hourly jitter, and i.i.d. hourly Weibull wind quantiles ("static wind",
- * 06 §13 step 5).
+ * Generates one day of weather truth under a regime. The draw count is fixed
+ * (1 + 1 + 2 + 24 + 48) regardless of state, so stream alignment never depends
+ * on the map or on player actions.
  */
 export function generateWeatherDay(
   rng: PrngState,
   dayOfYear: number,
   month: number,
+  regimeId: RegimeId,
 ): { weather: WeatherDay; rng: PrngState } {
+  const regime = REGIMES[regimeId];
   let state = rng;
   const draw = () => {
     const r = nextFloat01(state);
     state = r.state;
     return r.value;
   };
+  /** Box–Muller; transcendentals are fine here — all outputs are quantized. */
+  const drawNormal = () => {
+    const u1 = Math.max(draw(), 1e-12);
+    const u2 = draw();
+    return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+  };
 
-  const cloudBase = draw();
+  const [cloudMin, cloudMax] = regime.cloud;
+  const cloudBase = cloudMin + draw() * (cloudMax - cloudMin);
+  const [tempMin, tempMax] = regime.tempOffsetC;
+  const tempOffset = tempMin + draw() * (tempMax - tempMin);
+  const dayFactor = Math.min(
+    DAY_FACTOR.ceil,
+    Math.max(DAY_FACTOR.floor, Math.exp(DAY_FACTOR.sigma * drawNormal())),
+  );
+
   const cloudCover: number[] = [];
   for (let hour = 0; hour < 24; hour++) {
-    const jitter = 0.35 * (draw() - 0.5);
+    const jitter = CLOUD_JITTER * (draw() - 0.5);
     cloudCover.push(quantize001(Math.min(1, Math.max(0, cloudBase + jitter))));
   }
 
+  // §8.5: one OU path shared by all classes — sites are perfectly correlated
+  // until per-hex weather returns (90 §6). Storm days gust harder (§8.2).
   const windMs: Record<WindClass, number[]> = { open: [], coastal: [], baltic: [] };
+  let ou = 0;
+  const ouSd = "gustSd" in regime ? regime.gustSd : WIND_OU.sd;
+  const innovationSd = ouSd * Math.sqrt(1 - WIND_OU.rho * WIND_OU.rho);
   for (let hour = 0; hour < 24; hour++) {
-    // One quantile shared by all classes: sites are perfectly correlated until
-    // regimes introduce structured weather.
-    const quantile = Math.min(draw(), 0.999999);
+    ou = hour === 0 ? ouSd * drawNormal() : WIND_OU.rho * ou + innovationSd * drawNormal();
+    const swing = Math.min(WIND_OU.ceil, Math.max(WIND_OU.floor, 1 + ou));
     for (const windClass of Object.keys(WIND_CLASSES) as WindClass[]) {
-      windMs[windClass].push(
-        quantize01(windSpeedFromQuantile(windClass, month, quantile)),
-      );
+      const base = meanWindSpeedMs(windClass, month) * regime.windMult * dayFactor;
+      windMs[windClass].push(quantize01(Math.max(0, base * swing)));
     }
   }
 
@@ -142,7 +168,9 @@ export function generateWeatherDay(
     ghiW.push(
       quantize01(clearSkyGhiW(altitude) * cloudAttenuation(cloudCover[hour] ?? 0)),
     );
-    tempC.push(quantize01(hourlyTempC(dayOfYear, hour, cloudCover[hour] ?? 0)));
+    tempC.push(
+      quantize01(hourlyTempC(dayOfYear, hour, cloudCover[hour] ?? 0) + tempOffset),
+    );
   }
 
   return { weather: { cloudCover, ghiW, tempC, windMs }, rng: state };

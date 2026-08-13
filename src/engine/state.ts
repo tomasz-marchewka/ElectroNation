@@ -2,12 +2,13 @@ import type { FarmTech, LineType, PlantTech, StorageTech, WindClass } from "./co
 import type { DayType } from "./demand";
 import type { HexCoord } from "./network";
 import type { PrngState } from "./prng";
+import type { MonthRegimes, RegimeId } from "./regimes";
 
 // The whole game state is plain JSON data — no classes, Maps, Dates or
 // functions. Serializability is load-bearing: saves, replay, golden tests and
 // (later) a server all rely on JSON.parse(JSON.stringify(s)) being lossless.
 
-export const STATE_SCHEMA_VERSION = 2;
+export const STATE_SCHEMA_VERSION = 3;
 
 export const TURNS_PER_DAY = 8;
 export const HOURS_PER_TURN = 3;
@@ -123,9 +124,16 @@ export interface DayTruth {
   dayType: DayType;
   /** 0..11 — month this representative day belongs to. */
   month: number;
+  /** Weather regime this day runs under (06 §8.4). */
+  regime: RegimeId;
   weather: WeatherTruth;
   /** True hourly demand [MW] per connected city (05 §4). */
   cityDemandMw: Record<string, number[]>;
+  /**
+   * The day's forecast-error factors (06 §8.6.2 pt 3): one process per
+   * quantity, scaled by σ(horizon). Demand is systemic across cities (02 §7).
+   */
+  forecastZ: { wind: number; pv: number; demand: number };
 }
 
 export interface GameState {
@@ -136,8 +144,11 @@ export interface GameState {
   moneyPln: number;
   rng: {
     weather: PrngState;
+    forecast: PrngState;
     cityGrowth: PrngState;
   };
+  /** Regimes of the current month (dominant + free-day) — 06 §8.4. */
+  monthRegimes: MonthRegimes;
   cities: CityState[];
   plants: PlantState[];
   farms: FarmState[];

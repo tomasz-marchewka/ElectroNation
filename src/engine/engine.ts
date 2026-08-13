@@ -24,8 +24,9 @@ import {
   type FlowSource,
   type NetworkNode,
 } from "./network";
-import { seedStream, type PrngState } from "./prng";
+import { nextFloat01, seedStream, type PrngState } from "./prng";
 import { quantize001 } from "./quantize";
+import { pickMonthRegimes, type MonthRegimes } from "./regimes";
 import { DEFAULT_SCENARIO, scenarioToStateFields, type Scenario } from "./scenario";
 import {
   DAYS_PER_MONTH,
@@ -38,7 +39,7 @@ import {
   type GameState,
   type StorageMode,
 } from "./state";
-import { generateWeatherDay, pvPowerMw, turbinePowerFraction } from "./weather";
+import { farmPowerMwAtHour, generateWeatherDay } from "./weather";
 
 export { CONFIG } from "./config";
 
@@ -58,15 +59,56 @@ export function dayOfYearForGameDay(dayIndex: number): number {
   return MONTH_DAY_OF_YEAR[monthForGameDay(dayIndex)] ?? 21;
 }
 
+interface DayGenResult {
+  truth: DayTruth;
+  weatherRng: PrngState;
+  forecastRng: PrngState;
+  monthRegimes: MonthRegimes;
+}
+
 function generateDayTruth(
   weatherRng: PrngState,
+  forecastRng: PrngState,
   dayIndex: number,
   cities: CityState[],
-): { truth: DayTruth; rng: PrngState } {
+  monthRegimes: MonthRegimes | null,
+): DayGenResult {
   const month = monthForGameDay(dayIndex);
   const dayType = dayTypeForGameDay(dayIndex);
   const dayOfYear = dayOfYearForGameDay(dayIndex);
-  const { weather, rng } = generateWeatherDay(weatherRng, dayOfYear, month);
+
+  // Month init (06 §8.4): dominant regime + possible free-day switch. Always
+  // exactly three uniforms, so the weather stream stays aligned.
+  let wRng = weatherRng;
+  let regimes = monthRegimes;
+  if (dayIndex % DAYS_PER_MONTH === 0 || regimes === null) {
+    const draws: number[] = [];
+    for (let i = 0; i < 3; i++) {
+      const r = nextFloat01(wRng);
+      wRng = r.state;
+      draws.push(r.value);
+    }
+    regimes = pickMonthRegimes(month, [draws[0] ?? 0, draws[1] ?? 0, draws[2] ?? 0]);
+  }
+  const regime =
+    dayIndex % DAYS_PER_MONTH === DAYS_PER_MONTH - 1 ? regimes.lastDay : regimes.dominant;
+
+  const generated = generateWeatherDay(wRng, dayOfYear, month, regime);
+
+  // One forecast-error factor per quantity per day (06 §8.6.2 pt 3), from a
+  // dedicated stream. Box–Muller output is quantized before it enters state.
+  let fRng = forecastRng;
+  const drawZ = (): number => {
+    const u1 = nextFloat01(fRng);
+    const u2 = nextFloat01(u1.state);
+    fRng = u2.state;
+    const z =
+      Math.sqrt(-2 * Math.log(Math.max(u1.value, 1e-12))) *
+      Math.cos(2 * Math.PI * u2.value);
+    return quantize001(Math.max(-3, Math.min(3, z)));
+  };
+  const forecastZ = { wind: drawZ(), pv: drawZ(), demand: drawZ() };
+
   const cityDemandMw: Record<string, number[]> = {};
   for (const city of cities) {
     if (!city.connected) continue;
@@ -75,22 +117,46 @@ function generateDayTruth(
       city.firms,
       dayType,
       month,
-      weather.tempC,
+      generated.weather.tempC,
     );
   }
-  return { truth: { dayOfYear, dayType, month, weather, cityDemandMw }, rng };
+  return {
+    truth: {
+      dayOfYear,
+      dayType,
+      month,
+      regime,
+      weather: generated.weather,
+      cityDemandMw,
+      forecastZ,
+    },
+    weatherRng: generated.rng,
+    forecastRng: fRng,
+    monthRegimes: regimes,
+  };
 }
 
 export function newGame(seed: number, scenario: Scenario = DEFAULT_SCENARIO): GameState {
   const fields = scenarioToStateFields(scenario);
-  const { truth, rng } = generateDayTruth(seedStream(seed, "weather"), 0, fields.cities);
+  const gen = generateDayTruth(
+    seedStream(seed, "weather"),
+    seedStream(seed, "forecast"),
+    0,
+    fields.cities,
+    null,
+  );
   return {
     schema: STATE_SCHEMA_VERSION,
     seed,
     calendar: { dayIndex: 0, turnIndex: 0 },
-    rng: { weather: rng, cityGrowth: seedStream(seed, "city-growth") },
+    rng: {
+      weather: gen.weatherRng,
+      forecast: gen.forecastRng,
+      cityGrowth: seedStream(seed, "city-growth"),
+    },
+    monthRegimes: gen.monthRegimes,
     ...fields,
-    dayTruth: truth,
+    dayTruth: gen.truth,
   };
 }
 
@@ -209,17 +275,7 @@ export function resolveTurn(state: GameState): GameState {
     }
     let sum = 0;
     for (let h = 0; h < HOURS_PER_TURN; h++) {
-      const hour = startHour + h;
-      if (farm.tech === "wind") {
-        const speed = truth.weather.windMs[farm.windClass][hour] ?? 0;
-        sum += farm.capacityMw * turbinePowerFraction(speed);
-      } else {
-        sum += pvPowerMw(
-          farm.capacityMw,
-          truth.weather.ghiW[hour] ?? 0,
-          truth.weather.tempC[hour] ?? 15,
-        );
-      }
+      sum += farmPowerMwAtHour(farm, truth.weather, startHour + h);
     }
     farmBlockMw.set(farm.id, sum / HOURS_PER_TURN);
   }
@@ -400,18 +456,21 @@ export function resolveTurn(state: GameState): GameState {
   }
 
   const nextDay = state.calendar.dayIndex + 1;
-  const { truth: nextTruth, rng: weatherRng } = generateDayTruth(
+  const gen = generateDayTruth(
     state.rng.weather,
+    state.rng.forecast,
     nextDay,
     nextCities,
+    state.monthRegimes,
   );
   return {
     ...state,
     calendar: { dayIndex: nextDay, turnIndex: 0 },
     moneyPln,
-    rng: { weather: weatherRng, cityGrowth: cityGrowthRng },
+    rng: { weather: gen.weatherRng, forecast: gen.forecastRng, cityGrowth: cityGrowthRng },
+    monthRegimes: gen.monthRegimes,
     cities: nextCities,
     storages,
-    dayTruth: nextTruth,
+    dayTruth: gen.truth,
   };
 }

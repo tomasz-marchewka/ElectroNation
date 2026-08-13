@@ -65,9 +65,10 @@ export const NODE_FIXED_PLN_PER_YEAR = {
  * (open ~24.6%, coastal ~29.6%, baltic ~45.5% under the §6.4 seasonal shape).
  */
 export const WIND_CLASSES = {
-  open: { k: 2.0, lambda: 7.3 },
-  coastal: { k: 2.1, lambda: 8.0 },
-  baltic: { k: 2.2, lambda: 10.2 },
+  // meanFactor = Γ(1 + 1/k): mean speed = λ · meanFactor.
+  open: { k: 2.0, lambda: 7.3, meanFactor: 0.8862 },
+  coastal: { k: 2.1, lambda: 7.65, meanFactor: 0.8857 },
+  baltic: { k: 2.2, lambda: 10.2, meanFactor: 0.8856 },
 } as const;
 export type WindClass = keyof typeof WIND_CLASSES;
 

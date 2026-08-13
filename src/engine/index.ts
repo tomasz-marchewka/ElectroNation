@@ -48,6 +48,14 @@ export {
   resolveTurn,
   type Action,
 } from "./engine";
+export {
+  cityDemandForecast,
+  farmProductionForecast,
+  sigmaDemand,
+  sigmaPv,
+  sigmaWind,
+  type ForecastPoint,
+} from "./forecast";
 export { evaluateMonthlyGrowth } from "./growth";
 export {
   buildSegments,
@@ -65,6 +73,16 @@ export {
 } from "./network";
 export { nextFloat01, nextUint32, seedStream, type PrngState } from "./prng";
 export { quantize001, quantize01 } from "./quantize";
+export {
+  MONTHLY_REGIME_WEIGHTS,
+  REGIMES,
+  REGIME_IDS,
+  REGIME_SWITCH_PROBABILITY,
+  pickMonthRegimes,
+  pickRegime,
+  type MonthRegimes,
+  type RegimeId,
+} from "./regimes";
 export { DEFAULT_SCENARIO, scenarioToStateFields, type Scenario } from "./scenario";
 export {
   DAYS_PER_MONTH,
@@ -89,11 +107,11 @@ export {
 } from "./state";
 export {
   dailyMeanTempC,
+  farmPowerMwAtHour,
   generateWeatherDay,
   hourlyTempC,
+  meanWindSpeedMs,
   pvPowerMw,
   turbinePowerFraction,
-  windLambda,
-  windSpeedFromQuantile,
   type WeatherDay,
 } from "./weather";
