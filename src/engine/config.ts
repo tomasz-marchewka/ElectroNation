@@ -15,7 +15,29 @@ export const CONFIG = {
   /** 01 §5.7: import is take-or-pay — charged on the setpoint. */
   importPricePlnPerMwh: 800,
   exportPricePlnPerMwh: 150,
+  /**
+   * 06 §8.6.3: past the first forecast day σ keeps growing with the horizon.
+   * The doc gives a 20–30% per-day band; 25% is the midpoint — retune in doc 03.
+   */
+  forecastSigmaGrowthPerDay: 0.25,
 } as const;
+
+/**
+ * 01 §2.4 + 06 §8.6.3: buyable forecast systems. Each level multiplies the σ
+ * coefficients, extends the horizon in whole game days and raises the hit rate
+ * of the monthly regime forecast (06 §8.4 pt 5). Prices are the doc's ~600 mln
+ * / ~1,2 mld; `regimeAccuracy` has no doc value yet — proposal to tune in
+ * doc 03. `basic` is the starting level, hence free.
+ */
+export const FORECAST_LEVELS = {
+  basic: { sigmaMultiplier: 1.0, horizonDays: 1, regimeAccuracy: 0.6, upgradeCostPln: 0 },
+  advanced: { sigmaMultiplier: 0.7, horizonDays: 3, regimeAccuracy: 0.8, upgradeCostPln: 600_000_000 },
+  ensemble: { sigmaMultiplier: 0.5, horizonDays: 7, regimeAccuracy: 0.95, upgradeCostPln: 1_200_000_000 },
+} as const;
+export type ForecastLevel = keyof typeof FORECAST_LEVELS;
+
+/** Upgrade order — a level may only be bought upwards (01 §2.4). */
+export const FORECAST_LEVEL_ORDER = ["basic", "advanced", "ensemble"] as const;
 
 /** 01 §2.1: representative-day weights (how many real days a played day stands for). */
 export const DAY_WEIGHTS = { working: 10.9, free: 8.7 } as const;
@@ -69,16 +91,59 @@ export type LineType = keyof typeof LINE_TYPES;
 
 export const KM_PER_HEX = 25; // 01 §3.1
 
-/** 01 §5.4, §5.7, §3.4: node objects and the city connection act. */
-export const JUNCTION_SPEC = { capexPln: 150_000_000, buildDays: 1, throughputMw: 250 } as const;
-export const BORDER_SPEC = { capexPln: 1_000_000_000, buildDays: 4, throughputMw: 500 } as const;
+/**
+ * 01 §3.3 (0.13): topology hard limits. `LINE_SLOTS_PER_OBJECT` is the BASE
+ * slot count of an object; junctions carry their own (expandable) limit in
+ * state, so `buildLine` reads the per-object value, not this constant.
+ */
+export const MAX_LINES_PER_HEX_PER_TYPE = 9;
+export const LINE_SLOTS_PER_OBJECT = 6;
+
+/**
+ * 01 §5.4, §5.7, §3.4: node objects and the city connection act. Module prices
+ * and times come straight from the docs' tables (see EXPANSION for why they are
+ * NOT discounted by the 85%/70% rule).
+ */
+export const JUNCTION_SPEC = {
+  capexPln: 150_000_000,
+  buildDays: 1,
+  throughputMw: 250,
+  lineSlots: LINE_SLOTS_PER_OBJECT,
+  moduleCapexPln: 90_000_000,
+  moduleBuildDays: 1,
+  moduleThroughputMw: 250,
+  moduleLineSlots: 2,
+  /** 6 modules → 1750 MW and 18 line slots. */
+  maxModules: 6,
+} as const;
+export const BORDER_SPEC = {
+  capexPln: 1_000_000_000,
+  buildDays: 4,
+  throughputMw: 500,
+  moduleCapexPln: 700_000_000,
+  moduleBuildDays: 2,
+  moduleThroughputMw: 500,
+} as const;
 export const CITY_CONNECTION_COST_PLN = 30_000_000;
 
-/** 02 §8.3: node objects pay 2% of CAPEX yearly; base CAPEX per 01 §5.4, §5.7. */
-export const NODE_FIXED_PLN_PER_YEAR = {
-  junction: 3_000_000, // 2% × 150 mln
-  border: 20_000_000, // 2% × 1.0 mld
-} as const;
+/**
+ * 02 §8.3: junctions and border points pay 2% of their CAPEX yearly. Capacity
+ * modules raise that CAPEX, so an expanded node also costs more to maintain;
+ * an unexpanded one keeps the doc's 3 mln / 20 mln zł per year.
+ */
+export const NODE_FIXED_CAPEX_SHARE_PER_YEAR = 0.02;
+
+/**
+ * 01 §7, 02 §8.4: expanding an existing object costs 85% of a new site's CAPEX
+ * and takes 70% of its build time. The rule applies to plants and farms; where
+ * a doc prints a module price directly (junction, border module, storage
+ * modules of 02 §8.2) that price is already modular and is used as printed.
+ * Doc 03/04 may revisit this split.
+ */
+export const EXPANSION = { capexShare: 0.85, timeShare: 0.7 } as const;
+
+/** 01 §7, 02 §8.4: hard site limit for dispatchable plants. */
+export const MAX_PLANT_BLOCKS_PER_HEX = 6;
 
 /** 02 §8.1: terrain cost multipliers; `object: null` = building impossible. */
 export const TERRAIN = {
@@ -92,10 +157,6 @@ export const TERRAIN = {
   sea: { line: 3.5, object: null as number | null },
 } as const;
 export type TerrainId = keyof typeof TERRAIN;
-
-/** 01 §3.3 (0.13): topology hard limits. */
-export const MAX_LINES_PER_HEX_PER_TYPE = 9;
-export const LINE_SLOTS_PER_OBJECT = 6;
 
 /**
  * 06 §6.1: Weibull parameters per wind location class (@100 m), λ calibrated

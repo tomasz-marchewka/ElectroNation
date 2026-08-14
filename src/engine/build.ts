@@ -1,27 +1,36 @@
 // Build actions per docs/01 §2.6, §3.3–§3.4, §7 and 02 §8: payment up front
 // (CAPEX × terrain multiplier), objects appear after a countdown in game days,
-// lines progress 3 h per resolved turn. Invalid actions are a no-op — the
-// action log stays replayable regardless of UI bugs.
+// lines progress 3 h per resolved turn. Expanding an existing object follows
+// the same path but targets an object id instead of a hex (01 §7 — expansion
+// never leaves the hex). Cancelling forfeits everything paid (01 §2.6).
+// Invalid actions are a no-op — the action log stays replayable regardless of
+// UI bugs.
 
 import {
   BATTERY,
   BORDER_SPEC,
   CITY_CONNECTION_COST_PLN,
+  EXPANSION,
   FARM_TECHS,
+  FORECAST_LEVELS,
+  FORECAST_LEVEL_ORDER,
   JUNCTION_SPEC,
   KM_PER_HEX,
   LINE_SLOTS_PER_OBJECT,
   LINE_TYPES,
   MAX_LINES_PER_HEX_PER_TYPE,
+  MAX_PLANT_BLOCKS_PER_HEX,
   PLANT_TECHS,
   PUMPED_BLOCK,
+  STORAGE_TECHS,
   TERRAIN,
   type FarmTech,
+  type ForecastLevel,
   type LineType,
   type PlantTech,
 } from "./config";
 import { hexKey, type HexCoord } from "./network";
-import type { GameState, PendingObject } from "./state";
+import { isLineBuilt, type GameState, type PendingObject } from "./state";
 
 // Flat-top axial neighbors (01 §3.1).
 const NEIGHBOR_OFFSETS = [
@@ -41,7 +50,8 @@ function terrainAt(state: GameState, hex: HexCoord) {
   return TERRAIN[state.terrain[hexKey(hex)] ?? "plains"];
 }
 
-function pendingHex(pending: PendingObject): HexCoord {
+/** Hex a queued item claims; expansions claim none — the object holds it already. */
+function pendingHex(pending: PendingObject): HexCoord | null {
   switch (pending.kind) {
     case "plant":
       return pending.plant.hex;
@@ -53,6 +63,8 @@ function pendingHex(pending: PendingObject): HexCoord {
       return pending.junction.hex;
     case "border":
       return pending.border.hex;
+    default:
+      return null;
   }
 }
 
@@ -69,7 +81,8 @@ function occupiedHexKeys(state: GameState): Set<string> {
   ];
   for (const object of all) keys.add(hexKey(object.hex));
   for (const construction of state.constructions) {
-    keys.add(hexKey(pendingHex(construction.pending)));
+    const hex = pendingHex(construction.pending);
+    if (hex) keys.add(hexKey(hex));
   }
   return keys;
 }
@@ -134,7 +147,7 @@ export function buildPlant(
     hex,
     (id) => ({
       kind: "plant",
-      plant: { id, name: id, hex, tech, capacityMw, setpointMw: 0 },
+      plant: { id, name: id, hex, tech, capacityMw, blocks: 1, setpointMw: 0 },
     }),
   );
 }
@@ -180,7 +193,7 @@ export function buildBattery(
   }
   const cost =
     powerMw * BATTERY.powerCapexPlnPerMw + capacityMwh * BATTERY.energyCapexPlnPerMwh;
-  return queueObject(state, cost, 1, hex, (id) => ({
+  return queueObject(state, cost, STORAGE_TECHS.battery.buildDays, hex, (id) => ({
     kind: "storage",
     storage: {
       id,
@@ -200,7 +213,7 @@ export function buildPumpedStorage(state: GameState, hex: HexCoord): GameState {
   // model (doc 07) — until then the elevation requirement is the gate.
   const terrainId = state.terrain[hexKey(hex)] ?? "plains";
   if (terrainId !== "mountains" && terrainId !== "highlands") return state;
-  return queueObject(state, PUMPED_BLOCK.capexPln, 5, hex, (id) => ({
+  return queueObject(state, PUMPED_BLOCK.capexPln, STORAGE_TECHS.pumped.buildDays, hex, (id) => ({
     kind: "storage",
     storage: {
       id,
@@ -218,7 +231,13 @@ export function buildPumpedStorage(state: GameState, hex: HexCoord): GameState {
 export function buildJunction(state: GameState, hex: HexCoord): GameState {
   return queueObject(state, JUNCTION_SPEC.capexPln, JUNCTION_SPEC.buildDays, hex, (id) => ({
     kind: "junction",
-    junction: { id, name: id, hex, throughputMw: JUNCTION_SPEC.throughputMw },
+    junction: {
+      id,
+      name: id,
+      hex,
+      throughputMw: JUNCTION_SPEC.throughputMw,
+      lineSlots: JUNCTION_SPEC.lineSlots,
+    },
   }));
 }
 
@@ -254,17 +273,20 @@ export function buildLine(
   if (!objectHexes.has(hexKey(first)) || !objectHexes.has(hexKey(last))) return state;
 
   // Topology limits (01 §3.3): ≤9 lines of one type per hex; a line through an
-  // object's hex consumes one of its 6 line slots.
+  // object's hex consumes one of its line slots — 6 for every object except a
+  // junction, which buys extra slots with capacity modules (01 §5.4).
   const linesThroughHex = (key: string, type?: LineType) =>
     state.lines.filter(
       (line) =>
         (type === undefined || line.type === type) &&
         line.path.some((h) => hexKey(h) === key),
     ).length;
+  const slotsAt = (key: string): number =>
+    state.junctions.find((j) => hexKey(j.hex) === key)?.lineSlots ?? LINE_SLOTS_PER_OBJECT;
   for (const hex of path) {
     const key = hexKey(hex);
     if (linesThroughHex(key, lineType) + 1 > MAX_LINES_PER_HEX_PER_TYPE) return state;
-    if (objectHexes.has(key) && linesThroughHex(key) + 1 > LINE_SLOTS_PER_OBJECT) {
+    if (objectHexes.has(key) && linesThroughHex(key) + 1 > slotsAt(key)) {
       return state;
     }
   }
@@ -295,6 +317,230 @@ export function buildLine(
       },
     ],
   };
+}
+
+// --- Expansion (01 §7, 02 §8.4) ---------------------------------------------
+// Expansions target an object id, not a hex: the site is already taken and the
+// object never grows beyond it. Every expansion is a separate queue entry with
+// its own countdown, and everything already queued counts toward the site
+// limit — otherwise the player could buy 6 blocks in one turn and pass the cap.
+
+/**
+ * 02 §8.4: 70% of a new site's build time, rounded UP to whole game days and
+ * never below one — the countdown ticks once per day, so a day is the floor.
+ */
+function expansionDays(buildDays: number): number {
+  return Math.max(1, Math.ceil(buildDays * EXPANSION.timeShare));
+}
+
+/** Sums a per-entry measure over the queue (e.g. MW already ordered for a farm). */
+function pendingSum(state: GameState, measure: (pending: PendingObject) => number): number {
+  let sum = 0;
+  for (const construction of state.constructions) sum += measure(construction.pending);
+  return sum;
+}
+
+/**
+ * Charges an expansion (module price × terrain of the object's own hex — the
+ * site is as awkward to build on as it was the first time) and queues it.
+ */
+function queueExpansion(
+  state: GameState,
+  baseCostPln: number,
+  buildDays: number,
+  hex: HexCoord,
+  pending: PendingObject,
+): GameState {
+  const multiplier = terrainAt(state, hex).object;
+  if (multiplier === null) return state;
+  const cost = Math.round(baseCostPln * multiplier);
+  if (state.moneyPln < cost) return state;
+  const id = `obj-${state.nextObjectId}`;
+  return {
+    ...state,
+    moneyPln: state.moneyPln - cost,
+    nextObjectId: state.nextObjectId + 1,
+    constructions: [...state.constructions, { id, remainingDays: buildDays, pending }],
+  };
+}
+
+/** Adds one block to a plant — 6 blocks per hex (01 §7), 85% CAPEX / 70% time. */
+export function expandPlant(
+  state: GameState,
+  plantId: string,
+  capacityMw: number,
+): GameState {
+  const plant = state.plants.find((p) => p.id === plantId);
+  if (!plant) return state;
+  const spec = PLANT_TECHS[plant.tech];
+  if (!Number.isFinite(capacityMw) || capacityMw <= 0 || capacityMw > spec.maxBlockMw) {
+    return state;
+  }
+  const queued = pendingSum(state, (p) =>
+    p.kind === "plantExpansion" && p.plantId === plantId ? 1 : 0,
+  );
+  if (plant.blocks + queued + 1 > MAX_PLANT_BLOCKS_PER_HEX) return state;
+  return queueExpansion(
+    state,
+    capacityMw * spec.capexPlnPerMw * EXPANSION.capexShare,
+    expansionDays(spec.buildDays),
+    plant.hex,
+    { kind: "plantExpansion", plantId, capacityMw },
+  );
+}
+
+/** Adds capacity to a farm, up to the hex limit (wind 300 / PV 200 MW — 02 §8.4). */
+export function expandFarm(
+  state: GameState,
+  farmId: string,
+  capacityMw: number,
+): GameState {
+  const farm = state.farms.find((f) => f.id === farmId);
+  if (!farm) return state;
+  const spec = FARM_TECHS[farm.tech];
+  if (!Number.isFinite(capacityMw) || capacityMw <= 0) return state;
+  const queued = pendingSum(state, (p) =>
+    p.kind === "farmExpansion" && p.farmId === farmId ? p.capacityMw : 0,
+  );
+  if (farm.capacityMw + queued + capacityMw > spec.maxMwPerHex) return state;
+  return queueExpansion(
+    state,
+    capacityMw * spec.capexPlnPerMw * EXPANSION.capexShare,
+    expansionDays(spec.buildDays),
+    farm.hex,
+    { kind: "farmExpansion", farmId, capacityMw },
+  );
+}
+
+/**
+ * Buys battery power and/or energy modules (02 §8.2). The doc's per-MW/per-MWh
+ * prices are already module prices, so the 85% expansion discount does NOT
+ * apply here — see EXPANSION in config.ts.
+ */
+export function expandBattery(
+  state: GameState,
+  storageId: string,
+  powerMw: number,
+  capacityMwh: number,
+): GameState {
+  const storage = state.storages.find((s) => s.id === storageId);
+  if (!storage || storage.tech !== "battery") return state;
+  if (!Number.isFinite(powerMw) || !Number.isFinite(capacityMwh)) return state;
+  if (powerMw < 0 || capacityMwh < 0 || powerMw + capacityMwh <= 0) return state;
+  const queuedPower = pendingSum(state, (p) =>
+    p.kind === "batteryExpansion" && p.storageId === storageId ? p.powerMw : 0,
+  );
+  const queuedCapacity = pendingSum(state, (p) =>
+    p.kind === "batteryExpansion" && p.storageId === storageId ? p.capacityMwh : 0,
+  );
+  if (storage.powerMw + queuedPower + powerMw > BATTERY.maxPowerMwPerHex) return state;
+  if (storage.capacityMwh + queuedCapacity + capacityMwh > BATTERY.maxCapacityMwhPerHex) {
+    return state;
+  }
+  return queueExpansion(
+    state,
+    powerMw * BATTERY.powerCapexPlnPerMw + capacityMwh * BATTERY.energyCapexPlnPerMwh,
+    STORAGE_TECHS.battery.buildDays,
+    storage.hex,
+    { kind: "batteryExpansion", storageId, powerMw, capacityMwh },
+  );
+}
+
+/** Blocks standing (and queued) on a pumped-storage site — 4 max (02 §8.2). */
+function pumpedBlocks(powerMw: number): number {
+  return Math.round(powerMw / PUMPED_BLOCK.powerMw);
+}
+
+/** Adds one 250 MW / 2 500 MWh block to a pumped storage, up to 4 (02 §8.2). */
+export function expandPumpedStorage(state: GameState, storageId: string): GameState {
+  const storage = state.storages.find((s) => s.id === storageId);
+  if (!storage || storage.tech !== "pumped") return state;
+  const queued = pendingSum(state, (p) =>
+    p.kind === "pumpedExpansion" && p.storageId === storageId ? 1 : 0,
+  );
+  if (pumpedBlocks(storage.powerMw) + queued + 1 > PUMPED_BLOCK.maxBlocks) return state;
+  return queueExpansion(
+    state,
+    PUMPED_BLOCK.capexPln,
+    STORAGE_TECHS.pumped.buildDays,
+    storage.hex,
+    { kind: "pumpedExpansion", storageId },
+  );
+}
+
+/** Modules bought on a junction so far, read off its line-slot count (01 §5.4). */
+function junctionModules(lineSlots: number): number {
+  return Math.round((lineSlots - JUNCTION_SPEC.lineSlots) / JUNCTION_SPEC.moduleLineSlots);
+}
+
+/** +250 MW throughput and +2 line slots per module, 6 modules max (01 §5.4). */
+export function expandJunction(state: GameState, junctionId: string): GameState {
+  const junction = state.junctions.find((j) => j.id === junctionId);
+  if (!junction) return state;
+  const queued = pendingSum(state, (p) =>
+    p.kind === "junctionExpansion" && p.junctionId === junctionId ? 1 : 0,
+  );
+  if (junctionModules(junction.lineSlots) + queued + 1 > JUNCTION_SPEC.maxModules) {
+    return state;
+  }
+  return queueExpansion(
+    state,
+    JUNCTION_SPEC.moduleCapexPln,
+    JUNCTION_SPEC.moduleBuildDays,
+    junction.hex,
+    { kind: "junctionExpansion", junctionId },
+  );
+}
+
+/** +500 MW of border capacity per module (01 §5.7); the doc sets no cap. */
+export function expandBorder(state: GameState, borderId: string): GameState {
+  const border = state.borders.find((b) => b.id === borderId);
+  if (!border) return state;
+  return queueExpansion(
+    state,
+    BORDER_SPEC.moduleCapexPln,
+    BORDER_SPEC.moduleBuildDays,
+    border.hex,
+    { kind: "borderExpansion", borderId },
+  );
+}
+
+// --- Cancelling (01 §2.6, §7) -----------------------------------------------
+// "Rozpoczętej budowy nie da się bezkosztowo porzucić": the queue entry
+// disappears and every zloty paid is gone. Finished objects and finished lines
+// are not demolished — out of scope for the simplified game.
+
+/** Drops a queued object or expansion; the money paid is forfeited (01 §2.6). */
+export function cancelConstruction(state: GameState, constructionId: string): GameState {
+  if (!state.constructions.some((c) => c.id === constructionId)) return state;
+  return {
+    ...state,
+    constructions: state.constructions.filter((c) => c.id !== constructionId),
+  };
+}
+
+/** Drops a line still under construction; a finished line cannot be removed. */
+export function cancelLine(state: GameState, lineId: string): GameState {
+  const line = state.lines.find((l) => l.id === lineId);
+  if (!line || isLineBuilt(line)) return state;
+  return { ...state, lines: state.lines.filter((l) => l.id !== lineId) };
+}
+
+// --- Forecast systems (01 §2.4, 06 §8.6.3) ----------------------------------
+
+/**
+ * Buys a forecast system. Levels go one way only — the player never sells the
+ * mesoscale model back. The purchase narrows every band from the next query on;
+ * the monthly regime forecast follows from the next month (06 §8.4 pt 5).
+ */
+export function buyForecastSystem(state: GameState, level: ForecastLevel): GameState {
+  const order = FORECAST_LEVEL_ORDER as readonly ForecastLevel[];
+  const current = order.indexOf(state.forecastLevel);
+  const target = order.indexOf(level);
+  if (target < 0 || target <= current) return state;
+  const cost = FORECAST_LEVELS[level].upgradeCostPln;
+  if (state.moneyPln < cost) return state;
+  return { ...state, moneyPln: state.moneyPln - cost, forecastLevel: level };
 }
 
 export function connectCity(state: GameState, cityId: string): GameState {

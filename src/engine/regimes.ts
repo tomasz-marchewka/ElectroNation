@@ -69,6 +69,45 @@ export function pickRegime(month: number, uniform: number): RegimeId {
   return REGIME_IDS[REGIME_IDS.length - 1] ?? "transitional";
 }
 
+/**
+ * Draws a regime from the month's distribution with one regime removed and the
+ * rest renormalized. Falls back to the excluded one when nothing else is
+ * possible in that month (never happens with the tables above).
+ */
+export function pickRegimeExcluding(
+  month: number,
+  excluded: RegimeId,
+  uniform: number,
+): RegimeId {
+  const weights = MONTHLY_REGIME_WEIGHTS[month] ?? MONTHLY_REGIME_WEIGHTS[0];
+  if (!weights) return excluded;
+  let total = 0;
+  for (const id of REGIME_IDS) if (id !== excluded) total += weights[id];
+  if (total <= 0) return excluded;
+  let threshold = uniform * total;
+  for (const id of REGIME_IDS) {
+    if (id === excluded) continue;
+    threshold -= weights[id];
+    if (threshold < 0) return id;
+  }
+  return excluded;
+}
+
+/**
+ * §8.4 pt 5: the monthly regime the player is shown. With probability
+ * `accuracy` it is the true dominant regime; otherwise another regime that the
+ * month allows. Always consumes exactly two uniforms.
+ */
+export function pickRegimeForecast(
+  month: number,
+  trueRegime: RegimeId,
+  accuracy: number,
+  uniforms: [number, number],
+): RegimeId {
+  if (uniforms[0] < accuracy) return trueRegime;
+  return pickRegimeExcluding(month, trueRegime, uniforms[1]);
+}
+
 export interface MonthRegimes {
   dominant: RegimeId;
   /** Regime of the month's free (3rd) day — usually equals `dominant`. */

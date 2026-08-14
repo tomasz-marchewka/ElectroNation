@@ -3,7 +3,7 @@
 // (02 §8.6) lands as a separate scenario file once doc 07-adjacent map data is
 // designed. City names are player-facing data, hence Polish.
 
-import { LINE_TYPES, type TerrainId, type WindClass } from "./config";
+import { JUNCTION_SPEC, LINE_TYPES, type TerrainId, type WindClass } from "./config";
 import type {
   BorderState,
   CityState,
@@ -15,13 +15,21 @@ import type {
   StorageState,
 } from "./state";
 
+/**
+ * Fields a scenario may leave out because they follow from the object itself:
+ * a scenario plant is one block unless it says otherwise, and a scenario
+ * junction has the base number of line slots.
+ */
+export type ScenarioPlant = Omit<PlantState, "blocks"> & { blocks?: number };
+export type ScenarioJunction = Omit<JunctionState, "lineSlots"> & { lineSlots?: number };
+
 export interface Scenario {
   startingMoneyPln: number;
   cities: CityState[];
-  plants: PlantState[];
+  plants: ScenarioPlant[];
   farms: FarmState[];
   storages: StorageState[];
-  junctions: JunctionState[];
+  junctions: ScenarioJunction[];
   borders: BorderState[];
   lines: LineState[];
   /** Terrain per hex key ("q,r"); missing hexes are plains. */
@@ -122,10 +130,13 @@ export function scenarioToStateFields(
     JSON.stringify({
       moneyPln: scenario.startingMoneyPln,
       cities: scenario.cities,
-      plants: scenario.plants,
+      plants: scenario.plants.map((plant) => ({ ...plant, blocks: plant.blocks ?? 1 })),
       farms: scenario.farms,
       storages: scenario.storages,
-      junctions: scenario.junctions,
+      junctions: scenario.junctions.map((junction) => ({
+        ...junction,
+        lineSlots: junction.lineSlots ?? JUNCTION_SPEC.lineSlots,
+      })),
       borders: scenario.borders,
       lines: scenario.lines,
       constructions: [],
