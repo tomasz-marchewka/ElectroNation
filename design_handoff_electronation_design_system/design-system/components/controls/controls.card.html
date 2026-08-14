@@ -1,0 +1,35 @@
+<!-- @dsCard group="Components" viewport="700x330" name="Controls — nastawy i akcje" subtitle="Suwak nastawy, tryb magazynu, pastylka OZE, akcja tury" -->
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<style>body{padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:18px 24px;align-items:start}</style>
+</head>
+<body>
+<div class="en-setpoint">
+  <div class="en-setpoint__head"><span>EW JARNOWO <small>węgiel</small></span><span>800 / 900</span></div>
+  <div class="en-setpoint__track"><div class="en-setpoint__fill" style="width:89%;background:var(--en-coal-ico)"></div><div class="en-setpoint__thumb" style="left:89%"></div></div>
+  <div class="en-setpoint__note">250 zł/MWh</div>
+</div>
+<div class="en-setpoint is-off">
+  <div class="en-setpoint__head"><span>OCGT ISKRA <small>szczyt</small></span><span class="is-muted">0 / 120</span></div>
+  <div class="en-setpoint__track"><div class="en-setpoint__thumb" style="left:0"></div></div>
+  <div class="en-setpoint__note">600 zł/MWh · zapas na szczyt</div>
+</div>
+<div class="en-segmented">
+  <button class="en-seg">ŁADUJ</button><button class="en-seg">STOP</button><button class="en-seg is-active">ODDAWAJ</button>
+</div>
+<div style="display:flex;gap:8px;align-items:center;font-family:var(--en-font-mono);font-size:var(--en-fs-base)">
+  <button class="en-pill">WŁ.</button><span class="is-info">~320 AUTO</span>
+  <button class="en-pill is-off">WYŁ.</button><span class="is-muted">0</span>
+</div>
+<div style="display:flex;gap:8px">
+  <button class="en-btn en-btn--block">ZATWIERDŹ TURĘ ▸</button>
+  <button class="en-btn en-btn--ghost">PRZEWIŃ ⏭</button>
+</div>
+<div style="display:flex;gap:8px">
+  <button class="en-btn en-btn--block" disabled>ZATWIERDŹ TURĘ ▸</button>
+</div>
+</body>
+</html>

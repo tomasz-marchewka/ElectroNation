@@ -64,9 +64,14 @@ in the same commit.
 
 Documents 02–05, 07–10 are planned but not yet written (list in 01 §12).
 
-`design_handoff_electronation_turn_ui/` is a **visual style reference only**
-(colors, typography, layout, map look). Functional scope comes from the docs —
-e.g. the frequency gauge shown there does not exist in the simplified game.
+`design_handoff_electronation_design_system/` is the **UI reference** for the
+game's front end: design tokens (source of truth for every visual value),
+reusable React components, copy rules, and the fully designed dispatcher screen
+(`design-system/ui_kits/dispatcher/`). Build the UI on it — but functional
+scope and ALL parameter values still come from the docs and engine `CONFIG`;
+numeric values embedded in the design files (e.g. biome cost multipliers, the
+mock balance math in the reference build) are illustrative and may be stale —
+when they disagree with docs, docs win.
 
 ## Decisions already made (do not re-litigate)
 

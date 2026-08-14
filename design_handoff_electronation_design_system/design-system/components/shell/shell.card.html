@@ -1,0 +1,43 @@
+<!-- @dsCard group="Components" viewport="700x300" name="Shell — pasek górny, panel, oś doby" subtitle="Rama ekranu dyspozytora: kontekst, panel 400 px, 8 tur doby" -->
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<style>body{padding:14px;display:flex;flex-direction:column;gap:14px}.wrap{border:1px solid var(--en-border)}</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="en-topbar">
+    <div class="en-topbar__mark">⬡ ELECTRONATION</div>
+    <div class="en-topbar__ctx">ROK 3 · LISTOPAD · DOBA ROBOCZA A <em>· reżim: niż atlantycki</em></div>
+    <div class="en-topbar__kpis">
+      <div class="en-kpi">BUDŻET <b>7,42 mld zł</b></div>
+      <div class="en-kpi">WYNIK DOBY <b class="is-ok">+46,9 mln</b></div>
+    </div>
+  </div>
+  <div class="en-turnbar">
+    <button class="en-turn is-past">NOC<br>00–03</button>
+    <button class="en-turn is-past">PRZEDŚWIT<br>03–06</button>
+    <button class="en-turn is-past">RANO<br>06–09</button>
+    <button class="en-turn is-past">PRZEDPOŁ.<br>09–12</button>
+    <button class="en-turn is-past">POŁUDNIE<br>12–15</button>
+    <button class="en-turn is-past">POPOŁ.<br>15–18</button>
+    <button class="en-turn is-current">SZCZYT WIECZ.<br>18–21 ◂ TURA 7</button>
+    <button class="en-turn">PÓŹNY WIECZ.<br>21–24</button>
+  </div>
+</div>
+<div class="wrap" style="display:flex;justify-content:flex-end">
+  <aside class="en-panel" style="width:340px">
+    <div class="en-panel__head">
+      <div class="en-panel__meta">TURA 7/8 · LISTOPAD · ×10,9 DNIA</div>
+      <div class="en-panel__title">SZCZYT WIECZORNY <span>18–21</span></div>
+    </div>
+    <section class="en-section"><div class="en-section__label">PROGNOZA · TURA 7</div>
+      <div class="en-statrow"><span class="en-statrow__label">POPYT</span><span class="en-statrow__track"><span class="en-statrow__band" style="left:88%;width:6%"></span></span><span class="en-statrow__value">1500 ±33</span></div>
+    </section>
+    <section class="en-section en-section--sunk"><div class="en-kv"><span>ZAPOTRZEBOWANIE</span><span>1500</span></div></section>
+  </aside>
+</div>
+</body>
+</html>

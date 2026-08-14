@@ -1,0 +1,34 @@
+<!-- @dsCard group="Dispatcher" viewport="1500x860" name="Ekran dyspozytora" subtitle="Mapa + panel nastaw, panel heksa, zatwierdzenie tury i raport — klikalne" -->
+<!-- @startingPoint section="Dispatcher" subtitle="Pełny ekran dyspozytora (ciemny/jasny)" viewport="1500x860" -->
+<!DOCTYPE html>
+<html lang="pl" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>ElectroNation — ekran dyspozytora</title>
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7/babel.min.js" crossorigin></script>
+<style>
+  body { margin: 0; }
+  #root { width: 1500px; }
+  .en-themeswitch { position: fixed; right: 10px; bottom: 10px; display: flex; gap: 4px; z-index: 9; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div class="en-themeswitch">
+  <button class="en-seg is-active" data-theme-btn="dark">CIEMNY</button>
+  <button class="en-seg" data-theme-btn="light">JASNY</button>
+</div>
+<script>
+  document.querySelectorAll("[data-theme-btn]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      document.documentElement.dataset.theme = b.dataset.themeBtn;
+      document.querySelectorAll("[data-theme-btn]").forEach(function (o) { o.classList.toggle("is-active", o === b); });
+    });
+  });
+</script>
+<script type="text/babel" src="DispatcherScreen.jsx"></script>
+</body>
+</html>

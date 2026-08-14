@@ -1,0 +1,11 @@
+/* ═══ ElectroNation — ruch ═══
+   DECYZJA: interfejs jest statyczny. Nie ma animacji przepływu ani pulsowania —
+   stan czyta się z koloru i liczby, nie z ruchu. Zostają wyłącznie natychmiastowe
+   przejścia stanów kontrolek (hover/press), bo bez nich klikanie wydaje się martwe.
+   (Animowany przepływ energii i puls miasta w niedoborze wracają, kiedy zapadnie
+   decyzja o widowiskowej fazie rozstrzygnięcia — 01 §2.3.) */
+
+:root {
+  --en-ease-ui: cubic-bezier(0.2, 0, 0.3, 1);
+  --en-dur-ui: 120ms;
+}
