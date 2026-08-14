@@ -1,0 +1,150 @@
+/* ═══ ElectroNation — komponenty ═══
+   Te same klasy używają komponenty React i karty specyfikacji. */
+
+/* ── pasek górny ───────────────────────────────────────── */
+.en-topbar {
+  display: flex; align-items: center; gap: var(--en-space-11);
+  height: var(--en-header-h); padding: 0 var(--en-space-9);
+  background: var(--en-bg-header);
+  border-bottom: var(--en-border-w) solid var(--en-border);
+  font-family: var(--en-font-mono); font-size: var(--en-fs-md);
+}
+.en-topbar__mark { display: flex; align-items: center; gap: var(--en-space-4); font-weight: var(--en-fw-bold); letter-spacing: var(--en-ls-wordmark); color: var(--en-text); }
+.en-topbar__ctx { color: var(--en-text-3); }
+.en-topbar__ctx em { font-style: normal; color: var(--en-info); }
+.en-topbar__kpis { margin-left: auto; display: flex; gap: var(--en-space-10); }
+.en-kpi { color: var(--en-text-3); }
+.en-kpi b { color: var(--en-text); font-weight: var(--en-fw-bold); }
+.en-kpi b.is-ok { color: var(--en-ok); }
+.en-kpi b.is-warn { color: var(--en-warn-text); }
+.en-kpi b.is-danger { color: var(--en-danger); }
+
+/* ── panel dyspozytora ─────────────────────────────────── */
+.en-panel {
+  width: var(--en-panel-w); flex: none; display: flex; flex-direction: column;
+  background: var(--en-bg-panel);
+  border-left: var(--en-border-w) solid var(--en-border);
+}
+.en-panel__head { padding: var(--en-space-7) var(--en-space-8); border-bottom: var(--en-border-w) solid var(--en-border); background: var(--en-panel-head-bg, transparent); }
+.en-panel__meta { font-family: var(--en-font-mono); font-size: var(--en-fs-sm); color: var(--en-text-3); }
+.en-panel__title { font-family: var(--en-font-mono); font-size: var(--en-fs-display); font-weight: var(--en-fw-bold); color: var(--en-text); margin-top: 2px; }
+.en-panel__title span { color: var(--en-text-3); font-size: var(--en-fs-lg); }
+
+.en-section { padding: var(--en-space-6) var(--en-space-8); border-bottom: var(--en-border-w) solid var(--en-border); }
+.en-section--grow { flex: 1; }
+.en-section--sunk { background: var(--en-bg-panel-sunk); border-bottom: 0; }
+.en-section__label {
+  font-family: var(--en-font-mono); font-size: var(--en-fs-label); letter-spacing: var(--en-ls-label);
+  color: var(--en-label-accent, var(--en-text-3)); margin-bottom: var(--en-space-4);
+}
+.en-section__label + .en-section__label { margin-top: var(--en-space-6); }
+
+/* ── wiersz danych z pasmem (prognoza) ─────────────────── */
+.en-statrow { display: flex; align-items: center; gap: var(--en-space-4); font-family: var(--en-font-mono); font-size: var(--en-fs-base); }
+.en-statrow__label { width: 52px; color: var(--en-text-2); }
+.en-statrow__track { flex: 1; height: var(--en-track-h); background: var(--en-bg-track); position: relative; }
+.en-statrow__band { position: absolute; top: 0; bottom: 0; background: var(--en-text-2); }
+.en-statrow__value { width: 88px; text-align: right; color: var(--en-text); }
+.en-stack { display: flex; flex-direction: column; gap: var(--en-space-3); }
+.en-stack--tight { gap: var(--en-space-2); }
+
+/* ── wiersz „bilans przy obecnych nastawach" ───────────── */
+.en-kv { display: flex; justify-content: space-between; font-family: var(--en-font-mono); font-size: var(--en-fs-sm); }
+.en-kv > span:first-child { color: var(--en-text-2); }
+
+/* ── nastawa jednostki ─────────────────────────────────── */
+.en-setpoint { font-family: var(--en-font-mono); }
+.en-setpoint__head { display: flex; justify-content: space-between; font-size: var(--en-fs-base); color: var(--en-text); }
+.en-setpoint__head small { color: var(--en-text-3); font-size: inherit; }
+.en-setpoint__track { height: var(--en-track-h-sm); background: var(--en-bg-track); margin-top: var(--en-space-2); position: relative; }
+.en-setpoint__fill { height: 100%; }
+.en-setpoint__thumb { position: absolute; top: -3px; width: var(--en-thumb-w); height: var(--en-thumb-h); background: var(--en-text); }
+.en-setpoint__note { font-size: var(--en-fs-caption); color: var(--en-text-4); margin-top: 2px; }
+.en-setpoint.is-off .en-setpoint__head { color: var(--en-text-4); }
+.en-setpoint.is-off .en-setpoint__thumb { background: var(--en-text-4); }
+
+/* ── segmentowany wybór trybu (magazyn) ────────────────── */
+.en-segmented { display: flex; gap: var(--en-space-2); font-family: var(--en-font-mono); font-size: var(--en-fs-micro); }
+.en-seg {
+  padding: var(--en-space-1) var(--en-space-4); border: var(--en-border-w) solid var(--en-border);
+  color: var(--en-text-4); background: transparent; cursor: pointer;
+  font: inherit; letter-spacing: 0.5px; transition: color var(--en-dur-ui) var(--en-ease-ui), border-color var(--en-dur-ui) var(--en-ease-ui);
+}
+.en-seg:hover { color: var(--en-text-2); border-color: var(--en-border-strong); }
+.en-seg[aria-pressed="true"], .en-seg.is-active { background: var(--en-bg-tint-info); border-color: var(--en-ok); color: var(--en-ok); }
+
+/* ── pastylka włącz/wyłącz (farma OZE) ─────────────────── */
+.en-pill {
+  font-family: var(--en-font-mono); font-size: var(--en-fs-micro);
+  padding: 2px var(--en-space-4); border: var(--en-border-w) solid var(--en-info);
+  background: var(--en-bg-tint-info); color: var(--en-info); cursor: pointer;
+}
+.en-pill.is-off { border-color: var(--en-border); background: transparent; color: var(--en-text-4); }
+
+/* ── przyciski ─────────────────────────────────────────── */
+.en-btn {
+  font-family: var(--en-font-mono); font-size: var(--en-fs-lg); font-weight: var(--en-fw-bold);
+  letter-spacing: var(--en-ls-action); text-align: center;
+  padding: var(--en-space-6) 0; border: 0; cursor: pointer;
+  background: var(--en-action); color: var(--en-action-fg);
+  transition: filter var(--en-dur-ui) var(--en-ease-ui);
+}
+.en-btn:hover { filter: brightness(1.08); }
+.en-btn:active { filter: brightness(0.92); }
+.en-btn:disabled { background: var(--en-border); color: var(--en-text-4); cursor: not-allowed; filter: none; }
+.en-btn--ghost {
+  background: transparent; color: var(--en-text-3);
+  border: var(--en-border-w) solid var(--en-border);
+  font-size: var(--en-fs-label); font-weight: var(--en-fw-regular); letter-spacing: 0;
+  padding: var(--en-space-6);
+}
+.en-btn--ghost:hover { color: var(--en-text); border-color: var(--en-border-strong); filter: none; }
+.en-btn--block { display: block; width: 100%; }
+
+/* ── podsumowanie bilansu ──────────────────────────────── */
+.en-summary { font-family: var(--en-font-mono); font-size: var(--en-fs-base); }
+.en-summary__row { display: flex; justify-content: space-between; color: var(--en-text-2); }
+.en-summary__row + .en-summary__row { margin-top: var(--en-space-1); }
+.en-summary__row b { color: var(--en-text); font-weight: var(--en-fw-regular); }
+.en-summary__total {
+  display: flex; justify-content: space-between; margin-top: var(--en-space-3);
+  padding-top: var(--en-space-3); border-top: var(--en-border-w) solid var(--en-border);
+  font-weight: var(--en-fw-bold);
+}
+.en-summary__note { font-size: var(--en-fs-caption); margin-top: var(--en-space-1); }
+.is-ok { color: var(--en-ok); }
+.is-warn { color: var(--en-warn-text); }
+.is-danger { color: var(--en-danger); }
+.is-info { color: var(--en-info); }
+.is-muted { color: var(--en-text-4); }
+
+/* ── oś doby (8 tur po 3 h) ────────────────────────────── */
+.en-turnbar { display: flex; background: var(--en-bg-header); border-top: var(--en-border-w) solid var(--en-border); font-family: var(--en-font-mono); }
+.en-turn {
+  flex: 1; padding: var(--en-turnbar-cell-py) 0; text-align: center;
+  font-size: var(--en-fs-micro); color: var(--en-text-4);
+  border-right: var(--en-border-w) solid var(--en-border-subtle);
+  background: transparent; cursor: pointer;
+}
+.en-turn:last-child { border-right: 0; }
+.en-turn:hover { color: var(--en-text-2); }
+.en-turn.is-current { background: var(--en-action); color: var(--en-action-fg); font-weight: var(--en-fw-bold); }
+.en-turn.is-past { color: var(--en-text-3); }
+
+/* ── pasek raportu po zatwierdzeniu tury ───────────────── */
+.en-report { display: flex; background: var(--en-bg-report); border-top: var(--en-border-w-accent) solid var(--en-action); font-family: var(--en-font-mono); }
+.en-report__label { padding: var(--en-space-6) var(--en-space-8); font-size: var(--en-fs-caption); letter-spacing: 1px; color: var(--en-warn-text); border-right: var(--en-border-w) solid var(--en-border); line-height: 1.5; }
+.en-report__tiles { flex: 1; display: flex; }
+.en-tile { flex: 1; padding: var(--en-space-5) var(--en-space-7); border-right: var(--en-border-w) solid var(--en-border-subtle); }
+.en-tile:last-child { border-right: 0; }
+.en-tile--ok { background: var(--en-bg-tint-ok); }
+.en-tile__label { font-size: var(--en-fs-micro); color: var(--en-text-4); }
+.en-tile__value { font-size: var(--en-fs-lg); font-weight: var(--en-fw-bold); color: var(--en-text); }
+.en-tile__note { font-size: var(--en-fs-micro); color: var(--en-text-4); }
+
+/* ── legenda pod wykresem doby ─────────────────────────── */
+.en-chartlegend { display: flex; gap: var(--en-space-8); padding: var(--en-space-3) var(--en-space-7); background: var(--en-bg-chart); border-top: var(--en-border-w) solid var(--en-border-subtle); font-family: var(--en-font-mono); font-size: var(--en-fs-caption); color: var(--en-text-4); }
+.en-swatch { display: inline-block; width: 8px; height: 8px; }
+
+/* ── kropka stanu ──────────────────────────────────────── */
+.en-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }

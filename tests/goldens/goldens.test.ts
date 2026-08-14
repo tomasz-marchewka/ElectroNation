@@ -47,11 +47,19 @@ describe("golden scenarios", () => {
       }
       const phase = TURN_PHASES[turn % TURNS_PER_DAY];
       state = resolveTurn(state);
+      const report = state.lastTurnReport;
+      if (report === null) throw new Error("resolveTurn must record lastTurnReport");
       perTurn.push({
         turn,
         phase,
         day: state.calendar.dayIndex,
         moneyPln: state.moneyPln,
+        demandMw: report.totals.demandMw,
+        deliveredMw: report.totals.deliveredMw,
+        ensMw: report.totals.ensMw,
+        lossesMw: report.totals.lossesMw,
+        dumpMw: report.totals.dumpMw,
+        netPln: report.finance.netPln,
       });
     }
     const report = {

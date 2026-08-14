@@ -1,14 +1,26 @@
+import type {
+  FarmTech,
+  LineType,
+  PlantTech,
+  StorageTech,
+  TerrainId,
+  WindClass,
+} from "./config";
+import type { DayType } from "./demand";
+import type { HexCoord } from "./network";
 import type { PrngState } from "./prng";
+import type { MonthRegimes, RegimeId } from "./regimes";
 
 // The whole game state is plain JSON data — no classes, Maps, Dates or
 // functions. Serializability is load-bearing: saves, replay, golden tests and
 // (later) a server all rely on JSON.parse(JSON.stringify(s)) being lossless.
 
-export const STATE_SCHEMA_VERSION = 1;
+export const STATE_SCHEMA_VERSION = 5;
 
 export const TURNS_PER_DAY = 8;
 export const HOURS_PER_TURN = 3;
-export const DAYS_PER_YEAR = 36; // 3 representative days × 12 months (doc 01)
+export const DAYS_PER_MONTH = 3; // working A, working B, free (doc 01 §2.1)
+export const DAYS_PER_YEAR = 36;
 
 /** doc 01 v0.12: 8 turns × 3 h, named after phases of the day. */
 export const TURN_PHASES = [
@@ -30,14 +42,248 @@ export interface Calendar {
   turnIndex: number;
 }
 
-/** Hourly weather truth for one day, generated fully at day init (doc 06 §8.6.1). */
+export interface CityState {
+  id: string;
+  name: string;
+  hex: HexCoord;
+  /** 01 §3.4: unconnected cities exist on the map but are not customers yet. */
+  connected: boolean;
+  /** 05 §2: the two state variables — everything else about size is derived. */
+  households: number;
+  firms: number;
+  /** Growth capacity anchors: segment cap = 16 × start (05 §6.2). */
+  householdsStart: number;
+  firmsStart: number;
+  /**
+   * Game day the city was connected on; growth evaluation starts with the
+   * first FULL month after connection (05 §6.5). 0 for start-connected.
+   */
+  connectedSinceDay: number;
+  /** Day-weighted monthly accumulators feeding U (05 §6.1). */
+  monthDemandMwh: number;
+  monthDeliveredMwh: number;
+}
+
+export interface PlantState {
+  id: string;
+  name: string;
+  hex: HexCoord;
+  tech: PlantTech;
+  capacityMw: number;
+  /** Player dispatch [MW], full 0–100% range each turn (01 §5.1). */
+  setpointMw: number;
+}
+
+export interface FarmState {
+  id: string;
+  name: string;
+  hex: HexCoord;
+  tech: FarmTech;
+  capacityMw: number;
+  /** 01 §4.1: whole-farm on/off is the only manual RES control. */
+  enabled: boolean;
+  /** Wind location class of the farm's hex; unused for PV. */
+  windClass: WindClass;
+}
+
+export type StorageMode = "idle" | "charge" | "discharge";
+
+export interface StorageState {
+  id: string;
+  name: string;
+  hex: HexCoord;
+  tech: StorageTech;
+  powerMw: number;
+  capacityMwh: number;
+  socMwh: number;
+  setpoint: { mode: StorageMode; mw: number };
+}
+
+export interface JunctionState {
+  id: string;
+  name: string;
+  hex: HexCoord;
+  throughputMw: number;
+}
+
+export interface BorderState {
+  id: string;
+  name: string;
+  hex: HexCoord;
+  throughputMw: number;
+  importSetpointMw: number;
+  exportSetpointMw: number;
+}
+
+export interface LineState {
+  id: string;
+  type: LineType;
+  /** Hex chain between endpoint objects, inclusive (02 §2). */
+  path: HexCoord[];
+  /** Construction progress (01 §2.6): +3 h per resolved turn; done at total. */
+  builtHours: number;
+  totalHours: number;
+}
+
+export function isLineBuilt(line: LineState): boolean {
+  return line.builtHours >= line.totalHours;
+}
+
+/** An object under construction — appears in the world when the countdown ends. */
+export type PendingObject =
+  | { kind: "plant"; plant: PlantState }
+  | { kind: "farm"; farm: FarmState }
+  | { kind: "storage"; storage: StorageState }
+  | { kind: "junction"; junction: JunctionState }
+  | { kind: "border"; border: BorderState };
+
+export interface ConstructionState {
+  id: string;
+  remainingDays: number;
+  pending: PendingObject;
+}
+
+/** Hourly weather truth for one day, generated fully at day init (06 §8.6.1). */
+export interface WeatherTruth {
+  cloudCover: number[];
+  ghiW: number[];
+  tempC: number[];
+  windMs: Record<WindClass, number[]>;
+}
+
 export interface DayTruth {
   /** Astronomical day of year (1..365) this game day represents. */
   dayOfYear: number;
-  /** 24 hourly cloud-cover values [0,1] — placeholder until doc 06 §8 regimes land. */
-  cloudCover: number[];
-  /** 24 hourly GHI values [W/m²], cloud-attenuated, quantized. */
-  ghiW: number[];
+  dayType: DayType;
+  /** 0..11 — month this representative day belongs to. */
+  month: number;
+  /** Weather regime this day runs under (06 §8.4). */
+  regime: RegimeId;
+  weather: WeatherTruth;
+  /** True hourly demand [MW] per connected city (05 §4). */
+  cityDemandMw: Record<string, number[]>;
+  /**
+   * The day's forecast-error factors (06 §8.6.2 pt 3): one process per
+   * quantity, scaled by σ(horizon). Demand is systemic across cities (02 §7).
+   */
+  forecastZ: { wind: number; pv: number; demand: number };
+}
+
+// --- Last-turn report -------------------------------------------------------
+// The RAPORT panel of the continuous view (01 §2.3, §8) and the map's load
+// coloring read this, so it lives inside GameState: a loaded save must show
+// the last resolution exactly like the live session did. All MW values are
+// block averages of the resolved turn; all PLN values are day-weight scaled.
+
+export interface TurnCityReport {
+  cityId: string;
+  demandMw: number;
+  deliveredMw: number;
+  /** Energy not served, as average block power (01 §4.5). */
+  ensMw: number;
+}
+
+export type SourceKind = "plant" | "farm" | "storage" | "import";
+
+export interface TurnSourceReport {
+  /** Object id; for imports the border point's id. */
+  sourceId: string;
+  kind: SourceKind;
+  /** Power offered to the flow: setpoint, weather production or discharge cap. */
+  offeredMw: number;
+  /** Power actually drawn by the flow (losses included at the sending end). */
+  usedMw: number;
+}
+
+export interface TurnStorageReport {
+  storageId: string;
+  mode: StorageMode;
+  dischargedMw: number;
+  chargedMw: number;
+  socMwhAfter: number;
+}
+
+export interface TurnBorderReport {
+  borderId: string;
+  /** Import is take-or-pay (01 §4.1): paid from the setpoint, not from use. */
+  importSetpointMw: number;
+  importUsedMw: number;
+  exportSetpointMw: number;
+  exportDeliveredMw: number;
+}
+
+export interface TurnSegmentReport {
+  segmentId: string;
+  lineId: string;
+  fromNodeId: string;
+  toNodeId: string;
+  /** Path indices within the line's hex chain — for map load coloring. */
+  fromIndex: number;
+  toIndex: number;
+  /** Flow at the sending end of the segment. */
+  usedMw: number;
+  capacityMw: number;
+}
+
+/** Throughput usage of a capped node — junction or border point (01 §4.3). */
+export interface TurnNodeReport {
+  nodeId: string;
+  usedMw: number;
+  throughputMw: number;
+}
+
+/** Block-average forecast shown before the reveal vs the revealed truth. */
+export interface ForecastComparison {
+  forecastMw: number;
+  actualMw: number;
+}
+
+export interface TurnFinanceReport {
+  /** Components rounded per entry; may differ from netPln by a few PLN. */
+  revenueEnergyPln: number;
+  revenueExportPln: number;
+  fuelCostPln: number;
+  importCostPln: number;
+  ensPenaltyPln: number;
+  dumpPenaltyPln: number;
+  /** Fixed O&M hits at day end only (01 §6); 0 mid-day. */
+  fixedCostPln: number;
+  /** Exact money delta this resolution applied to the budget. */
+  netPln: number;
+}
+
+export interface TurnReport {
+  /** Calendar position of the RESOLVED turn (the state is already advanced). */
+  dayIndex: number;
+  turnIndex: number;
+  phase: TurnPhase;
+  dayType: DayType;
+  month: number;
+  regime: RegimeId;
+  dayWeight: number;
+  totals: {
+    demandMw: number;
+    deliveredMw: number;
+    ensMw: number;
+    lossesMw: number;
+    /** Dispatchable surplus curtailed at the source — penalized (01 §4.1). */
+    dumpMw: number;
+    /** RES surplus curtailed — free (01 §4.1). */
+    resCurtailedMw: number;
+  };
+  /** The turn's bet against the forecast (01 §2.3), per quantity. */
+  forecastMiss: {
+    demand: ForecastComparison;
+    wind: ForecastComparison;
+    pv: ForecastComparison;
+  };
+  cities: TurnCityReport[];
+  sources: TurnSourceReport[];
+  storages: TurnStorageReport[];
+  borders: TurnBorderReport[];
+  segments: TurnSegmentReport[];
+  nodes: TurnNodeReport[];
+  finance: TurnFinanceReport;
 }
 
 export interface GameState {
@@ -48,6 +294,26 @@ export interface GameState {
   moneyPln: number;
   rng: {
     weather: PrngState;
+    forecast: PrngState;
+    cityGrowth: PrngState;
   };
+  /** Regimes of the current month (dominant + free-day) — 06 §8.4. */
+  monthRegimes: MonthRegimes;
+  cities: CityState[];
+  plants: PlantState[];
+  farms: FarmState[];
+  storages: StorageState[];
+  junctions: JunctionState[];
+  borders: BorderState[];
+  lines: LineState[];
+  constructions: ConstructionState[];
+  /** Monotonic counter for engine-assigned object ids (replay-stable). */
+  nextObjectId: number;
+  /** Map data (doc 07 territory): terrain per hex key; missing = plains. */
+  terrain: Record<string, TerrainId>;
+  /** Wind location class per hex key; missing = open. */
+  windClasses: Record<string, WindClass>;
   dayTruth: DayTruth;
+  /** Report of the last resolved turn; null until the first resolution. */
+  lastTurnReport: TurnReport | null;
 }

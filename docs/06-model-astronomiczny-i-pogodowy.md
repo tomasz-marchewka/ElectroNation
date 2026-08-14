@@ -1,11 +1,18 @@
 # ElectroNation — Model astronomiczny, klimatyczny i pogodowy
 
-**Wersja:** 0.3
-**Data:** 2026-08-12
+**Wersja:** 0.4
+**Data:** 2026-08-13
 **Status:** **obowiązujący** — źródłowy model pogody, produkcji OZE (PV, wiatr) i błędu
 prognozy dla uproszczonej wersji gry (01 v0.8, §2.4 i §5.2). Uproszczenie dotyczy silnika
 przepływu energii w sieci (01 §4) i nie zmienia niczego w tym modelu. Elementy „na przyszłość"
 wymienione w §10 pozostają odłożone ([90-pomysly-na-przyszlosc.md §2](90-pomysly-na-przyszlosc.md)).
+
+**Zmiany 0.3 → 0.4 (kalibracja przy implementacji silnika):** parametry λ Weibulla w §6.1
+skorygowane (7,3 / 8,0 / 10,2 zamiast 6,6 / 7,7 / 10,2) — pierwotne wartości nie spełniały
+własnych testów akceptacyjnych §12.7–8 (λ=6,6 daje CF ~19%, a nie deklarowane ~24%).
+Nowe λ dają CF: ląd otwarty ~24,6%, wybrzeże ~29,6%, Bałtyk ~45,5% — w pasmach §12.
+Tabela §6.4 (sezonowość miesięczna) jest **kształtem** — w implementacji normalizuje się ją
+do własnej średniej rocznej i skaluje na λ klasy lokalizacji.
 
 **Zmiany 0.2 → 0.3:** poziomy systemów prognostycznych wydłużają też **horyzont prognozy** — bazowo bieżąca doba (24 h), zaawansowany 3 doby, ansamblowy 7 dób; σ rośnie dalej z każdą kolejną dobą (§8.6.3; decyzja 01 v0.13).
 **Zmiany 0.1 → 0.2:** dodano **§8.6 — model prognozy i jej błędu** w związku z przejściem na rozgrywkę turową (dok. 01 §2.2–2.5). Kluczowa konsekwencja architektoniczna: prawdziwy przebieg pogody musi być generowany **w całości przy inicjalizacji doby**, a prognoza jest jego zaszumionym widokiem — nie odwrotnie.
@@ -250,9 +257,12 @@ v_średnie = λ · Γ(1 + 1/k)
 
 | Lokalizacja | k | λ [m/s] @100 m | v_śr [m/s] | CF |
 |---|---|---|---|---|
-| Ląd — teren otwarty (centrum PL) | 2,0 | 6,6 | 5,8 | ~24% |
-| Ląd — wybrzeże / Suwalszczyzna | 2,1 | 7,7 | 6,8 | ~30% |
-| Morze — Bałtyk | 2,2 | 10,2 | 9,0 | ~48% |
+| Ląd — teren otwarty (centrum PL) | 2,0 | 7,3 | 6,5 | ~24,6% |
+| Ląd — wybrzeże / Suwalszczyzna | 2,1 | 8,0 | 7,1 | ~29,6% |
+| Morze — Bałtyk | 2,2 | 10,2 | 9,0 | ~45,5% |
+
+*(0.4: λ skalibrowane pod testy CF §12.7–8 — krzywa mocy §6.3 przy pierwotnych λ dawała
+CF ~19% dla terenu otwartego; sezonowość §6.4 wchodzi jako kształt znormalizowany.)*
 
 ### 6.2 Profil pionowy — dlaczego wysokość wieży ma znaczenie
 
