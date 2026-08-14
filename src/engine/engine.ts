@@ -28,6 +28,7 @@ import {
   type PlantTech,
 } from "./config";
 import { cityDemandDayMw, type DayType } from "./demand";
+import { cityDemandForecast, farmProductionForecast } from "./forecast";
 import { evaluateMonthlyGrowth } from "./growth";
 import {
   buildSegments,
@@ -48,11 +49,15 @@ import {
   HOURS_PER_TURN,
   STATE_SCHEMA_VERSION,
   TURNS_PER_DAY,
+  TURN_PHASES,
   isLineBuilt,
   type CityState,
   type DayTruth,
   type GameState,
+  type SourceKind,
   type StorageMode,
+  type TurnCityReport,
+  type TurnReport,
 } from "./state";
 import { farmPowerMwAtHour, generateWeatherDay } from "./weather";
 
@@ -173,6 +178,7 @@ export function newGame(seed: number, scenario: Scenario = DEFAULT_SCENARIO): Ga
     monthRegimes: gen.monthRegimes,
     ...fields,
     dayTruth: gen.truth,
+    lastTurnReport: null,
   };
 }
 
@@ -425,10 +431,22 @@ export function resolveTurn(state: GameState): GameState {
   }
 
   // 02 §4 steps 6–8: dump penalty, ENS, finances (all flow-derived money
-  // scales by the day weight — 01 §2.1).
+  // scales by the day weight — 01 §2.1). Components are tracked alongside for
+  // the report; revenuePln/costsPln stay the single source of the money delta.
   const hours = HOURS_PER_TURN;
   let revenuePln = 0;
   let costsPln = 0;
+  let revenueEnergyPln = 0;
+  let revenueExportPln = 0;
+  let fuelCostPln = 0;
+  let importCostPln = 0;
+  let ensPenaltyPln = 0;
+  let dumpPenaltyPln = 0;
+  let totalDemandMw = 0;
+  let totalDeliveredMw = 0;
+  let totalEnsMw = 0;
+  let dumpMw = 0;
+  const cityReports: TurnCityReport[] = [];
 
   const cities = state.cities.map((city): CityState => {
     if (!city.connected) return city;
@@ -437,6 +455,17 @@ export function resolveTurn(state: GameState): GameState {
     const ensMw = Math.max(0, demandMw - deliveredMw);
     revenuePln += deliveredMw * hours * CONFIG.tariffPlnPerMwh;
     costsPln += ensMw * hours * CONFIG.ensPenaltyPlnPerMwh;
+    revenueEnergyPln += deliveredMw * hours * CONFIG.tariffPlnPerMwh;
+    ensPenaltyPln += ensMw * hours * CONFIG.ensPenaltyPlnPerMwh;
+    totalDemandMw += demandMw;
+    totalDeliveredMw += deliveredMw;
+    totalEnsMw += ensMw;
+    cityReports.push({
+      cityId: city.id,
+      demandMw: quantize001(demandMw),
+      deliveredMw: quantize001(deliveredMw),
+      ensMw: quantize001(ensMw),
+    });
     return {
       ...city,
       monthDemandMwh: quantize001(city.monthDemandMwh + demandMw * hours * weight),
@@ -449,10 +478,18 @@ export function resolveTurn(state: GameState): GameState {
     const used = usedTotal.get(plant.id) ?? 0;
     costsPln += used * hours * PLANT_TECHS[plant.tech].varCostPlnPerMwh;
     costsPln += Math.max(0, available - used) * hours * CONFIG.dumpPenaltyPlnPerMwh;
+    fuelCostPln += used * hours * PLANT_TECHS[plant.tech].varCostPlnPerMwh;
+    dumpPenaltyPln += Math.max(0, available - used) * hours * CONFIG.dumpPenaltyPlnPerMwh;
+    dumpMw += Math.max(0, available - used);
   }
   for (const border of state.borders) {
     costsPln += border.importSetpointMw * hours * CONFIG.importPricePlnPerMwh;
     revenuePln +=
+      (exportPass.deliveredMwBySink[`${border.id}:export`] ?? 0) *
+      hours *
+      CONFIG.exportPricePlnPerMwh;
+    importCostPln += border.importSetpointMw * hours * CONFIG.importPricePlnPerMwh;
+    revenueExportPln +=
       (exportPass.deliveredMwBySink[`${border.id}:export`] ?? 0) *
       hours *
       CONFIG.exportPricePlnPerMwh;
@@ -471,7 +508,139 @@ export function resolveTurn(state: GameState): GameState {
     };
   });
 
-  let moneyPln = state.moneyPln + Math.round((revenuePln - costsPln) * weight);
+  const nextTurn = state.calendar.turnIndex + 1;
+  // Fixed O&M hits at day end only (yearly / 365 × represented days — 01 §6).
+  const fixedCostPln =
+    nextTurn < TURNS_PER_DAY ? 0 : Math.round((yearlyFixedCostsPln(state) / 365) * weight);
+  const moneyPln =
+    state.moneyPln + Math.round((revenuePln - costsPln) * weight) - fixedCostPln;
+
+  // The turn's bet against the forecast (01 §2.3): block averages of what the
+  // pre-reveal forecast promised vs the revealed truth. Disabled farms are the
+  // player's own lever, not a forecast miss — left out on both sides.
+  const forecastBlockAvg = (atHour: (hour: number) => number): number => {
+    let sum = 0;
+    for (let h = 0; h < HOURS_PER_TURN; h++) sum += atHour(startHour + h);
+    return sum / HOURS_PER_TURN;
+  };
+  const demandForecastMw = forecastBlockAvg((hour) => {
+    let sum = 0;
+    for (const city of state.cities) {
+      if (city.connected) sum += cityDemandForecast(state, city.id, hour)?.mw ?? 0;
+    }
+    return sum;
+  });
+  const farmForecastMw = (tech: FarmTech): number =>
+    forecastBlockAvg((hour) => {
+      let sum = 0;
+      for (const farm of state.farms) {
+        if (farm.enabled && farm.tech === tech) {
+          sum += farmProductionForecast(state, farm.id, hour)?.mw ?? 0;
+        }
+      }
+      return sum;
+    });
+  const farmActualMw = (tech: FarmTech): number => {
+    let sum = 0;
+    for (const farm of state.farms) {
+      if (farm.enabled && farm.tech === tech) sum += farmBlockMw.get(farm.id) ?? 0;
+    }
+    return sum;
+  };
+  let demandActualMw = 0;
+  for (const demandMw of cityBlockDemand.values()) demandActualMw += demandMw;
+
+  const sourceKind = (sourceId: string): SourceKind => {
+    if (state.farms.some((f) => f.id === sourceId)) return "farm";
+    if (state.storages.some((s) => s.id === sourceId)) return "storage";
+    if (state.plants.some((p) => p.id === sourceId)) return "plant";
+    return "import";
+  };
+  let resCurtailedMw = 0;
+  for (const farm of state.farms) {
+    resCurtailedMw += Math.max(
+      0,
+      (farmBlockMw.get(farm.id) ?? 0) - (usedTotal.get(farm.id) ?? 0),
+    );
+  }
+
+  const report: TurnReport = {
+    dayIndex: state.calendar.dayIndex,
+    turnIndex: state.calendar.turnIndex,
+    phase: TURN_PHASES[state.calendar.turnIndex] ?? "night",
+    dayType: truth.dayType,
+    month: truth.month,
+    regime: truth.regime,
+    dayWeight: weight,
+    totals: {
+      demandMw: quantize001(totalDemandMw),
+      deliveredMw: quantize001(totalDeliveredMw),
+      ensMw: quantize001(totalEnsMw),
+      lossesMw: quantize001(cityPass.lossesMw + chargePass.lossesMw + exportPass.lossesMw),
+      dumpMw: quantize001(dumpMw),
+      resCurtailedMw: quantize001(resCurtailedMw),
+    },
+    forecastMiss: {
+      demand: {
+        forecastMw: quantize001(demandForecastMw),
+        actualMw: quantize001(demandActualMw),
+      },
+      wind: {
+        forecastMw: quantize001(farmForecastMw("wind")),
+        actualMw: quantize001(farmActualMw("wind")),
+      },
+      pv: {
+        forecastMw: quantize001(farmForecastMw("pv")),
+        actualMw: quantize001(farmActualMw("pv")),
+      },
+    },
+    cities: cityReports,
+    sources: sources.map((s) => ({
+      sourceId: s.id,
+      kind: sourceKind(s.id),
+      offeredMw: quantize001(s.availableMw),
+      usedMw: quantize001(usedTotal.get(s.id) ?? 0),
+    })),
+    storages: state.storages.map((storage, i) => ({
+      storageId: storage.id,
+      mode: storage.setpoint.mode,
+      dischargedMw: quantize001(usedTotal.get(storage.id) ?? 0),
+      chargedMw: quantize001(chargePass.deliveredMwBySink[storage.id] ?? 0),
+      socMwhAfter: storages[i]?.socMwh ?? 0,
+    })),
+    borders: state.borders.map((border) => ({
+      borderId: border.id,
+      importSetpointMw: border.importSetpointMw,
+      importUsedMw: quantize001(usedTotal.get(border.id) ?? 0),
+      exportSetpointMw: border.exportSetpointMw,
+      exportDeliveredMw: quantize001(exportPass.deliveredMwBySink[`${border.id}:export`] ?? 0),
+    })),
+    segments: segments.map((segment) => ({
+      segmentId: segment.id,
+      lineId: segment.lineId,
+      fromNodeId: segment.from,
+      toNodeId: segment.to,
+      fromIndex: segment.fromIndex,
+      toIndex: segment.toIndex,
+      usedMw: quantize001(residual.segmentUsedMw[segment.id] ?? 0),
+      capacityMw: segment.capacityMw,
+    })),
+    nodes: [...state.junctions, ...state.borders].map((node) => ({
+      nodeId: node.id,
+      usedMw: quantize001(residual.nodeUsedMw[node.id] ?? 0),
+      throughputMw: node.throughputMw,
+    })),
+    finance: {
+      revenueEnergyPln: Math.round(revenueEnergyPln * weight),
+      revenueExportPln: Math.round(revenueExportPln * weight),
+      fuelCostPln: Math.round(fuelCostPln * weight),
+      importCostPln: Math.round(importCostPln * weight),
+      ensPenaltyPln: Math.round(ensPenaltyPln * weight),
+      dumpPenaltyPln: Math.round(dumpPenaltyPln * weight),
+      fixedCostPln,
+      netPln: moneyPln - state.moneyPln,
+    },
+  };
 
   // Line construction advances by the played block (01 §2.6).
   const lines = state.lines.map((line) =>
@@ -480,7 +649,6 @@ export function resolveTurn(state: GameState): GameState {
       : { ...line, builtHours: Math.min(line.totalHours, line.builtHours + HOURS_PER_TURN) },
   );
 
-  const nextTurn = state.calendar.turnIndex + 1;
   if (nextTurn < TURNS_PER_DAY) {
     return {
       ...state,
@@ -489,14 +657,12 @@ export function resolveTurn(state: GameState): GameState {
       cities,
       storages,
       lines,
+      lastTurnReport: report,
     };
   }
 
-  // Day end: fixed costs (yearly / 365 × represented days — 01 §6), then the
-  // month boundary after the free day (05 §6.1), construction countdowns, and
-  // the next day's truth.
-  moneyPln -= Math.round((yearlyFixedCostsPln(state) / 365) * weight);
-
+  // Day end: month boundary after the free day (05 §6.1), construction
+  // countdowns, and the next day's truth.
   let nextCities = cities;
   let cityGrowthRng = state.rng.cityGrowth;
   if (truth.dayType === "free") {
@@ -567,5 +733,6 @@ export function resolveTurn(state: GameState): GameState {
     lines,
     constructions: stillBuilding,
     dayTruth: gen.truth,
+    lastTurnReport: report,
   };
 }

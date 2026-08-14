@@ -60,9 +60,11 @@ export {
 export {
   cityDemandForecast,
   farmProductionForecast,
+  projectBalance,
   sigmaDemand,
   sigmaPv,
   sigmaWind,
+  type BalanceProjectionPoint,
   type ForecastPoint,
 } from "./forecast";
 export { evaluateMonthlyGrowth } from "./growth";
@@ -112,14 +114,24 @@ export {
   type ConstructionState,
   type DayTruth,
   type FarmState,
+  type ForecastComparison,
   type GameState,
   type JunctionState,
   type LineState,
   type PendingObject,
   type PlantState,
+  type SourceKind,
   type StorageMode,
   type StorageState,
+  type TurnBorderReport,
+  type TurnCityReport,
+  type TurnFinanceReport,
+  type TurnNodeReport,
   type TurnPhase,
+  type TurnReport,
+  type TurnSegmentReport,
+  type TurnSourceReport,
+  type TurnStorageReport,
   type WeatherTruth,
 } from "./state";
 export {

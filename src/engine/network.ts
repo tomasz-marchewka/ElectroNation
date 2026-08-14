@@ -31,8 +31,13 @@ export interface NetworkLine {
 
 export interface Segment {
   id: string;
+  /** Line this segment was split from. */
+  lineId: string;
   from: string;
   to: string;
+  /** Path indices of the endpoints within the line's hex chain. */
+  fromIndex: number;
+  toIndex: number;
   capacityMw: number;
   /** 1 − loss% × km/100 for this segment's length (02 §2). */
   efficiency: number;
@@ -65,8 +70,11 @@ export function buildSegments(
       const km = (b.index - a.index) * KM_PER_HEX;
       segments.push({
         id: `${line.id}:${i}`,
+        lineId: line.id,
         from: a.nodeId,
         to: b.nodeId,
+        fromIndex: a.index,
+        toIndex: b.index,
         capacityMw: spec.capacityMw,
         efficiency: 1 - (spec.lossPctPer100km / 100) * (km / 100),
       });

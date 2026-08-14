@@ -6,98 +6,194 @@
       "turn": 0,
       "phase": "night",
       "day": 0,
-      "moneyPln": 9994685160
+      "moneyPln": 9994685160,
+      "demandMw": 40.633,
+      "deliveredMw": 0,
+      "ensMw": 40.633,
+      "lossesMw": 0,
+      "dumpMw": 0,
+      "netPln": -5314840
     },
     {
       "turn": 1,
       "phase": "preDawn",
       "day": 0,
-      "moneyPln": 9989326720
+      "moneyPln": 9989326720,
+      "demandMw": 40.967,
+      "deliveredMw": 0,
+      "ensMw": 40.967,
+      "lossesMw": 0,
+      "dumpMw": 0,
+      "netPln": -5358440
     },
     {
       "turn": 2,
       "phase": "morningRamp",
       "day": 0,
-      "moneyPln": 9981090680
+      "moneyPln": 9981090680,
+      "demandMw": 62.967,
+      "deliveredMw": 0,
+      "ensMw": 62.967,
+      "lossesMw": 0,
+      "dumpMw": 0,
+      "netPln": -8236040
     },
     {
       "turn": 3,
       "phase": "lateMorning",
       "day": 0,
-      "moneyPln": 9971795160
+      "moneyPln": 9971795160,
+      "demandMw": 71.067,
+      "deliveredMw": 0,
+      "ensMw": 71.067,
+      "lossesMw": 0,
+      "dumpMw": 0,
+      "netPln": -9295520
     },
     {
       "turn": 4,
       "phase": "noon",
       "day": 0,
-      "moneyPln": 9962534520
+      "moneyPln": 9962534520,
+      "demandMw": 70.8,
+      "deliveredMw": 0,
+      "ensMw": 70.8,
+      "lossesMw": 0,
+      "dumpMw": 0,
+      "netPln": -9260640
     },
     {
       "turn": 5,
       "phase": "afternoon",
       "day": 0,
-      "moneyPln": 9953025360
+      "moneyPln": 9953025360,
+      "demandMw": 72.7,
+      "deliveredMw": 0,
+      "ensMw": 72.7,
+      "lossesMw": 0,
+      "dumpMw": 0,
+      "netPln": -9509160
     },
     {
       "turn": 6,
       "phase": "eveningPeak",
       "day": 0,
-      "moneyPln": 9942979920
+      "moneyPln": 9942979920,
+      "demandMw": 76.8,
+      "deliveredMw": 0,
+      "ensMw": 76.8,
+      "lossesMw": 0,
+      "dumpMw": 0,
+      "netPln": -10045440
     },
     {
       "turn": 7,
       "phase": "lateEvening",
       "day": 1,
-      "moneyPln": 9934019986
+      "moneyPln": 9934019986,
+      "demandMw": 56.9,
+      "deliveredMw": 0,
+      "ensMw": 56.9,
+      "lossesMw": 0,
+      "dumpMw": 0,
+      "netPln": -8959934
     },
     {
       "turn": 8,
       "phase": "night",
       "day": 1,
-      "moneyPln": 9928678986
+      "moneyPln": 9928678986,
+      "demandMw": 40.833,
+      "deliveredMw": 0,
+      "ensMw": 40.833,
+      "lossesMw": 0,
+      "dumpMw": 0,
+      "netPln": -5341000
     },
     {
       "turn": 9,
       "phase": "preDawn",
       "day": 1,
-      "moneyPln": 9923298746
+      "moneyPln": 9923298746,
+      "demandMw": 41.133,
+      "deliveredMw": 0,
+      "ensMw": 41.133,
+      "lossesMw": 0,
+      "dumpMw": 0,
+      "netPln": -5380240
     },
     {
       "turn": 10,
       "phase": "morningRamp",
       "day": 1,
-      "moneyPln": 9915027826
+      "moneyPln": 9915027826,
+      "demandMw": 63.233,
+      "deliveredMw": 0,
+      "ensMw": 63.233,
+      "lossesMw": 0,
+      "dumpMw": 0,
+      "netPln": -8270920
     },
     {
       "turn": 11,
       "phase": "lateMorning",
       "day": 1,
-      "moneyPln": 9905697426
+      "moneyPln": 9905697426,
+      "demandMw": 71.333,
+      "deliveredMw": 0,
+      "ensMw": 71.333,
+      "lossesMw": 0,
+      "dumpMw": 0,
+      "netPln": -9330400
     },
     {
       "turn": 12,
       "phase": "noon",
       "day": 1,
-      "moneyPln": 9896401906
+      "moneyPln": 9896401906,
+      "demandMw": 71.067,
+      "deliveredMw": 0,
+      "ensMw": 71.067,
+      "lossesMw": 0,
+      "dumpMw": 0,
+      "netPln": -9295520
     },
     {
       "turn": 13,
       "phase": "afternoon",
       "day": 1,
-      "moneyPln": 9886853506
+      "moneyPln": 9886853506,
+      "demandMw": 73,
+      "deliveredMw": 0,
+      "ensMw": 73,
+      "lossesMw": 0,
+      "dumpMw": 0,
+      "netPln": -9548400
     },
     {
       "turn": 14,
       "phase": "eveningPeak",
       "day": 1,
-      "moneyPln": 9876764466
+      "moneyPln": 9876764466,
+      "demandMw": 77.133,
+      "deliveredMw": 0,
+      "ensMw": 77.133,
+      "lossesMw": 0,
+      "dumpMw": 0,
+      "netPln": -10089040
     },
     {
       "turn": 15,
       "phase": "lateEvening",
       "day": 2,
-      "moneyPln": 9867774012
+      "moneyPln": 9867774012,
+      "demandMw": 57.133,
+      "deliveredMw": 0,
+      "ensMw": 57.133,
+      "lossesMw": 0,
+      "dumpMw": 0,
+      "netPln": -8990454
     }
   ],
-  "finalStateHash": "954ff0b67a384a552a751e720189dabdf8262eff14bab137262b3705c147c7ca"
+  "finalStateHash": "9f2743dfd431a7fe4872dbbb742f16d65f11deeee43233b18efebd3ea0f10a60"
 }

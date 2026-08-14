@@ -15,7 +15,7 @@ import type { MonthRegimes, RegimeId } from "./regimes";
 // functions. Serializability is load-bearing: saves, replay, golden tests and
 // (later) a server all rely on JSON.parse(JSON.stringify(s)) being lossless.
 
-export const STATE_SCHEMA_VERSION = 4;
+export const STATE_SCHEMA_VERSION = 5;
 
 export const TURNS_PER_DAY = 8;
 export const HOURS_PER_TURN = 3;
@@ -169,6 +169,123 @@ export interface DayTruth {
   forecastZ: { wind: number; pv: number; demand: number };
 }
 
+// --- Last-turn report -------------------------------------------------------
+// The RAPORT panel of the continuous view (01 §2.3, §8) and the map's load
+// coloring read this, so it lives inside GameState: a loaded save must show
+// the last resolution exactly like the live session did. All MW values are
+// block averages of the resolved turn; all PLN values are day-weight scaled.
+
+export interface TurnCityReport {
+  cityId: string;
+  demandMw: number;
+  deliveredMw: number;
+  /** Energy not served, as average block power (01 §4.5). */
+  ensMw: number;
+}
+
+export type SourceKind = "plant" | "farm" | "storage" | "import";
+
+export interface TurnSourceReport {
+  /** Object id; for imports the border point's id. */
+  sourceId: string;
+  kind: SourceKind;
+  /** Power offered to the flow: setpoint, weather production or discharge cap. */
+  offeredMw: number;
+  /** Power actually drawn by the flow (losses included at the sending end). */
+  usedMw: number;
+}
+
+export interface TurnStorageReport {
+  storageId: string;
+  mode: StorageMode;
+  dischargedMw: number;
+  chargedMw: number;
+  socMwhAfter: number;
+}
+
+export interface TurnBorderReport {
+  borderId: string;
+  /** Import is take-or-pay (01 §4.1): paid from the setpoint, not from use. */
+  importSetpointMw: number;
+  importUsedMw: number;
+  exportSetpointMw: number;
+  exportDeliveredMw: number;
+}
+
+export interface TurnSegmentReport {
+  segmentId: string;
+  lineId: string;
+  fromNodeId: string;
+  toNodeId: string;
+  /** Path indices within the line's hex chain — for map load coloring. */
+  fromIndex: number;
+  toIndex: number;
+  /** Flow at the sending end of the segment. */
+  usedMw: number;
+  capacityMw: number;
+}
+
+/** Throughput usage of a capped node — junction or border point (01 §4.3). */
+export interface TurnNodeReport {
+  nodeId: string;
+  usedMw: number;
+  throughputMw: number;
+}
+
+/** Block-average forecast shown before the reveal vs the revealed truth. */
+export interface ForecastComparison {
+  forecastMw: number;
+  actualMw: number;
+}
+
+export interface TurnFinanceReport {
+  /** Components rounded per entry; may differ from netPln by a few PLN. */
+  revenueEnergyPln: number;
+  revenueExportPln: number;
+  fuelCostPln: number;
+  importCostPln: number;
+  ensPenaltyPln: number;
+  dumpPenaltyPln: number;
+  /** Fixed O&M hits at day end only (01 §6); 0 mid-day. */
+  fixedCostPln: number;
+  /** Exact money delta this resolution applied to the budget. */
+  netPln: number;
+}
+
+export interface TurnReport {
+  /** Calendar position of the RESOLVED turn (the state is already advanced). */
+  dayIndex: number;
+  turnIndex: number;
+  phase: TurnPhase;
+  dayType: DayType;
+  month: number;
+  regime: RegimeId;
+  dayWeight: number;
+  totals: {
+    demandMw: number;
+    deliveredMw: number;
+    ensMw: number;
+    lossesMw: number;
+    /** Dispatchable surplus curtailed at the source — penalized (01 §4.1). */
+    dumpMw: number;
+    /** RES surplus curtailed — free (01 §4.1). */
+    resCurtailedMw: number;
+  };
+  /** The turn's bet against the forecast (01 §2.3), per quantity. */
+  forecastMiss: {
+    demand: ForecastComparison;
+    wind: ForecastComparison;
+    pv: ForecastComparison;
+  };
+  cities: TurnCityReport[];
+  sources: TurnSourceReport[];
+  storages: TurnStorageReport[];
+  borders: TurnBorderReport[];
+  segments: TurnSegmentReport[];
+  nodes: TurnNodeReport[];
+  finance: TurnFinanceReport;
+}
+
 export interface GameState {
   schema: typeof STATE_SCHEMA_VERSION;
   seed: number;
@@ -197,4 +314,6 @@ export interface GameState {
   /** Wind location class per hex key; missing = open. */
   windClasses: Record<string, WindClass>;
   dayTruth: DayTruth;
+  /** Report of the last resolved turn; null until the first resolution. */
+  lastTurnReport: TurnReport | null;
 }

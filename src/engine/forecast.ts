@@ -3,7 +3,8 @@
 // One error process per day and quantity (§8.6.2 pt 3), scaled by the horizon;
 // the demand error is systemic — one factor shared by all cities (doc 02 §7).
 
-import { type FarmState, type GameState } from "./state";
+import { STORAGE_TECHS } from "./config";
+import { HOURS_PER_TURN, type FarmState, type GameState } from "./state";
 import { farmPowerMwAtHour } from "./weather";
 
 /** §8.6.2: σ as share of installed capacity (wind/PV) or of peak (demand). */
@@ -31,7 +32,7 @@ export interface ForecastPoint {
  * before the pending block are revealed truth (horizon ≤ 0).
  */
 function horizonHours(state: GameState, hour: number): number {
-  return hour - state.calendar.turnIndex * 3 + 1;
+  return hour - state.calendar.turnIndex * HOURS_PER_TURN + 1;
 }
 
 /** True hourly demand is exposed through the forecast only (01 §2.4). */
@@ -74,4 +75,95 @@ export function farmProductionForecast(
     mw: Math.min(farm.capacityMw, Math.max(0, truthMw + z * sigma * farm.capacityMw)),
     bandMw: sigma * farm.capacityMw,
   };
+}
+
+/** One hour of the "balance at current setpoints" projection (01 §8 pt 3). */
+export interface BalanceProjectionPoint {
+  /** Hour of the current day, 0..23. */
+  hour: number;
+  horizonHours: number;
+  /** Aggregated forecast over connected cities / enabled farms. */
+  demandMw: number;
+  demandBandMw: number;
+  resMw: number;
+  resBandMw: number;
+  /** Dispatchable supply at current setpoints: plants + import + discharge. */
+  dispatchableMw: number;
+  /** Extra load at current setpoints: storage charging + export. */
+  extraLoadMw: number;
+  expectedBalanceMw: number;
+  /** Both forecast bands fully against the player (06 §8.6.4). */
+  worstCaseBalanceMw: number;
+}
+
+/**
+ * Projects the system balance for the remaining hours of the current day,
+ * holding today's setpoints constant — the "will the plan survive the next
+ * hours" column (01 §8 pt 3). Deliberately network-blind: no line limits, no
+ * losses; storage power is capped by the CURRENT state of charge. Bands within
+ * one quantity share the day's error factor, so summing them is exact; across
+ * quantities the worst case is conservative — as a safety check should be.
+ */
+export function projectBalance(state: GameState): BalanceProjectionPoint[] {
+  let dispatchableMw = 0;
+  let extraLoadMw = 0;
+  for (const plant of state.plants) {
+    dispatchableMw += Math.min(plant.setpointMw, plant.capacityMw);
+  }
+  for (const border of state.borders) {
+    dispatchableMw += border.importSetpointMw;
+    extraLoadMw += border.exportSetpointMw;
+  }
+  for (const storage of state.storages) {
+    const leg = Math.sqrt(STORAGE_TECHS[storage.tech].cycleEfficiency);
+    if (storage.setpoint.mode === "discharge") {
+      dispatchableMw += Math.min(
+        storage.setpoint.mw,
+        (storage.socMwh * leg) / HOURS_PER_TURN,
+      );
+    } else if (storage.setpoint.mode === "charge") {
+      extraLoadMw += Math.min(
+        storage.setpoint.mw,
+        Math.max(0, (storage.capacityMwh - storage.socMwh) / (HOURS_PER_TURN * leg)),
+      );
+    }
+  }
+
+  const points: BalanceProjectionPoint[] = [];
+  for (let hour = state.calendar.turnIndex * HOURS_PER_TURN; hour < 24; hour++) {
+    let demandMw = 0;
+    let demandBandMw = 0;
+    let resMw = 0;
+    let resBandMw = 0;
+    for (const city of state.cities) {
+      if (!city.connected) continue;
+      const point = cityDemandForecast(state, city.id, hour);
+      if (point) {
+        demandMw += point.mw;
+        demandBandMw += point.bandMw;
+      }
+    }
+    for (const farm of state.farms) {
+      if (!farm.enabled) continue;
+      const point = farmProductionForecast(state, farm.id, hour);
+      if (point) {
+        resMw += point.mw;
+        resBandMw += point.bandMw;
+      }
+    }
+    const expected = dispatchableMw + resMw - demandMw - extraLoadMw;
+    points.push({
+      hour,
+      horizonHours: horizonHours(state, hour),
+      demandMw,
+      demandBandMw,
+      resMw,
+      resBandMw,
+      dispatchableMw,
+      extraLoadMw,
+      expectedBalanceMw: expected,
+      worstCaseBalanceMw: expected - resBandMw - demandBandMw,
+    });
+  }
+  return points;
 }
