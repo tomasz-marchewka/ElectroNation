@@ -1,0 +1,74 @@
+/* ═══ ElectroNation — rama ekranu gry ═══
+   Warstwa gry, nie design systemu: pliki obok (tokens/, base.css, components.css)
+   są kopią handoffu i mają nią pozostać, więc geometria „na pełny ekran" — której
+   handoff nie miał, bo jego build referencyjny to karta 1500 px — mieszka tutaj.
+   Zero nowych wartości wizualnych: same tokeny i proporcje z plików źródłowych. */
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+/* Rama: pasek górny → korpus (mapa + panel) → pas raportu. Ekran się nie
+   przewija; przewijają się wnętrza regionów. */
+.en-app {
+  height: 100%;
+  overflow: hidden;
+}
+
+.en-body {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Lewa kolumna korpusu: mapa (elastyczna) → oś doby → pas wykresu.
+   Pozycjonowana, bo kotwiczy pływający przełącznik motywu. */
+.en-body > .en-main {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.en-turnbar,
+.en-report {
+  flex: none;
+}
+
+/* Panel 400 px: sztywna szerokość ma components.css, tu tylko przewijanie,
+   żeby sekcje nie rozpychały ramy. */
+.en-panel {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* ── regiony wypełniane w M5–M8 ─────────────────────────
+   Placeholder = samo tokenowe tło. Żadnej treści, która mogłaby zostać
+   wzięta za dane. */
+.en-region--map {
+  flex: 1;
+  min-height: 0;
+  background: var(--en-bg-map);
+}
+
+.en-region--chart {
+  /* Proporcja z handoffu: DayChart ma viewBox 0 0 1060 130. */
+  flex: none;
+  aspect-ratio: 1060 / 130;
+  background: var(--en-bg-chart);
+  border-top: var(--en-border-w) solid var(--en-border-subtle);
+}
+
+/* ── przełącznik motywu ─────────────────────────────────
+   Prawy dolny róg, dyskretnie, jak w buildzie referencyjnym
+   (ui_kits/dispatcher/index.html) — pasek górny zostaje bez akcji.
+   Różnica wobec referencji: kotwica to kolumna robocza, nie viewport.
+   Referencyjne `position: fixed` przykrywałoby prawy dolny róg panelu,
+   czyli jedyny przycisk primary ekranu, i przechwytywało jego kliknięcia. */
+.en-themeswitch {
+  position: absolute;
+  right: var(--en-space-5);
+  bottom: var(--en-space-5);
+  z-index: 9;
+  background: var(--en-bg-app);
+}

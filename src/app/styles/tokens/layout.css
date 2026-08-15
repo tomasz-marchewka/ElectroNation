@@ -1,0 +1,32 @@
+/* ═══ ElectroNation — siatka, obrysy, wymiary ═══
+   Zasada: zero promieni. Panel dyspozytora to aparatura, nie karta. */
+
+:root {
+  --en-space-1: 3px;
+  --en-space-2: 4px;
+  --en-space-3: 6px;
+  --en-space-4: 8px;
+  --en-space-5: 10px;
+  --en-space-6: 12px;
+  --en-space-7: 14px;
+  --en-space-8: 16px;
+  --en-space-9: 18px;
+  --en-space-10: 22px;
+  --en-space-11: 24px;
+
+  --en-radius: 0;              /* wszystko ostre */
+  --en-border-w: 1px;
+  --en-border-w-accent: 2px;   /* górna krawędź paska raportu */
+
+  --en-header-h: 52px;         /* pasek górny */
+  --en-panel-w: 400px;         /* panel dyspozytora, prawa krawędź */
+  --en-turnbar-cell-py: 5px;   /* oś doby: 8 komórek */
+  --en-track-h: 8px;           /* pasek prognozy */
+  --en-track-h-sm: 6px;        /* pasek nastawy */
+  --en-thumb-w: 3px;           /* uchwyt nastawy: kreska, nie kółko */
+  --en-thumb-h: 12px;
+
+  --en-hex-r: 34px;            /* promień heksa (flat-top), 1 heks = 25 km */
+  --en-hex-step-x: 51px;
+  --en-hex-step-y: 59px;
+}
