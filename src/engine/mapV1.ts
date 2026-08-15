@@ -121,8 +121,11 @@ function buildTerrain(): Record<string, TerrainId> {
 }
 
 /**
- * 06 §6.1 location classes follow the coastline: the sea is Baltic, land
- * touching it is coastal, everything inland is open (no entry).
+ * 06 §6.1 location classes follow the relief: the sea is Baltic, land touching
+ * it is coastal (exposure beats everything, so a shore hex stays coastal even
+ * if it is elevated), the mountain valleys are sheltered, and the rest of the
+ * country is open (no entry). Wind siting is therefore a real choice — the
+ * mountains are for pumped storage and PV, not for turbines.
  */
 function buildWindClasses(terrain: Record<string, TerrainId>): Record<string, WindClass> {
   const windClasses: Record<string, WindClass> = {};
@@ -134,6 +137,8 @@ function buildWindClasses(terrain: Record<string, TerrainId>): Record<string, Wi
         windClasses[key] = "baltic";
       } else if (hexNeighbors(hex).some((n) => terrain[hexKey(n)] === "sea")) {
         windClasses[key] = "coastal";
+      } else if (terrain[key] === "mountains") {
+        windClasses[key] = "sheltered";
       }
     }
   }

@@ -1,11 +1,20 @@
 # ElectroNation — Model astronomiczny, klimatyczny i pogodowy
 
-**Wersja:** 0.4
-**Data:** 2026-08-13
+**Wersja:** 0.5
+**Data:** 2026-08-15
 **Status:** **obowiązujący** — źródłowy model pogody, produkcji OZE (PV, wiatr) i błędu
 prognozy dla uproszczonej wersji gry (01 v0.8, §2.4 i §5.2). Uproszczenie dotyczy silnika
 przepływu energii w sieci (01 §4) i nie zmienia niczego w tym modelu. Elementy „na przyszłość"
 wymienione w §10 pozostają odłożone ([90-pomysly-na-przyszlosc.md §2](90-pomysly-na-przyszlosc.md)).
+
+**Zmiany 0.4 → 0.5 (weryfikacja pomiarowa na pełnym torze §8):** §6.1 rozstrzyga wreszcie
+konflikt λ vs CF — kolumna CF w 0.4 była **wartością analityczną** (całka Weibulla), a pełny
+tor generacji podnosi ją o ~2,5–3 pp; tabela dostaje osobne kolumny „λ silnika" i „CF w
+silniku", a kontraktem implementacji stają się pasma §12, nie punktowe CF. Praktyczny skutek:
+λ wybrzeża w silniku to 7,65, bo przy deklarowanym 8,0 CF wychodzi 32,5% i wypada z pasma
+§12.7. Dodana **czwarta klasa lokalizacji — teren osłoniony** (k=2,0, λ=5,8; CF ~15%) wraz
+z testem §12.13: bez niej wybór miejsca pod farmę wiatrową nie był decyzją (teren otwarty
+26,9% vs wybrzeże 29,7% to różnica bez znaczenia dla gracza).
 
 **Zmiany 0.3 → 0.4 (kalibracja przy implementacji silnika):** parametry λ Weibulla w §6.1
 skorygowane (7,3 / 8,0 / 10,2 zamiast 6,6 / 7,7 / 10,2) — pierwotne wartości nie spełniały
@@ -255,14 +264,34 @@ f(v) = (k/λ) · (v/λ)^(k−1) · exp( −(v/λ)^k )
 v_średnie = λ · Γ(1 + 1/k)
 ```
 
-| Lokalizacja | k | λ [m/s] @100 m | v_śr [m/s] | CF |
-|---|---|---|---|---|
-| Ląd — teren otwarty (centrum PL) | 2,0 | 7,3 | 6,5 | ~24,6% |
-| Ląd — wybrzeże / Suwalszczyzna | 2,1 | 8,0 | 7,1 | ~29,6% |
-| Morze — Bałtyk | 2,2 | 10,2 | 9,0 | ~45,5% |
+| Lokalizacja | k | λ [m/s] @100 m | λ silnika | v_śr [m/s] | CF analityczny | CF w silniku |
+|---|---|---|---|---|---|---|
+| Ląd — teren osłonięty (kotliny, doliny górskie) | 2,0 | 5,8 | 5,8 | 5,1 | ~13,8% | ~15,3% |
+| Ląd — teren otwarty (centrum PL) | 2,0 | 7,3 | 7,3 | 6,5 | ~24,6% | ~26,9% |
+| Ląd — wybrzeże / Suwalszczyzna | 2,1 | 8,0 | **7,65** | 7,1 | ~29,6% | ~29,7% |
+| Morze — Bałtyk | 2,2 | 10,2 | 10,2 | 9,0 | ~45,5% | ~48,5% |
 
-*(0.4: λ skalibrowane pod testy CF §12.7–8 — krzywa mocy §6.3 przy pierwotnych λ dawała
-CF ~19% dla terenu otwartego; sezonowość §6.4 wchodzi jako kształt znormalizowany.)*
+**Dwie kolumny CF — dlaczego.** „CF analityczny" to całka rozkładu Weibulla po krzywej mocy
+§6.3, z sezonowością §6.4 jako kształtem znormalizowanym; tak policzone są wartości z kolumny
+λ. Pełny tor generacji §8 (szum OU, reżimy, współczynnik dobowy) nakłada na prędkość szum
+multiplikatywny, a że krzywa mocy poniżej mocy znamionowej jest **wypukła**, średnia produkcja
+rośnie — o **~2,5–3 pp** względem całki. „CF w silniku" to wartość zmierzona na 100 latach
+symulacji pełnego toru.
+
+**DECYZJA (0.5): kontraktem implementacji są pasma §12.7–12.8 i §12.13, a nie punktowe CF
+z tabeli.** λ silnika = λ pomiarowe wszędzie tam, gdzie CF pełnego toru mieści się w paśmie;
+przycinane tylko tam, gdzie z pasma wypada. Dotyczy to jednej klasy: wybrzeże przy λ = 8,0
+daje 32,5%, czyli powyżej pasma 24–30% z §12.7 — stąd λ silnika 7,65 (CF 29,7%).
+
+**Klasa osłonięta (0.5)** obejmuje kotliny i doliny górskie, gdzie na 100 m wieje ~5 m/s.
+W grze jest po to, żeby lokalizacja farmy była decyzją: rozpiętość produkcji między najgorszym
+a najlepszym lądowym miejscem to ~15% vs ~30% CF, czyli **dwukrotność**, a nie kosmetyczne
+3 pp między terenem otwartym a wybrzeżem. Przypisanie klas do heksów należy do danych mapy
+(02 §8.6).
+
+*(0.4, kontekst historyczny: λ podniesiono z 6,6 / 7,7 / 10,2, bo krzywa mocy §6.3 przy
+pierwotnych wartościach dawała CF ~19% dla terenu otwartego; sezonowość §6.4 wchodzi jako
+kształt znormalizowany.)*
 
 ### 6.2 Profil pionowy — dlaczego wysokość wieży ma znaczenie
 
@@ -595,14 +624,15 @@ Implementacja jest poprawna, jeśli spełnia poniższe kontrole:
 | 4 | α_max, 21 czerwca / 21 grudnia | 61,5° / 14,6° |
 | 5 | GHI_clear w południe, czerwiec | 880–920 W/m² |
 | 6 | Roczny CF instalacji PV | 11–12% |
-| 7 | Roczny CF wiatru na lądzie | 24–30% |
+| 7 | Roczny CF wiatru na lądzie (teren otwarty, wybrzeże) | 24–30% |
 | 8 | Roczny CF wiatru na Bałtyku | 45–50% |
 | 9 | Stosunek energii PV grudzień : czerwiec | 1 : 10 do 1 : 12 |
 | 10 | Średnia prędkość wiatru styczeń : lipiec | ~1,43 : 1 |
 | 11 | Suma godzin z v ≥ 25 m/s w roku | 10–40 h (wyłączenia sztormowe) |
 | 12 | Liczba epizodów Dunkelflaute (≥3 doby) w roku | 2–5 |
+| 13 | Roczny CF wiatru w terenie osłoniętym (klasa z 0.5; por. test 7) | 13–18% |
 
-Testy 1–5 są **deterministyczne** i muszą przechodzić dokładnie. Testy 6–12 są statystyczne — weryfikować na symulacji 20+ lat.
+Testy 1–5 są **deterministyczne** i muszą przechodzić dokładnie. Testy 6–13 są statystyczne — weryfikować na symulacji 20+ lat.
 
 ---
 

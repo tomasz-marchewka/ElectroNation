@@ -92,18 +92,14 @@ describe("doc 02 §8.6: the v1 map is a complete 24×16 country", () => {
     }
   });
 
-  test("06 §6.1: at least one good wind location on land, open terrain elsewhere", () => {
-    const goodOnLand = allHexes.filter(
-      (hex) =>
-        !isWater(hex) &&
-        (state.windClasses[hexKey(hex)] === "coastal" ||
-          state.windClasses[hexKey(hex)] === "baltic"),
-    );
-    expect(goodOnLand.length).toBeGreaterThan(0);
-    const open = allHexes.filter(
-      (hex) => !isWater(hex) && state.windClasses[hexKey(hex)] === undefined,
-    );
-    expect(open.length).toBeGreaterThan(0);
+  test("06 §6.1: buildable ground offers a good, a bad and an average wind site", () => {
+    const buildable = allHexes.filter((hex) => !isWater(hex));
+    const classOf = (hex: HexCoord) => state.windClasses[hexKey(hex)] ?? "open";
+    expect(
+      buildable.some((hex) => classOf(hex) === "coastal" || classOf(hex) === "baltic"),
+    ).toBe(true);
+    expect(buildable.some((hex) => classOf(hex) === "sheltered")).toBe(true);
+    expect(buildable.some((hex) => classOf(hex) === "open")).toBe(true);
   });
 
   test("01 §3.2: insolation varies between 0.95 and 1.05", () => {

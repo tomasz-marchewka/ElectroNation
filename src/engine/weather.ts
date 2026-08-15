@@ -160,7 +160,12 @@ export function generateWeatherDay(
 
   // §8.5: one OU path shared by all classes — sites are perfectly correlated
   // until per-hex weather returns (90 §6). Storm days gust harder (§8.2).
-  const windMs: Record<WindClass, number[]> = { open: [], coastal: [], baltic: [] };
+  const windMs: Record<WindClass, number[]> = {
+    sheltered: [],
+    open: [],
+    coastal: [],
+    baltic: [],
+  };
   let ou = 0;
   const ouSd = "gustSd" in regime ? regime.gustSd : WIND_OU.sd;
   const innovationSd = ouSd * Math.sqrt(1 - WIND_OU.rho * WIND_OU.rho);

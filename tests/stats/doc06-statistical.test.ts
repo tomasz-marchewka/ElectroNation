@@ -56,7 +56,7 @@ function simulate(seed: number): SimStats {
     return r.value;
   };
 
-  const windSum: Record<WindClass, number> = { open: 0, coastal: 0, baltic: 0 };
+  const windSum: Record<WindClass, number> = { sheltered: 0, open: 0, coastal: 0, baltic: 0 };
   const fullFarm = referencePvFarm(1);
   const dimFarm = referencePvFarm(0.8);
   let pvSum = 0;
@@ -76,7 +76,7 @@ function simulate(seed: number): SimStats {
         const gen = generateWeatherDay(rng, DAY_OF_YEAR[month] ?? 21, month, regime);
         rng = gen.rng;
         for (let hour = 0; hour < 24; hour++) {
-          for (const windClass of ["open", "coastal", "baltic"] as WindClass[]) {
+          for (const windClass of ["sheltered", "open", "coastal", "baltic"] as WindClass[]) {
             windSum[windClass] += turbinePowerFraction(
               gen.weather.windMs[windClass][hour] ?? 0,
             );
@@ -102,6 +102,7 @@ function simulate(seed: number): SimStats {
 
   return {
     windCf: {
+      sheltered: windSum.sheltered / hours,
       open: windSum.open / hours,
       coastal: windSum.coastal / hours,
       baltic: windSum.baltic / hours,
@@ -128,6 +129,13 @@ describe("doc 06 §12.7: annual onshore wind capacity factor 24–30%", () => {
   test("coast", () => {
     expect(stats.windCf.coastal).toBeGreaterThanOrEqual(0.24);
     expect(stats.windCf.coastal).toBeLessThanOrEqual(0.3);
+  });
+});
+
+describe("doc 06 §12.13: annual sheltered-terrain wind capacity factor 13–18%", () => {
+  test("sheltered class — half of what the coast yields", () => {
+    expect(stats.windCf.sheltered).toBeGreaterThanOrEqual(0.13);
+    expect(stats.windCf.sheltered).toBeLessThanOrEqual(0.18);
   });
 });
 
