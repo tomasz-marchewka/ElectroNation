@@ -53,7 +53,8 @@ import {
 } from "./network";
 import { seedStream } from "./prng";
 import { quantize001 } from "./quantize";
-import { DEFAULT_SCENARIO, scenarioToStateFields, type Scenario } from "./scenario";
+import { MAP_V1 } from "./mapV1";
+import { scenarioToStateFields, type Scenario } from "./scenario";
 import {
   DAYS_PER_MONTH,
   HOURS_PER_TURN,
@@ -77,7 +78,7 @@ import { farmPowerMwAtHour } from "./weather";
 
 export { CONFIG } from "./config";
 
-export function newGame(seed: number, scenario: Scenario = DEFAULT_SCENARIO): GameState {
+export function newGame(seed: number, scenario: Scenario = MAP_V1): GameState {
   const fields = scenarioToStateFields(scenario);
   const forecastLevel: ForecastLevel = "basic";
   const monthRegimes = monthRegimesForDay(seed, 0);

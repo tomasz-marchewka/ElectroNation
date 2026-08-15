@@ -1,9 +1,11 @@
-// Scenario data: the map and starting endowment (01 §3.4). The default
-// scenario is the minimal test map — the full 24×16 hand-designed v1 map
-// (02 §8.6) lands as a separate scenario file once doc 07-adjacent map data is
-// designed. City names are player-facing data, hence Polish.
+// Scenario data: the map and starting endowment (01 §3.4). The game's own
+// scenario is the hand-designed 24×16 map v1 in mapV1.ts (02 §8.6); the
+// minimal scenario below is the bare skeleton kept for tests and for anything
+// that needs a map without geography. City names are player-facing, hence Polish.
 
 import { JUNCTION_SPEC, LINE_TYPES, type TerrainId, type WindClass } from "./config";
+import { DEFAULT_MAP_SIZE, type MapSize } from "./map";
+import type { HexCoord } from "./network";
 import type {
   BorderState,
   CityState,
@@ -32,10 +34,16 @@ export interface Scenario {
   junctions: ScenarioJunction[];
   borders: BorderState[];
   lines: LineState[];
+  /** Map bounds (01 §3.1); missing = the small 24×16 grid of 02 §8.6. */
+  map?: MapSize;
+  /** Border points on the map edge (01 §5.7); missing = no trade sites. */
+  borderSites?: HexCoord[];
   /** Terrain per hex key ("q,r"); missing hexes are plains. */
   terrain?: Record<string, TerrainId>;
   /** Wind class per hex key; missing hexes are open terrain. */
   windClasses?: Record<string, WindClass>;
+  /** Insolation multiplier per hex key; missing hexes are 1.0. */
+  solarMultipliers?: Record<string, number>;
 }
 
 function city(
@@ -73,10 +81,11 @@ export function finishedLine(
 }
 
 /**
- * Minimal starting endowment per 01 §3.4: one mid-size CCGT, one finished MV
- * line and one small connected city; the remaining cities start unconnected.
+ * Minimal starting endowment per 01 §3.4 on a featureless map: one mid-size
+ * CCGT, one finished MV line and one small connected city; the remaining
+ * cities start unconnected. The played scenario is MAP_V1.
  */
-export const DEFAULT_SCENARIO: Scenario = {
+export const MINIMAL_SCENARIO: Scenario = {
   startingMoneyPln: 10_000_000_000,
   cities: [
     city("city-jasienica", "Jasienica", 6, 4, 80_000, 6_900, true),
@@ -121,8 +130,11 @@ export function scenarioToStateFields(
   | "lines"
   | "constructions"
   | "nextObjectId"
+  | "map"
+  | "borderSites"
   | "terrain"
   | "windClasses"
+  | "solarMultipliers"
 > {
   // Deep copy through JSON: scenarios are plain data and the copy guarantees
   // a fresh game never aliases scenario constants.
@@ -141,8 +153,11 @@ export function scenarioToStateFields(
       lines: scenario.lines,
       constructions: [],
       nextObjectId: 1,
+      map: scenario.map ?? DEFAULT_MAP_SIZE,
+      borderSites: scenario.borderSites ?? [],
       terrain: scenario.terrain ?? ({} as Record<string, TerrainId>),
       windClasses: scenario.windClasses ?? ({} as Record<string, WindClass>),
+      solarMultipliers: scenario.solarMultipliers ?? ({} as Record<string, number>),
     }),
   ) as ReturnType<typeof scenarioToStateFields>;
 }

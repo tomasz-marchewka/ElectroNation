@@ -1,5 +1,6 @@
 {
   "name": "expansion-and-cancel",
+  "map": "minimal",
   "description": "Four days exercising the M3 mechanics: a plant block expanded in place (the last day's 500 MW setpoint only holds because the block landed — the plant started at 400), a junction dropped onto the existing line and then expanded, a farm order cancelled mid-build, a line cancelled mid-build, and the advanced forecast system bought.",
   "seed": 20260814,
   "days": 4,

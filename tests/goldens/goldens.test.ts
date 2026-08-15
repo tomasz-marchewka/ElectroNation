@@ -2,6 +2,8 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import {
+  MAP_V1,
+  MINIMAL_SCENARIO,
   TURNS_PER_DAY,
   TURN_PHASES,
   applyAction,
@@ -22,9 +24,18 @@ interface ScenarioAction {
   action: Action;
 }
 
+/**
+ * A fixture names its map, because hexes only mean something on one: the same
+ * coordinates are a lake on map v1 and empty plains on the minimal map, and a
+ * fixture that silently turned into no-ops would still go green.
+ */
+const MAPS = { mapV1: MAP_V1, minimal: MINIMAL_SCENARIO } as const;
+
 interface Scenario {
   name: string;
   description: string;
+  /** Key of MAPS; the played map v1 when a fixture says nothing. */
+  map?: keyof typeof MAPS;
   seed: number;
   days: number;
   actions: ScenarioAction[];
@@ -38,7 +49,7 @@ const scenarios = readdirSync(scenariosDir)
 
 describe("golden scenarios", () => {
   test.each(scenarios)("$name", async (scenario) => {
-    let state = newGame(scenario.seed);
+    let state = newGame(scenario.seed, MAPS[scenario.map ?? "mapV1"]);
     const perTurn: unknown[] = [];
     const totalTurns = scenario.days * TURNS_PER_DAY;
     for (let turn = 0; turn < totalTurns; turn++) {

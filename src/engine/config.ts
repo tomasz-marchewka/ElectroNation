@@ -159,12 +159,17 @@ export const TERRAIN = {
 export type TerrainId = keyof typeof TERRAIN;
 
 /**
- * 06 §6.1: Weibull parameters per wind location class (@100 m), λ calibrated
- * so annual capacity factors hit the acceptance targets of 06 §12.7–8
- * (open ~24.6%, coastal ~29.6%, baltic ~45.5% under the §6.4 seasonal shape).
+ * 06 §6.1: Weibull parameters per wind location class (@100 m). λ is the
+ * measured value of the doc's table, trimmed only where the full §8 generation
+ * chain pushes the capacity factor out of its §12 band — the multiplicative
+ * noise on a convex power curve lifts CF by ~2.5–3 pp over the analytical
+ * Weibull integral. That happens for the coast alone (λ 8.0 → 32.5%, above the
+ * 24–30% band of §12.7), hence 7.65 here. Measured CFs: sheltered ~15.3%,
+ * open ~26.9%, coastal ~29.7%, baltic ~48.5%.
  */
 export const WIND_CLASSES = {
   // meanFactor = Γ(1 + 1/k): mean speed = λ · meanFactor.
+  sheltered: { k: 2.0, lambda: 5.8, meanFactor: 0.8862 },
   open: { k: 2.0, lambda: 7.3, meanFactor: 0.8862 },
   coastal: { k: 2.1, lambda: 7.65, meanFactor: 0.8857 },
   baltic: { k: 2.2, lambda: 10.2, meanFactor: 0.8856 },

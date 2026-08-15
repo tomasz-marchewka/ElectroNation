@@ -223,6 +223,7 @@ describe("01 §2.3: the bet against the forecast", () => {
           capacityMw: 200,
           enabled: true,
           windClass: "open",
+          solarMultiplier: 1,
         },
       ],
     });

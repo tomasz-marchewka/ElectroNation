@@ -27,6 +27,7 @@ function windFarm(id: string, q: number, r: number, capacityMw = 10): FarmState 
     capacityMw,
     enabled: true,
     windClass: "open",
+    solarMultiplier: 1,
   };
 }
 
@@ -263,8 +264,16 @@ describe("doc 01 §7: hard site limits, counting work already queued", () => {
 
 describe("doc 01 §3.3 / §5.4: line slots are a per-object limit", () => {
   // A junction ringed by eight farms, each two hexes away, so only the
-  // junction's own slot count can be the binding constraint.
-  const ROUTES: { q: number; r: number }[][] = [
+  // junction's own slot count can be the binding constraint. Routes are written
+  // around the junction and then shifted inland, because every hex of a route
+  // has to be a hex of the map (01 §3.1).
+  const JUNCTION_HEX = { q: 5, r: 3 };
+  const shift = (hex: { q: number; r: number }) => ({
+    q: hex.q + JUNCTION_HEX.q,
+    r: hex.r + JUNCTION_HEX.r,
+  });
+  const ROUTES: { q: number; r: number }[][] = (
+    [
     [{ q: 2, r: 0 }, { q: 1, r: 0 }, { q: 0, r: 0 }],
     [{ q: 2, r: -2 }, { q: 1, r: -1 }, { q: 0, r: 0 }],
     [{ q: 0, r: -2 }, { q: 0, r: -1 }, { q: 0, r: 0 }],
@@ -273,7 +282,8 @@ describe("doc 01 §3.3 / §5.4: line slots are a per-object limit", () => {
     [{ q: 0, r: 2 }, { q: 0, r: 1 }, { q: 0, r: 0 }],
     [{ q: 3, r: 0 }, { q: 2, r: 0 }, { q: 1, r: 0 }, { q: 0, r: 0 }],
     [{ q: 4, r: 0 }, { q: 3, r: 0 }, { q: 2, r: 0 }, { q: 1, r: 0 }, { q: 0, r: 0 }],
-  ];
+  ] as { q: number; r: number }[][]
+  ).map((route) => route.map(shift));
 
   const ringScenario: Scenario = {
     startingMoneyPln: 10_000_000_000,
@@ -285,7 +295,7 @@ describe("doc 01 §3.3 / §5.4: line slots are a per-object limit", () => {
       return windFarm(`farm-${i}`, end.q, end.r);
     }),
     storages: [],
-    junctions: [{ id: "junction-1", name: "J1", hex: { q: 0, r: 0 }, throughputMw: 250 }],
+    junctions: [{ id: "junction-1", name: "J1", hex: JUNCTION_HEX, throughputMw: 250 }],
     borders: [],
     lines: [],
   };

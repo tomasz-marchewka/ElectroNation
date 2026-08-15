@@ -1,11 +1,13 @@
 import { describe, expect, test } from "vitest";
 import {
+  farmPowerMwAtHour,
   generateWeatherDay,
   nextFloat01,
   pickMonthRegimes,
   pvPowerMw,
   seedStream,
   turbinePowerFraction,
+  type FarmState,
   type PrngState,
   type WindClass,
 } from "../../src/engine";
@@ -21,9 +23,26 @@ const YEARS = 100;
 /** One game day represents ~10.13 real days (30.4 / 3 — doc 01 §2.1). */
 const REAL_DAYS_PER_GAME_DAY = 30.4 / 3;
 
+/** 1 MW reference PV farms differing only in the insolation of their hex (01 §3.2). */
+function referencePvFarm(solarMultiplier: number): FarmState {
+  return {
+    id: `pv-${solarMultiplier}`,
+    name: "PV",
+    hex: { q: 0, r: 0 },
+    tech: "pv",
+    capacityMw: 1,
+    enabled: true,
+    windClass: "open",
+    solarMultiplier,
+  };
+}
+
 interface SimStats {
   windCf: Record<WindClass, number>;
   pvCf: number;
+  /** CF of a farm on a 1.0 hex and of the same farm on a 0.8 hex. */
+  pvFarmCf: number;
+  pvDimFarmCf: number;
   pvEnergyByMonth: number[];
   meanSpeedByMonth: number[];
   stormHoursPerRealYear: number;
@@ -37,8 +56,12 @@ function simulate(seed: number): SimStats {
     return r.value;
   };
 
-  const windSum: Record<WindClass, number> = { open: 0, coastal: 0, baltic: 0 };
+  const windSum: Record<WindClass, number> = { sheltered: 0, open: 0, coastal: 0, baltic: 0 };
+  const fullFarm = referencePvFarm(1);
+  const dimFarm = referencePvFarm(0.8);
   let pvSum = 0;
+  let pvFarmSum = 0;
+  let pvDimFarmSum = 0;
   let hours = 0;
   const pvEnergyByMonth = new Array<number>(12).fill(0);
   const speedSumByMonth = new Array<number>(12).fill(0);
@@ -53,7 +76,7 @@ function simulate(seed: number): SimStats {
         const gen = generateWeatherDay(rng, DAY_OF_YEAR[month] ?? 21, month, regime);
         rng = gen.rng;
         for (let hour = 0; hour < 24; hour++) {
-          for (const windClass of ["open", "coastal", "baltic"] as WindClass[]) {
+          for (const windClass of ["sheltered", "open", "coastal", "baltic"] as WindClass[]) {
             windSum[windClass] += turbinePowerFraction(
               gen.weather.windMs[windClass][hour] ?? 0,
             );
@@ -64,6 +87,8 @@ function simulate(seed: number): SimStats {
             gen.weather.tempC[hour] ?? 15,
           );
           pvSum += pv;
+          pvFarmSum += farmPowerMwAtHour(fullFarm, gen.weather, hour);
+          pvDimFarmSum += farmPowerMwAtHour(dimFarm, gen.weather, hour);
           pvEnergyByMonth[month] = (pvEnergyByMonth[month] ?? 0) + pv;
           speedSumByMonth[month] =
             (speedSumByMonth[month] ?? 0) + (gen.weather.windMs.open[hour] ?? 0);
@@ -77,11 +102,14 @@ function simulate(seed: number): SimStats {
 
   return {
     windCf: {
+      sheltered: windSum.sheltered / hours,
       open: windSum.open / hours,
       coastal: windSum.coastal / hours,
       baltic: windSum.baltic / hours,
     },
     pvCf: pvSum / hours,
+    pvFarmCf: pvFarmSum / hours,
+    pvDimFarmCf: pvDimFarmSum / hours,
     pvEnergyByMonth,
     meanSpeedByMonth: speedSumByMonth.map(
       (sum, m) => sum / (speedHoursByMonth[m] ?? 1),
@@ -104,6 +132,13 @@ describe("doc 06 §12.7: annual onshore wind capacity factor 24–30%", () => {
   });
 });
 
+describe("doc 06 §12.13: annual sheltered-terrain wind capacity factor 13–18%", () => {
+  test("sheltered class — half of what the coast yields", () => {
+    expect(stats.windCf.sheltered).toBeGreaterThanOrEqual(0.13);
+    expect(stats.windCf.sheltered).toBeLessThanOrEqual(0.18);
+  });
+});
+
 describe("doc 06 §12.8: annual Baltic wind capacity factor 45–50%", () => {
   test("baltic class", () => {
     expect(stats.windCf.baltic).toBeGreaterThanOrEqual(0.45);
@@ -115,6 +150,17 @@ describe("doc 06 §12.6: annual PV capacity factor 11–12%", () => {
   test("1 MW reference installation", () => {
     expect(stats.pvCf).toBeGreaterThanOrEqual(0.11);
     expect(stats.pvCf).toBeLessThanOrEqual(0.12);
+  });
+});
+
+describe("doc 01 §3.2: the insolation multiplier moves PV production, nothing else", () => {
+  test("a farm on a 1.0 hex stays inside the §12.6 band", () => {
+    expect(stats.pvFarmCf).toBeGreaterThanOrEqual(0.11);
+    expect(stats.pvFarmCf).toBeLessThanOrEqual(0.12);
+  });
+
+  test("a 0.8 hex lowers the capacity factor proportionally", () => {
+    expect(stats.pvDimFarmCf).toBeCloseTo(0.8 * stats.pvFarmCf, 12);
   });
 });
 
