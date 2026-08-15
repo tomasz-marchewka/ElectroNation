@@ -1,5 +1,6 @@
 import type {
   FarmTech,
+  ForecastLevel,
   LineType,
   PlantTech,
   StorageTech,
@@ -16,7 +17,7 @@ import type { MonthRegimes, RegimeId } from "./regimes";
 // functions. Serializability is load-bearing: saves, replay, golden tests and
 // (later) a server all rely on JSON.parse(JSON.stringify(s)) being lossless.
 
-export const STATE_SCHEMA_VERSION = 6;
+export const STATE_SCHEMA_VERSION = 7;
 
 export const TURNS_PER_DAY = 8;
 export const HOURS_PER_TURN = 3;
@@ -71,6 +72,8 @@ export interface PlantState {
   hex: HexCoord;
   tech: PlantTech;
   capacityMw: number;
+  /** Blocks standing on the hex — hard limit 6 (01 §7, 02 §8.4). */
+  blocks: number;
   /** Player dispatch [MW], full 0–100% range each turn (01 §5.1). */
   setpointMw: number;
 }
@@ -107,6 +110,12 @@ export interface JunctionState {
   name: string;
   hex: HexCoord;
   throughputMw: number;
+  /**
+   * How many lines may be plugged in (01 §5.4): 6 at base, +2 per capacity
+   * module, 18 max. Per-object because only junctions expand — every other
+   * object stays at LINE_SLOTS_PER_OBJECT.
+   */
+  lineSlots: number;
 }
 
 export interface BorderState {
@@ -132,13 +141,24 @@ export function isLineBuilt(line: LineState): boolean {
   return line.builtHours >= line.totalHours;
 }
 
-/** An object under construction — appears in the world when the countdown ends. */
+/**
+ * Work in the construction queue. A `kind` naming an object type puts that
+ * object into the world when the countdown ends; an expansion instead upgrades
+ * an object that already stands there (01 §7 — expansion never leaves the hex).
+ * Every expansion runs its own countdown, so several may target one object.
+ */
 export type PendingObject =
   | { kind: "plant"; plant: PlantState }
   | { kind: "farm"; farm: FarmState }
   | { kind: "storage"; storage: StorageState }
   | { kind: "junction"; junction: JunctionState }
-  | { kind: "border"; border: BorderState };
+  | { kind: "border"; border: BorderState }
+  | { kind: "plantExpansion"; plantId: string; capacityMw: number }
+  | { kind: "farmExpansion"; farmId: string; capacityMw: number }
+  | { kind: "batteryExpansion"; storageId: string; powerMw: number; capacityMwh: number }
+  | { kind: "pumpedExpansion"; storageId: string }
+  | { kind: "junctionExpansion"; junctionId: string }
+  | { kind: "borderExpansion"; borderId: string };
 
 export interface ConstructionState {
   id: string;
@@ -295,13 +315,25 @@ export interface GameState {
   calendar: Calendar;
   /** Integer PLN, never fractional — 10^10 start sits far below 2^53. */
   moneyPln: number;
+  /**
+   * Sequential PRNG streams. Weather and forecast truth do NOT live here: they
+   * come from streams keyed by day index, so any day of the forecast horizon
+   * can be generated on demand (06 §8.6.1/§8.6.3). City growth stays
+   * sequential — it consumes the state it just produced.
+   */
   rng: {
-    weather: PrngState;
-    forecast: PrngState;
     cityGrowth: PrngState;
   };
   /** Regimes of the current month (dominant + free-day) — 06 §8.4. */
   monthRegimes: MonthRegimes;
+  /**
+   * What the player is TOLD the month's dominant regime is (06 §8.4 pt 5) —
+   * right with probability `regimeAccuracy` of the forecast level held when the
+   * month began, otherwise another regime plausible for that month.
+   */
+  monthRegimeForecast: RegimeId;
+  /** Forecast system owned (01 §2.4); upgrades are bought, never sold. */
+  forecastLevel: ForecastLevel;
   cities: CityState[];
   plants: PlantState[];
   farms: FarmState[];

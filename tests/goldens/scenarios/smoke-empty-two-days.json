@@ -1,5 +1,6 @@
 {
   "name": "smoke-empty-two-days",
+  "map": "mapV1",
   "description": "Fresh game, no actions, two full days resolved — calendar flow, day rollover with truth regeneration, budget baseline.",
   "seed": 20260812,
   "days": 2,

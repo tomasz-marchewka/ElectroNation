@@ -12,22 +12,34 @@ import {
   buildLine,
   buildPlant,
   buildPumpedStorage,
+  buyForecastSystem,
+  cancelConstruction,
+  cancelLine,
   connectCity,
+  expandBattery,
+  expandBorder,
+  expandFarm,
+  expandJunction,
+  expandPlant,
+  expandPumpedStorage,
 } from "./build";
 import {
+  BORDER_SPEC,
   CONFIG,
   DAY_WEIGHTS,
   FARM_TECHS,
+  JUNCTION_SPEC,
   LINE_TYPES,
-  NODE_FIXED_PLN_PER_YEAR,
+  NODE_FIXED_CAPEX_SHARE_PER_YEAR,
   PLANT_TECHS,
+  PUMPED_BLOCK,
   STORAGE_TECHS,
   KM_PER_HEX,
   type FarmTech,
+  type ForecastLevel,
   type LineType,
   type PlantTech,
 } from "./config";
-import { cityDemandDayMw, type DayType } from "./demand";
 import { cityDemandForecast, farmProductionForecast } from "./forecast";
 import { evaluateMonthlyGrowth } from "./growth";
 import {
@@ -39,146 +51,52 @@ import {
   type HexCoord,
   type NetworkNode,
 } from "./network";
-import { nextFloat01, seedStream, type PrngState } from "./prng";
+import { seedStream } from "./prng";
 import { quantize001 } from "./quantize";
-import { pickMonthRegimes, type MonthRegimes } from "./regimes";
 import { MAP_V1 } from "./mapV1";
 import { scenarioToStateFields, type Scenario } from "./scenario";
 import {
   DAYS_PER_MONTH,
-  DAYS_PER_YEAR,
   HOURS_PER_TURN,
   STATE_SCHEMA_VERSION,
   TURNS_PER_DAY,
   TURN_PHASES,
   isLineBuilt,
   type CityState,
-  type DayTruth,
   type GameState,
   type SourceKind,
   type StorageMode,
   type TurnCityReport,
   type TurnReport,
 } from "./state";
-import { farmPowerMwAtHour, generateWeatherDay } from "./weather";
+import {
+  generateDayTruth,
+  monthRegimeForecastForDay,
+  monthRegimesForDay,
+} from "./truth";
+import { farmPowerMwAtHour } from "./weather";
 
 export { CONFIG } from "./config";
 
-// Reference days of doc 06 §3.7 — the 21st of each month.
-const MONTH_DAY_OF_YEAR = [21, 52, 80, 111, 141, 172, 202, 233, 264, 294, 325, 355] as const;
-
-export function monthForGameDay(dayIndex: number): number {
-  return Math.floor((dayIndex % DAYS_PER_YEAR) / DAYS_PER_MONTH);
-}
-
-/** 01 §2.1: working A, working B, free — in this order within each month. */
-export function dayTypeForGameDay(dayIndex: number): DayType {
-  return dayIndex % DAYS_PER_MONTH === DAYS_PER_MONTH - 1 ? "free" : "working";
-}
-
-export function dayOfYearForGameDay(dayIndex: number): number {
-  return MONTH_DAY_OF_YEAR[monthForGameDay(dayIndex)] ?? 21;
-}
-
-interface DayGenResult {
-  truth: DayTruth;
-  weatherRng: PrngState;
-  forecastRng: PrngState;
-  monthRegimes: MonthRegimes;
-}
-
-function generateDayTruth(
-  weatherRng: PrngState,
-  forecastRng: PrngState,
-  dayIndex: number,
-  cities: CityState[],
-  monthRegimes: MonthRegimes | null,
-): DayGenResult {
-  const month = monthForGameDay(dayIndex);
-  const dayType = dayTypeForGameDay(dayIndex);
-  const dayOfYear = dayOfYearForGameDay(dayIndex);
-
-  // Month init (06 §8.4): dominant regime + possible free-day switch. Always
-  // exactly three uniforms, so the weather stream stays aligned.
-  let wRng = weatherRng;
-  let regimes = monthRegimes;
-  if (dayIndex % DAYS_PER_MONTH === 0 || regimes === null) {
-    const draws: number[] = [];
-    for (let i = 0; i < 3; i++) {
-      const r = nextFloat01(wRng);
-      wRng = r.state;
-      draws.push(r.value);
-    }
-    regimes = pickMonthRegimes(month, [draws[0] ?? 0, draws[1] ?? 0, draws[2] ?? 0]);
-  }
-  const regime =
-    dayIndex % DAYS_PER_MONTH === DAYS_PER_MONTH - 1 ? regimes.lastDay : regimes.dominant;
-
-  const generated = generateWeatherDay(wRng, dayOfYear, month, regime);
-
-  // One forecast-error factor per quantity per day (06 §8.6.2 pt 3), from a
-  // dedicated stream. Box–Muller output is quantized before it enters state.
-  let fRng = forecastRng;
-  const drawZ = (): number => {
-    const u1 = nextFloat01(fRng);
-    const u2 = nextFloat01(u1.state);
-    fRng = u2.state;
-    const z =
-      Math.sqrt(-2 * Math.log(Math.max(u1.value, 1e-12))) *
-      Math.cos(2 * Math.PI * u2.value);
-    return quantize001(Math.max(-3, Math.min(3, z)));
-  };
-  const forecastZ = { wind: drawZ(), pv: drawZ(), demand: drawZ() };
-
-  // Truth is generated for every city (unconnected included), so a city
-  // connected mid-day starts consuming from the very next turn.
-  const cityDemandMw: Record<string, number[]> = {};
-  for (const city of cities) {
-    cityDemandMw[city.id] = cityDemandDayMw(
-      city.households,
-      city.firms,
-      dayType,
-      month,
-      generated.weather.tempC,
-    );
-  }
-  return {
-    truth: {
-      dayOfYear,
-      dayType,
-      month,
-      regime,
-      weather: generated.weather,
-      cityDemandMw,
-      forecastZ,
-    },
-    weatherRng: generated.rng,
-    forecastRng: fRng,
-    monthRegimes: regimes,
-  };
-}
-
 export function newGame(seed: number, scenario: Scenario = MAP_V1): GameState {
   const fields = scenarioToStateFields(scenario);
-  const gen = generateDayTruth(
-    seedStream(seed, "weather"),
-    seedStream(seed, "forecast"),
-    0,
-    fields.cities,
-    null,
-  );
+  const forecastLevel: ForecastLevel = "basic";
+  const monthRegimes = monthRegimesForDay(seed, 0);
   return {
     schema: STATE_SCHEMA_VERSION,
     seed,
     calendar: { dayIndex: 0, turnIndex: 0 },
-    rng: {
-      weather: gen.weatherRng,
-      forecast: gen.forecastRng,
-      cityGrowth: seedStream(seed, "city-growth"),
-    },
-    monthRegimes: gen.monthRegimes,
+    rng: { cityGrowth: seedStream(seed, "city-growth") },
+    monthRegimes,
+    monthRegimeForecast: monthRegimeForecastForDay(
+      seed,
+      0,
+      monthRegimes.dominant,
+      forecastLevel,
+    ),
+    forecastLevel,
     ...fields,
-    dayTruth: gen.truth,
+    dayTruth: generateDayTruth(seed, 0, fields.cities),
     lastTurnReport: null,
   };
 }
@@ -196,6 +114,15 @@ export type Action =
   | { type: "buildJunction"; hex: HexCoord }
   | { type: "buildBorder"; hex: HexCoord }
   | { type: "buildLine"; lineType: LineType; path: HexCoord[] }
+  | { type: "expandPlant"; plantId: string; capacityMw: number }
+  | { type: "expandFarm"; farmId: string; capacityMw: number }
+  | { type: "expandBattery"; storageId: string; powerMw: number; capacityMwh: number }
+  | { type: "expandPumpedStorage"; storageId: string }
+  | { type: "expandJunction"; junctionId: string }
+  | { type: "expandBorder"; borderId: string }
+  | { type: "cancelConstruction"; constructionId: string }
+  | { type: "cancelLine"; lineId: string }
+  | { type: "buyForecastSystem"; level: ForecastLevel }
   | { type: "connectCity"; cityId: string }
   | { type: "noop" };
 
@@ -264,6 +191,24 @@ export function applyAction(state: GameState, action: Action): GameState {
       return buildBorder(state, action.hex);
     case "buildLine":
       return buildLine(state, action.lineType, action.path);
+    case "expandPlant":
+      return expandPlant(state, action.plantId, action.capacityMw);
+    case "expandFarm":
+      return expandFarm(state, action.farmId, action.capacityMw);
+    case "expandBattery":
+      return expandBattery(state, action.storageId, action.powerMw, action.capacityMwh);
+    case "expandPumpedStorage":
+      return expandPumpedStorage(state, action.storageId);
+    case "expandJunction":
+      return expandJunction(state, action.junctionId);
+    case "expandBorder":
+      return expandBorder(state, action.borderId);
+    case "cancelConstruction":
+      return cancelConstruction(state, action.constructionId);
+    case "cancelLine":
+      return cancelLine(state, action.lineId);
+    case "buyForecastSystem":
+      return buyForecastSystem(state, action.level);
     case "connectCity":
       return connectCity(state, action.cityId);
     case "noop":
@@ -288,8 +233,23 @@ function yearlyFixedCostsPln(state: GameState): number {
   for (const p of state.plants) yearly += p.capacityMw * PLANT_TECHS[p.tech].fixedPlnPerMwYear;
   for (const f of state.farms) yearly += f.capacityMw * FARM_TECHS[f.tech].fixedPlnPerMwYear;
   for (const s of state.storages) yearly += s.powerMw * STORAGE_TECHS[s.tech].fixedPlnPerMwYear;
-  yearly += state.junctions.length * NODE_FIXED_PLN_PER_YEAR.junction;
-  yearly += state.borders.length * NODE_FIXED_PLN_PER_YEAR.border;
+  // 02 §8.3: 2% of the node's CAPEX per year — capacity modules raise both.
+  for (const junction of state.junctions) {
+    const modules = Math.round(
+      (junction.lineSlots - JUNCTION_SPEC.lineSlots) / JUNCTION_SPEC.moduleLineSlots,
+    );
+    yearly +=
+      (JUNCTION_SPEC.capexPln + modules * JUNCTION_SPEC.moduleCapexPln) *
+      NODE_FIXED_CAPEX_SHARE_PER_YEAR;
+  }
+  for (const border of state.borders) {
+    const modules = Math.round(
+      (border.throughputMw - BORDER_SPEC.throughputMw) / BORDER_SPEC.moduleThroughputMw,
+    );
+    yearly +=
+      (BORDER_SPEC.capexPln + modules * BORDER_SPEC.moduleCapexPln) *
+      NODE_FIXED_CAPEX_SHARE_PER_YEAR;
+  }
   for (const line of state.lines) {
     if (!isLineBuilt(line)) continue; // under construction: no maintenance yet
     const km = (line.path.length - 1) * KM_PER_HEX;
@@ -686,11 +646,15 @@ export function resolveTurn(state: GameState): GameState {
     junctions: [...state.junctions],
     borders: [...state.borders],
   };
+  const upgrade = <T extends { id: string }>(list: T[], id: string, patch: (item: T) => T) =>
+    list.map((item) => (item.id === id ? patch(item) : item));
   for (const construction of state.constructions) {
     if (construction.remainingDays > 1) {
       stillBuilding.push({ ...construction, remainingDays: construction.remainingDays - 1 });
       continue;
     }
+    // A finished expansion upgrades the object in place (01 §7); a finished
+    // object joins the world. Both were paid for when they were ordered.
     const pending = construction.pending;
     switch (pending.kind) {
       case "plant":
@@ -708,23 +672,69 @@ export function resolveTurn(state: GameState): GameState {
       case "border":
         spawned.borders.push(pending.border);
         break;
+      case "plantExpansion":
+        spawned.plants = upgrade(spawned.plants, pending.plantId, (plant) => ({
+          ...plant,
+          capacityMw: plant.capacityMw + pending.capacityMw,
+          blocks: plant.blocks + 1,
+        }));
+        break;
+      case "farmExpansion":
+        spawned.farms = upgrade(spawned.farms, pending.farmId, (farm) => ({
+          ...farm,
+          capacityMw: farm.capacityMw + pending.capacityMw,
+        }));
+        break;
+      case "batteryExpansion":
+        spawned.storages = upgrade(spawned.storages, pending.storageId, (storage) => ({
+          ...storage,
+          powerMw: storage.powerMw + pending.powerMw,
+          capacityMwh: storage.capacityMwh + pending.capacityMwh,
+        }));
+        break;
+      case "pumpedExpansion":
+        spawned.storages = upgrade(spawned.storages, pending.storageId, (storage) => ({
+          ...storage,
+          powerMw: storage.powerMw + PUMPED_BLOCK.powerMw,
+          capacityMwh: storage.capacityMwh + PUMPED_BLOCK.capacityMwh,
+        }));
+        break;
+      case "junctionExpansion":
+        spawned.junctions = upgrade(spawned.junctions, pending.junctionId, (junction) => ({
+          ...junction,
+          throughputMw: junction.throughputMw + JUNCTION_SPEC.moduleThroughputMw,
+          lineSlots: junction.lineSlots + JUNCTION_SPEC.moduleLineSlots,
+        }));
+        break;
+      case "borderExpansion":
+        spawned.borders = upgrade(spawned.borders, pending.borderId, (border) => ({
+          ...border,
+          throughputMw: border.throughputMw + BORDER_SPEC.moduleThroughputMw,
+        }));
+        break;
     }
   }
 
   const nextDay = state.calendar.dayIndex + 1;
-  const gen = generateDayTruth(
-    state.rng.weather,
-    state.rng.forecast,
-    nextDay,
-    nextCities,
-    state.monthRegimes,
-  );
+  const monthRegimes = monthRegimesForDay(state.seed, nextDay);
+  // The regime forecast is rolled once per month, when the month opens, against
+  // the forecast level owned at that moment (06 §8.4 pt 5).
+  const monthRegimeForecast =
+    nextDay % DAYS_PER_MONTH === 0
+      ? monthRegimeForecastForDay(
+          state.seed,
+          nextDay,
+          monthRegimes.dominant,
+          state.forecastLevel,
+        )
+      : state.monthRegimeForecast;
   return {
     ...done,
     calendar: { dayIndex: nextDay, turnIndex: 0 },
     moneyPln,
-    rng: { weather: gen.weatherRng, forecast: gen.forecastRng, cityGrowth: cityGrowthRng },
-    monthRegimes: gen.monthRegimes,
+    rng: { cityGrowth: cityGrowthRng },
+    monthRegimes,
+    monthRegimeForecast,
     cities: nextCities,
     plants: spawned.plants,
     farms: spawned.farms,
@@ -733,7 +743,7 @@ export function resolveTurn(state: GameState): GameState {
     borders: spawned.borders,
     lines,
     constructions: stillBuilding,
-    dayTruth: gen.truth,
+    dayTruth: generateDayTruth(state.seed, nextDay, nextCities),
     lastTurnReport: report,
   };
 }

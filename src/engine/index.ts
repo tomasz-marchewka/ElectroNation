@@ -20,12 +20,17 @@ export {
   DAY_WEIGHTS,
   DEMAND_PROFILES,
   DEMAND_SEASONAL,
+  EXPANSION,
   FARM_TECHS,
+  FORECAST_LEVELS,
+  FORECAST_LEVEL_ORDER,
   JUNCTION_SPEC,
   KM_PER_HEX,
   LINE_SLOTS_PER_OBJECT,
   LINE_TYPES,
   MAX_LINES_PER_HEX_PER_TYPE,
+  MAX_PLANT_BLOCKS_PER_HEX,
+  NODE_FIXED_CAPEX_SHARE_PER_YEAR,
   PLANT_TECHS,
   PUMPED_BLOCK,
   PV,
@@ -36,6 +41,7 @@ export {
   WIND_CLASSES,
   WIND_MONTHLY_MEAN_MS,
   type FarmTech,
+  type ForecastLevel,
   type LineType,
   type PlantTech,
   type StorageTech,
@@ -48,23 +54,19 @@ export {
   weatherDemandMultiplier,
   type DayType,
 } from "./demand";
-export {
-  applyAction,
-  dayOfYearForGameDay,
-  dayTypeForGameDay,
-  monthForGameDay,
-  newGame,
-  resolveTurn,
-  type Action,
-} from "./engine";
+export { applyAction, newGame, resolveTurn, type Action } from "./engine";
 export {
   cityDemandForecast,
+  dayForecast,
+  dayTruthAtOffset,
   farmProductionForecast,
+  forecastHorizonDays,
   projectBalance,
   sigmaDemand,
   sigmaPv,
   sigmaWind,
   type BalanceProjectionPoint,
+  type DayForecast,
   type ForecastPoint,
 } from "./forecast";
 export { evaluateMonthlyGrowth } from "./growth";
@@ -102,6 +104,8 @@ export {
   REGIME_SWITCH_PROBABILITY,
   pickMonthRegimes,
   pickRegime,
+  pickRegimeExcluding,
+  pickRegimeForecast,
   type MonthRegimes,
   type RegimeId,
 } from "./regimes";
@@ -110,6 +114,8 @@ export {
   finishedLine,
   scenarioToStateFields,
   type Scenario,
+  type ScenarioJunction,
+  type ScenarioPlant,
 } from "./scenario";
 export {
   DAYS_PER_MONTH,
@@ -145,6 +151,15 @@ export {
   type TurnStorageReport,
   type WeatherTruth,
 } from "./state";
+export {
+  dayOfYearForGameDay,
+  dayTypeForGameDay,
+  generateDayTruth,
+  monthForGameDay,
+  monthIndexForGameDay,
+  monthRegimeForecastForDay,
+  monthRegimesForDay,
+} from "./truth";
 export {
   dailyMeanTempC,
   farmPowerMwAtHour,

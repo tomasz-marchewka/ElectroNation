@@ -1,5 +1,6 @@
 {
   "name": "mapv1-first-days",
+  "map": "mapV1",
   "description": "Map v1: the starting CCGT feeds Modrzyca, a PV farm is built on hex (5,9) and wired to the city with an LV line, then a day runs on the mixed dispatch — terrain costs, insolation and construction timing on the real map.",
   "seed": 20260814,
   "days": 3,
