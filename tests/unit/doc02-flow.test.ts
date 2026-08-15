@@ -48,8 +48,22 @@ describe("doc 02 §9.2: merit order at the same distance", () => {
     { id: "ocgt", hex: { q: 2, r: 0 } },
   ];
   const lines: NetworkLine[] = [
-    { id: "l1", type: "mv", path: [{ q: 0, r: 0 }, { q: 1, r: 0 }] },
-    { id: "l2", type: "mv", path: [{ q: 2, r: 0 }, { q: 1, r: 0 }] },
+    {
+      id: "l1",
+      type: "mv",
+      path: [
+        { q: 0, r: 0 },
+        { q: 1, r: 0 },
+      ],
+    },
+    {
+      id: "l2",
+      type: "mv",
+      path: [
+        { q: 2, r: 0 },
+        { q: 1, r: 0 },
+      ],
+    },
   ];
   const segments = buildSegments(nodes, lines);
 
@@ -111,8 +125,22 @@ describe("doc 02 §9.6: thick lines, thin junction", () => {
     { id: "city", hex: { q: 2, r: 0 } },
   ];
   const lines: NetworkLine[] = [
-    { id: "l1", type: "mv", path: [{ q: 0, r: 0 }, { q: 1, r: 0 }] },
-    { id: "l2", type: "mv", path: [{ q: 1, r: 0 }, { q: 2, r: 0 }] },
+    {
+      id: "l1",
+      type: "mv",
+      path: [
+        { q: 0, r: 0 },
+        { q: 1, r: 0 },
+      ],
+    },
+    {
+      id: "l2",
+      type: "mv",
+      path: [
+        { q: 1, r: 0 },
+        { q: 2, r: 0 },
+      ],
+    },
   ];
   const segments = buildSegments(nodes, lines);
 
@@ -136,9 +164,7 @@ describe("doc 02 §9.1: flow determinism vs input order", () => {
     { id: "cityX", hex: { q: 1, r: 0 } },
     { id: "cityY", hex: { q: 3, r: 0 } },
   ];
-  const lines: NetworkLine[] = [
-    { id: "l1", type: "lv", path: hexRow(4) },
-  ];
+  const lines: NetworkLine[] = [{ id: "l1", type: "lv", path: hexRow(4) }];
 
   test("shuffled sources/sinks produce the identical result", () => {
     const sources: FlowSource[] = [

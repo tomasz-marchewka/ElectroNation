@@ -60,8 +60,7 @@ describe("doc 05 §9.3: free day vs working day", () => {
   const free = cityProfile("free");
 
   test("free-day energy is 80–85% of the working day", () => {
-    const ratio =
-      free.reduce((a, b) => a + b, 0) / working.reduce((a, b) => a + b, 0);
+    const ratio = free.reduce((a, b) => a + b, 0) / working.reduce((a, b) => a + b, 0);
     expect(ratio).toBeGreaterThanOrEqual(0.8);
     expect(ratio).toBeLessThanOrEqual(0.85);
   });

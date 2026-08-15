@@ -77,7 +77,10 @@ function brightestHour(state: GameState, until = 24): number {
 
 describe("doc 01 §3.2: insolation scales PV production", () => {
   test("a dimmer hex produces exactly its multiplier's share, hour by hour", () => {
-    const state = newGame(11, makeScenario({ farms: [farm("pv-dim", DIM, 0.8), farm("pv-full", BRIGHT, 1)] }));
+    const state = newGame(
+      11,
+      makeScenario({ farms: [farm("pv-dim", DIM, 0.8), farm("pv-full", BRIGHT, 1)] }),
+    );
     const dim = state.farms[0] as FarmState;
     const full = state.farms[1] as FarmState;
     let sunnyHours = 0;
@@ -104,7 +107,10 @@ describe("doc 01 §3.2: insolation scales PV production", () => {
   test("the forecast reflects it — it is computed from the scaled truth", () => {
     // Play into the afternoon so the morning hours are revealed truth
     // (06 §8.6: horizon ≤ 0 means no error term and no band).
-    let state = newGame(11, makeScenario({ farms: [farm("pv-dim", DIM, 0.8), farm("pv-full", BRIGHT, 1)] }));
+    let state = newGame(
+      11,
+      makeScenario({ farms: [farm("pv-dim", DIM, 0.8), farm("pv-full", BRIGHT, 1)] }),
+    );
     for (let i = 0; i < 5; i++) state = resolveTurn(state);
     const hour = brightestHour(state, 15);
     const dim = farmProductionForecast(state, "pv-dim", hour);

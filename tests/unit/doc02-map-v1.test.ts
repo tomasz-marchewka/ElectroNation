@@ -56,7 +56,15 @@ describe("doc 02 §8.6: the v1 map is a complete 24×16 country", () => {
 
   test("the geography has land, water and elevation", () => {
     const kinds = new Set(Object.values(state.terrain));
-    for (const terrainId of ["plains", "forest", "swamp", "highlands", "mountains", "lake", "sea"]) {
+    for (const terrainId of [
+      "plains",
+      "forest",
+      "swamp",
+      "highlands",
+      "mountains",
+      "lake",
+      "sea",
+    ]) {
       expect(kinds).toContain(terrainId);
     }
   });
@@ -95,9 +103,9 @@ describe("doc 02 §8.6: the v1 map is a complete 24×16 country", () => {
   test("06 §6.1: buildable ground offers a good, a bad and an average wind site", () => {
     const buildable = allHexes.filter((hex) => !isWater(hex));
     const classOf = (hex: HexCoord) => state.windClasses[hexKey(hex)] ?? "open";
-    expect(
-      buildable.some((hex) => classOf(hex) === "coastal" || classOf(hex) === "baltic"),
-    ).toBe(true);
+    expect(buildable.some((hex) => classOf(hex) === "coastal" || classOf(hex) === "baltic")).toBe(
+      true,
+    );
     expect(buildable.some((hex) => classOf(hex) === "sheltered")).toBe(true);
     expect(buildable.some((hex) => classOf(hex) === "open")).toBe(true);
   });

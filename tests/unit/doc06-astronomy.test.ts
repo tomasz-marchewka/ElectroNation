@@ -18,7 +18,8 @@ function dayLengthMinutes(dayOfYear: number): number {
 }
 
 // doc 06 §3.7 — reference table for φ = 52°N; the doc states these values
-// exist to verify the implementation.
+// exist to verify the implementation. One line per doc row — reflowing hides it.
+// prettier-ignore
 const REFERENCE_TABLE = [
   { date: "Jan 21", n: 21, declination: -20.1, dayLenMin: 8 * 60 + 29, alphaMax: 17.9, ghiNoon: 280 },
   { date: "Feb 21", n: 52, declination: -11.2, dayLenMin: 10 * 60 + 14, alphaMax: 26.8, ghiNoon: 436 },

@@ -38,6 +38,8 @@ export const REGIME_IDS = Object.keys(REGIMES) as RegimeId[];
  * λ of 06 §6.1 remains the class calibration) and the annual statistics pass
  * 06 §12.6–12.11.
  */
+// One line per month — reflowing would hide the 12 × 8 matrix.
+// prettier-ignore
 export const MONTHLY_REGIME_WEIGHTS: Record<RegimeId, number>[] = [
   // frostHigh, fogHigh, atlanticLow, storm, summerHigh, summerLow, transitional, coldWave
   { frostHigh: 12, fogHigh: 18, atlanticLow: 44, storm: 10, summerHigh: 0, summerLow: 0, transitional: 11, coldWave: 5 }, // Jan
@@ -74,11 +76,7 @@ export function pickRegime(month: number, uniform: number): RegimeId {
  * rest renormalized. Falls back to the excluded one when nothing else is
  * possible in that month (never happens with the tables above).
  */
-export function pickRegimeExcluding(
-  month: number,
-  excluded: RegimeId,
-  uniform: number,
-): RegimeId {
+export function pickRegimeExcluding(month: number, excluded: RegimeId, uniform: number): RegimeId {
   const weights = MONTHLY_REGIME_WEIGHTS[month] ?? MONTHLY_REGIME_WEIGHTS[0];
   if (!weights) return excluded;
   let total = 0;
@@ -118,10 +116,7 @@ export interface MonthRegimes {
  * Month init (§8.4): draws the dominant regime and, with 15% probability, a
  * different regime for the free day. Always consumes exactly three uniforms.
  */
-export function pickMonthRegimes(
-  month: number,
-  uniforms: [number, number, number],
-): MonthRegimes {
+export function pickMonthRegimes(month: number, uniforms: [number, number, number]): MonthRegimes {
   const dominant = pickRegime(month, uniforms[0]);
   const switched = uniforms[1] < REGIME_SWITCH_PROBABILITY;
   const lastDay = switched ? pickRegime(month, uniforms[2]) : dominant;

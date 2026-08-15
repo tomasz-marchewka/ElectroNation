@@ -43,18 +43,18 @@ export default tseslint.config(
       "no-restricted-imports": [
         "error",
         {
-          "patterns": [
+          patterns: [
             {
-              "group": ["react", "react-dom", "zustand", "*.css"],
-              "message": "engine must not depend on UI libraries",
+              group: ["react", "react-dom", "zustand", "*.css"],
+              message: "engine must not depend on UI libraries",
             },
             {
-              "group": ["node:*"],
-              "message": "engine must stay isomorphic (browser + future server)",
+              group: ["node:*"],
+              message: "engine must stay isomorphic (browser + future server)",
             },
             {
-              "group": ["**/app/**"],
-              "message": "engine must not import from src/app",
+              group: ["**/app/**"],
+              message: "engine must not import from src/app",
             },
           ],
         },

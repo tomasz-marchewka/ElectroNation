@@ -54,8 +54,7 @@ const TERRAIN_ROWS = [
  * gradient. Rows at 1.0 leave no entry — a missing hex means 1.0.
  */
 const SOLAR_BY_ROW = [
-  0.96, 0.96, 0.96, 0.97, 0.97, 0.98, 0.98, 1, 1, 1.01, 1.01, 1.02, 1.02, 1.04,
-  1.04, 1.04,
+  0.96, 0.96, 0.96, 0.97, 0.97, 0.98, 0.98, 1, 1, 1.01, 1.01, 1.02, 1.02, 1.04, 1.04, 1.04,
 ] as const;
 
 /** Offset (col, row) → axial (q, r) — the map is authored as a rectangle. */
@@ -204,7 +203,5 @@ export const MAP_V1: Scenario = {
   storages: [],
   junctions: [],
   borders: [],
-  lines: [
-    finishedLine("line-start", "mv", [at(1, 9), at(2, 9), at(3, 9), at(4, 9)]),
-  ],
+  lines: [finishedLine("line-start", "mv", [at(1, 9), at(2, 9), at(3, 9), at(4, 9)])],
 };

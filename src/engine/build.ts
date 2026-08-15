@@ -137,16 +137,10 @@ export function buildPlant(
   if (!Number.isFinite(capacityMw) || capacityMw <= 0 || capacityMw > spec.maxBlockMw) {
     return state;
   }
-  return queueObject(
-    state,
-    capacityMw * spec.capexPlnPerMw,
-    spec.buildDays,
-    hex,
-    (id) => ({
-      kind: "plant",
-      plant: { id, name: id, hex, tech, capacityMw, blocks: 1, setpointMw: 0 },
-    }),
-  );
+  return queueObject(state, capacityMw * spec.capexPlnPerMw, spec.buildDays, hex, (id) => ({
+    kind: "plant",
+    plant: { id, name: id, hex, tech, capacityMw, blocks: 1, setpointMw: 0 },
+  }));
 }
 
 export function buildFarm(
@@ -162,25 +156,19 @@ export function buildFarm(
   // Location properties are frozen at build time (01 §3.2), like the wind class.
   const windClass = state.windClasses[hexKey(hex)] ?? "open";
   const solarMultiplier = state.solarMultipliers[hexKey(hex)] ?? 1;
-  return queueObject(
-    state,
-    capacityMw * spec.capexPlnPerMw,
-    spec.buildDays,
-    hex,
-    (id) => ({
-      kind: "farm",
-      farm: {
-        id,
-        name: id,
-        hex,
-        tech,
-        capacityMw,
-        enabled: true,
-        windClass,
-        solarMultiplier,
-      },
-    }),
-  );
+  return queueObject(state, capacityMw * spec.capexPlnPerMw, spec.buildDays, hex, (id) => ({
+    kind: "farm",
+    farm: {
+      id,
+      name: id,
+      hex,
+      tech,
+      capacityMw,
+      enabled: true,
+      windClass,
+      solarMultiplier,
+    },
+  }));
 }
 
 export function buildBattery(
@@ -199,8 +187,7 @@ export function buildBattery(
   ) {
     return state;
   }
-  const cost =
-    powerMw * BATTERY.powerCapexPlnPerMw + capacityMwh * BATTERY.energyCapexPlnPerMwh;
+  const cost = powerMw * BATTERY.powerCapexPlnPerMw + capacityMwh * BATTERY.energyCapexPlnPerMwh;
   return queueObject(state, cost, STORAGE_TECHS.battery.buildDays, hex, (id) => ({
     kind: "storage",
     storage: {
@@ -268,11 +255,7 @@ export function buildBorder(state: GameState, hex: HexCoord): GameState {
   }));
 }
 
-export function buildLine(
-  state: GameState,
-  lineType: LineType,
-  path: HexCoord[],
-): GameState {
+export function buildLine(state: GameState, lineType: LineType, path: HexCoord[]): GameState {
   if (path.length < 2) return state;
   // The whole route lies on the map (01 §3.1) — a detour off the grid is not a
   // shortcut but a broken route.
@@ -296,8 +279,7 @@ export function buildLine(
   const linesThroughHex = (key: string, type?: LineType) =>
     state.lines.filter(
       (line) =>
-        (type === undefined || line.type === type) &&
-        line.path.some((h) => hexKey(h) === key),
+        (type === undefined || line.type === type) && line.path.some((h) => hexKey(h) === key),
     ).length;
   const slotsAt = (key: string): number =>
     state.junctions.find((j) => hexKey(j.hex) === key)?.lineSlots ?? LINE_SLOTS_PER_OBJECT;
@@ -383,11 +365,7 @@ function queueExpansion(
 }
 
 /** Adds one block to a plant — 6 blocks per hex (01 §7), 85% CAPEX / 70% time. */
-export function expandPlant(
-  state: GameState,
-  plantId: string,
-  capacityMw: number,
-): GameState {
+export function expandPlant(state: GameState, plantId: string, capacityMw: number): GameState {
   const plant = state.plants.find((p) => p.id === plantId);
   if (!plant) return state;
   const spec = PLANT_TECHS[plant.tech];
@@ -408,11 +386,7 @@ export function expandPlant(
 }
 
 /** Adds capacity to a farm, up to the hex limit (wind 300 / PV 200 MW — 02 §8.4). */
-export function expandFarm(
-  state: GameState,
-  farmId: string,
-  capacityMw: number,
-): GameState {
+export function expandFarm(state: GameState, farmId: string, capacityMw: number): GameState {
   const farm = state.farms.find((f) => f.id === farmId);
   if (!farm) return state;
   const spec = FARM_TECHS[farm.tech];
@@ -477,13 +451,10 @@ export function expandPumpedStorage(state: GameState, storageId: string): GameSt
     p.kind === "pumpedExpansion" && p.storageId === storageId ? 1 : 0,
   );
   if (pumpedBlocks(storage.powerMw) + queued + 1 > PUMPED_BLOCK.maxBlocks) return state;
-  return queueExpansion(
-    state,
-    PUMPED_BLOCK.capexPln,
-    STORAGE_TECHS.pumped.buildDays,
-    storage.hex,
-    { kind: "pumpedExpansion", storageId },
-  );
+  return queueExpansion(state, PUMPED_BLOCK.capexPln, STORAGE_TECHS.pumped.buildDays, storage.hex, {
+    kind: "pumpedExpansion",
+    storageId,
+  });
 }
 
 /** Modules bought on a junction so far, read off its line-slot count (01 §5.4). */
@@ -567,18 +538,14 @@ export function connectCity(state: GameState, cityId: string): GameState {
   if (state.moneyPln < CITY_CONNECTION_COST_PLN) return state;
   const cityKey = hexKey(city.hex);
   const hasFinishedLine = state.lines.some(
-    (line) =>
-      line.builtHours >= line.totalHours &&
-      line.path.some((h) => hexKey(h) === cityKey),
+    (line) => line.builtHours >= line.totalHours && line.path.some((h) => hexKey(h) === cityKey),
   );
   if (!hasFinishedLine) return state;
   return {
     ...state,
     moneyPln: state.moneyPln - CITY_CONNECTION_COST_PLN,
     cities: state.cities.map((c) =>
-      c.id === cityId
-        ? { ...c, connected: true, connectedSinceDay: state.calendar.dayIndex }
-        : c,
+      c.id === cityId ? { ...c, connected: true, connectedSinceDay: state.calendar.dayIndex } : c,
     ),
   };
 }

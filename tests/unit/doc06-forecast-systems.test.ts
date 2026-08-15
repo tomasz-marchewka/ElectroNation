@@ -66,10 +66,7 @@ describe("doc 06 §8.6.3: a forecast system narrows every band", () => {
     // day offset alone drives the width.
     expect(sigmaWind(30, "basic", 1)).toBeCloseTo(sigmaWind(12) * growth, 12);
     expect(sigmaPv(54, "basic", 2)).toBeCloseTo(sigmaPv(12) * growth ** 2, 12);
-    expect(sigmaDemand(30, "advanced", 1)).toBeCloseTo(
-      sigmaDemand(12) * 0.7 * growth,
-      12,
-    );
+    expect(sigmaDemand(30, "advanced", 1)).toBeCloseTo(sigmaDemand(12) * 0.7 * growth, 12);
   });
 
   test("a later forecast day is banded wider than an earlier one", () => {
@@ -139,9 +136,7 @@ describe("doc 06 §8.6.1: look-ahead truth is the truth the day resolves to", ()
     const demand = cityDemandForecast(state, "city-jasienica", 12, 2);
     const truthMw = truth?.cityDemandMw["city-jasienica"]?.[12] ?? 0;
     expect(demand?.bandMw).toBeGreaterThan(0);
-    expect(Math.abs((demand?.mw ?? 0) - truthMw)).toBeLessThanOrEqual(
-      3 * (demand?.bandMw ?? 0),
-    );
+    expect(Math.abs((demand?.mw ?? 0) - truthMw)).toBeLessThanOrEqual(3 * (demand?.bandMw ?? 0));
     expect(dayTruthAtOffset(withLevel(4, "ensemble"), 2)).toStrictEqual(truth);
   });
 });
@@ -154,17 +149,13 @@ describe("doc 01 §2.4: buying a forecast system", () => {
       type: "buyForecastSystem",
       level: "advanced",
     });
-    expect(base.moneyPln - advanced.moneyPln).toBe(
-      FORECAST_LEVELS.advanced.upgradeCostPln,
-    );
+    expect(base.moneyPln - advanced.moneyPln).toBe(FORECAST_LEVELS.advanced.upgradeCostPln);
     expect(advanced.forecastLevel).toBe("advanced");
     const ensemble = applyAction(advanced, {
       type: "buyForecastSystem",
       level: "ensemble",
     });
-    expect(advanced.moneyPln - ensemble.moneyPln).toBe(
-      FORECAST_LEVELS.ensemble.upgradeCostPln,
-    );
+    expect(advanced.moneyPln - ensemble.moneyPln).toBe(FORECAST_LEVELS.ensemble.upgradeCostPln);
   });
 
   test("levels only go up, and never without the money", () => {
@@ -172,12 +163,8 @@ describe("doc 01 §2.4: buying a forecast system", () => {
       type: "buyForecastSystem",
       level: "ensemble",
     });
-    expect(
-      applyAction(ensemble, { type: "buyForecastSystem", level: "advanced" }),
-    ).toBe(ensemble);
-    expect(
-      applyAction(ensemble, { type: "buyForecastSystem", level: "ensemble" }),
-    ).toBe(ensemble);
+    expect(applyAction(ensemble, { type: "buyForecastSystem", level: "advanced" })).toBe(ensemble);
+    expect(applyAction(ensemble, { type: "buyForecastSystem", level: "ensemble" })).toBe(ensemble);
     const poor = { ...newGame(4), moneyPln: 1_000 };
     expect(applyAction(poor, { type: "buyForecastSystem", level: "advanced" })).toBe(poor);
   });
@@ -200,12 +187,7 @@ describe("doc 06 §8.4 pt 5: the month's regime is known in advance, with error"
     expect(state.monthRegimeForecast).toBe(shown);
     state = run(state, TURNS_PER_DAY); // day 3 — new month
     expect(state.monthRegimeForecast).toBe(
-      monthRegimeForecastForDay(
-        state.seed,
-        3,
-        monthRegimesForDay(state.seed, 3).dominant,
-        "basic",
-      ),
+      monthRegimeForecastForDay(state.seed, 3, monthRegimesForDay(state.seed, 3).dominant, "basic"),
     );
   });
 

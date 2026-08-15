@@ -41,11 +41,7 @@ export function dailyMeanTempC(dayOfYear: number): number {
 }
 
 /** 06 §7.2: hourly temperature; cloud cover flattens the diurnal swing. */
-export function hourlyTempC(
-  dayOfYear: number,
-  hour: number,
-  cloudCover: number,
-): number {
+export function hourlyTempC(dayOfYear: number, hour: number, cloudCover: number): number {
   const baseAmplitude =
     TEMPERATURE.diurnalBaseMeanC +
     TEMPERATURE.diurnalBaseAmplitudeC *
@@ -53,8 +49,7 @@ export function hourlyTempC(
   const amplitude = baseAmplitude * (1 - TEMPERATURE.cloudDamping * cloudCover);
   return (
     dailyMeanTempC(dayOfYear) -
-    (amplitude / 2) *
-      Math.cos((2 * Math.PI * (hour - TEMPERATURE.warmestHour)) / 24)
+    (amplitude / 2) * Math.cos((2 * Math.PI * (hour - TEMPERATURE.warmestHour)) / 24)
   );
 }
 
@@ -74,11 +69,7 @@ export function turbinePowerFraction(windSpeedMs: number): number {
 }
 
 /** 06 §5: PV output [MW] from GHI [W/m²] and air temperature [°C]. */
-export function pvPowerMw(
-  capacityMw: number,
-  ghiW: number,
-  airTempC: number,
-): number {
+export function pvPowerMw(capacityMw: number, ghiW: number, airTempC: number): number {
   if (ghiW <= 0) return 0;
   const cellTempC = airTempC + ((PV.noctC - 20) / 800) * ghiW;
   const etaTemp = 1 + PV.gammaPerC * (cellTempC - 25);
@@ -182,12 +173,8 @@ export function generateWeatherDay(
   const tempC: number[] = [];
   for (let hour = 0; hour < 24; hour++) {
     const altitude = solarAltitudeDeg(CONFIG.latitudeDeg, dayOfYear, hour + 0.5);
-    ghiW.push(
-      quantize01(clearSkyGhiW(altitude) * cloudAttenuation(cloudCover[hour] ?? 0)),
-    );
-    tempC.push(
-      quantize01(hourlyTempC(dayOfYear, hour, cloudCover[hour] ?? 0) + tempOffset),
-    );
+    ghiW.push(quantize01(clearSkyGhiW(altitude) * cloudAttenuation(cloudCover[hour] ?? 0)));
+    tempC.push(quantize01(hourlyTempC(dayOfYear, hour, cloudCover[hour] ?? 0) + tempOffset));
   }
 
   return { weather: { cloudCover, ghiW, tempC, windMs }, rng: state };

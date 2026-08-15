@@ -29,6 +29,8 @@ export const CONFIG = {
  * / ~1,2 mld; `regimeAccuracy` has no doc value yet — proposal to tune in
  * doc 03. `basic` is the starting level, hence free.
  */
+// One line per doc row — reflowing the table would hide it.
+// prettier-ignore
 export const FORECAST_LEVELS = {
   basic: { sigmaMultiplier: 1.0, horizonDays: 1, regimeAccuracy: 0.6, upgradeCostPln: 0 },
   advanced: { sigmaMultiplier: 0.7, horizonDays: 3, regimeAccuracy: 0.8, upgradeCostPln: 600_000_000 },
@@ -43,6 +45,8 @@ export const FORECAST_LEVEL_ORDER = ["basic", "advanced", "ensemble"] as const;
 export const DAY_WEIGHTS = { working: 10.9, free: 8.7 } as const;
 
 /** 01 §5.1, §2.6: dispatchable plant technologies. */
+// One line per doc row — reflowing the table would hide it.
+// prettier-ignore
 export const PLANT_TECHS = {
   nuclear: { varCostPlnPerMwh: 60, fixedPlnPerMwYear: 500_000, capexPlnPerMw: 21_000_000, buildDays: 9, maxBlockMw: 1_600 },
   coal: { varCostPlnPerMwh: 250, fixedPlnPerMwYear: 260_000, capexPlnPerMw: 9_000_000, buildDays: 5, maxBlockMw: 1_000 },
@@ -82,6 +86,8 @@ export const PUMPED_BLOCK = {
 } as const;
 
 /** 01 §4.2: line types; loss is % of transmitted power per 100 km. */
+// One line per doc row — reflowing the table would hide it.
+// prettier-ignore
 export const LINE_TYPES = {
   lv: { capacityMw: 150, lossPctPer100km: 4, fixedPlnPerKmYear: 18_000, capexPlnPerKm: 1_200_000, buildHoursPerHex: 3 },
   mv: { capacityMw: 500, lossPctPer100km: 2, fixedPlnPerKmYear: 37_500, capexPlnPerKm: 2_500_000, buildHoursPerHex: 6 },
@@ -219,22 +225,22 @@ export const UNIT_ENERGY_KWH = {
 export const DEMAND_PROFILES = {
   household: {
     working: [
-      0.8, 0.7, 0.65, 0.65, 0.7, 0.8, 0.95, 1.05, 1.05, 0.95, 0.95, 0.95, 0.95,
-      0.95, 0.95, 0.95, 1.1, 1.3, 1.45, 1.5, 1.4, 1.25, 1.05, 0.95,
+      0.8, 0.7, 0.65, 0.65, 0.7, 0.8, 0.95, 1.05, 1.05, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95,
+      1.1, 1.3, 1.45, 1.5, 1.4, 1.25, 1.05, 0.95,
     ],
     free: [
-      0.85, 0.75, 0.7, 0.65, 0.65, 0.7, 0.75, 0.85, 1.0, 1.05, 1.1, 1.1, 1.1,
-      1.05, 1.0, 1.0, 1.1, 1.25, 1.4, 1.45, 1.35, 1.2, 1.05, 0.9,
+      0.85, 0.75, 0.7, 0.65, 0.65, 0.7, 0.75, 0.85, 1.0, 1.05, 1.1, 1.1, 1.1, 1.05, 1.0, 1.0, 1.1,
+      1.25, 1.4, 1.45, 1.35, 1.2, 1.05, 0.9,
     ],
   },
   firm: {
     working: [
-      0.55, 0.55, 0.55, 0.55, 0.55, 0.6, 0.75, 1.05, 1.35, 1.55, 1.65, 1.65,
-      1.6, 1.6, 1.55, 1.45, 1.35, 1.1, 0.9, 0.75, 0.65, 0.6, 0.55, 0.55,
+      0.55, 0.55, 0.55, 0.55, 0.55, 0.6, 0.75, 1.05, 1.35, 1.55, 1.65, 1.65, 1.6, 1.6, 1.55, 1.45,
+      1.35, 1.1, 0.9, 0.75, 0.65, 0.6, 0.55, 0.55,
     ],
     free: [
-      0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 1.0, 1.05, 1.05, 1.1, 1.1, 1.1, 1.1, 1.1,
-      1.1, 1.05, 1.05, 1.05, 1.05, 1.0, 1.0, 0.9, 0.9, 0.9,
+      0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 1.0, 1.05, 1.05, 1.1, 1.1, 1.1, 1.1, 1.1, 1.1, 1.05, 1.05, 1.05,
+      1.05, 1.0, 1.0, 0.9, 0.9, 0.9,
     ],
   },
 } as const;

@@ -141,9 +141,7 @@ describe("doc 02 §8.4: plants and farms expand at 85% CAPEX and 70% time", () =
   test("terrain multiplies the expansion price too", () => {
     const base = newGame(7, makeScenario({ terrain: { "0,0": "mountains" } }));
     const ordered = apply(base, { type: "expandPlant", plantId: "plant-1", capacityMw: 100 });
-    expect(base.moneyPln - ordered.moneyPln).toBe(
-      Math.round(100 * 5_500_000 * 0.85 * 2.5),
-    );
+    expect(base.moneyPln - ordered.moneyPln).toBe(Math.round(100 * 5_500_000 * 0.85 * 2.5));
   });
 });
 
@@ -161,9 +159,7 @@ describe("doc 01 §7: hard site limits, counting work already queued", () => {
     const done = run(state, 3 * TURNS_PER_DAY);
     expect(done.plants[0]?.blocks).toBe(6);
     expect(done.plants[0]?.capacityMw).toBe(650);
-    expect(apply(done, { type: "expandPlant", plantId: "plant-1", capacityMw: 50 })).toBe(
-      done,
-    );
+    expect(apply(done, { type: "expandPlant", plantId: "plant-1", capacityMw: 50 })).toBe(done);
   });
 
   test("doc 02 §8.2: battery modules are printed prices, capped at 500 MW / 2 000 MWh", () => {
@@ -254,9 +250,7 @@ describe("doc 01 §7: hard site limits, counting work already queued", () => {
       apply(base, { type: "expandBattery", storageId: "pumped-1", powerMw: 10, capacityMwh: 0 }),
     ).toBe(base); // wrong technology
     expect(apply(base, { type: "expandPumpedStorage", storageId: "battery-1" })).toBe(base);
-    expect(
-      apply(base, { type: "expandPlant", plantId: "plant-1", capacityMw: 600 }),
-    ).toBe(base); // > CCGT block size
+    expect(apply(base, { type: "expandPlant", plantId: "plant-1", capacityMw: 600 })).toBe(base); // > CCGT block size
     const poor = { ...base, moneyPln: 1_000 };
     expect(apply(poor, { type: "expandJunction", junctionId: "junction-1" })).toBe(poor);
   });
@@ -274,15 +268,50 @@ describe("doc 01 §3.3 / §5.4: line slots are a per-object limit", () => {
   });
   const ROUTES: { q: number; r: number }[][] = (
     [
-    [{ q: 2, r: 0 }, { q: 1, r: 0 }, { q: 0, r: 0 }],
-    [{ q: 2, r: -2 }, { q: 1, r: -1 }, { q: 0, r: 0 }],
-    [{ q: 0, r: -2 }, { q: 0, r: -1 }, { q: 0, r: 0 }],
-    [{ q: -2, r: 0 }, { q: -1, r: 0 }, { q: 0, r: 0 }],
-    [{ q: -2, r: 2 }, { q: -1, r: 1 }, { q: 0, r: 0 }],
-    [{ q: 0, r: 2 }, { q: 0, r: 1 }, { q: 0, r: 0 }],
-    [{ q: 3, r: 0 }, { q: 2, r: 0 }, { q: 1, r: 0 }, { q: 0, r: 0 }],
-    [{ q: 4, r: 0 }, { q: 3, r: 0 }, { q: 2, r: 0 }, { q: 1, r: 0 }, { q: 0, r: 0 }],
-  ] as { q: number; r: number }[][]
+      [
+        { q: 2, r: 0 },
+        { q: 1, r: 0 },
+        { q: 0, r: 0 },
+      ],
+      [
+        { q: 2, r: -2 },
+        { q: 1, r: -1 },
+        { q: 0, r: 0 },
+      ],
+      [
+        { q: 0, r: -2 },
+        { q: 0, r: -1 },
+        { q: 0, r: 0 },
+      ],
+      [
+        { q: -2, r: 0 },
+        { q: -1, r: 0 },
+        { q: 0, r: 0 },
+      ],
+      [
+        { q: -2, r: 2 },
+        { q: -1, r: 1 },
+        { q: 0, r: 0 },
+      ],
+      [
+        { q: 0, r: 2 },
+        { q: 0, r: 1 },
+        { q: 0, r: 0 },
+      ],
+      [
+        { q: 3, r: 0 },
+        { q: 2, r: 0 },
+        { q: 1, r: 0 },
+        { q: 0, r: 0 },
+      ],
+      [
+        { q: 4, r: 0 },
+        { q: 3, r: 0 },
+        { q: 2, r: 0 },
+        { q: 1, r: 0 },
+        { q: 0, r: 0 },
+      ],
+    ] as { q: number; r: number }[][]
   ).map((route) => route.map(shift));
 
   const ringScenario: Scenario = {
@@ -341,9 +370,7 @@ describe("doc 01 §2.6: cancelling forfeits everything paid", () => {
     for (let i = 0; i < 5; i++) {
       state = apply(state, { type: "expandPlant", plantId: "plant-1", capacityMw: 50 });
     }
-    expect(apply(state, { type: "expandPlant", plantId: "plant-1", capacityMw: 50 })).toBe(
-      state,
-    );
+    expect(apply(state, { type: "expandPlant", plantId: "plant-1", capacityMw: 50 })).toBe(state);
     const constructionId = state.constructions[0]?.id ?? "";
     const cancelled = apply(state, { type: "cancelConstruction", constructionId });
     expect(cancelled.constructions).toHaveLength(4);

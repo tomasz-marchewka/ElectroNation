@@ -1,9 +1,5 @@
 import { describe, expect, test } from "vitest";
-import {
-  evaluateMonthlyGrowth,
-  seedStream,
-  type CityState,
-} from "../../src/engine";
+import { evaluateMonthlyGrowth, seedStream, type CityState } from "../../src/engine";
 
 // Spec tests for docs/05 §6 via the acceptance list in 05 §9.5–9.
 

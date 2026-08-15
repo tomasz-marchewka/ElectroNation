@@ -1,6 +1,16 @@
 docs/
 prototyp/
-design_handoff_electronation_turn_ui/
+
+# Dostarczony handoff — artefakt zewnętrzny, zostaje bajt w bajt.
+design_handoff_electronation_design_system/
+
+# Kopia design systemu w warstwie gry: musi dać się porównać z handoffem,
+# więc formatuje ją autor handoffu, nie my. Nasze pliki obok (styles.css,
+# css/app-shell.css) są już poza tą listą.
+src/app/styles/tokens/
+src/app/styles/css/base.css
+src/app/styles/css/components.css
+
 dist/
 coverage/
 playwright-report/
