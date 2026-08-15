@@ -69,6 +69,7 @@ const TWO_CITY_SCENARIO: Scenario = {
       capacityMw: 200,
       enabled: true,
       windClass: "open",
+      solarMultiplier: 1,
     },
     {
       id: "farm-pv",
@@ -78,6 +79,7 @@ const TWO_CITY_SCENARIO: Scenario = {
       capacityMw: 100,
       enabled: true,
       windClass: "open",
+      solarMultiplier: 1,
     },
   ],
   storages: [],

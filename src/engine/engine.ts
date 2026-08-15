@@ -42,7 +42,8 @@ import {
 import { nextFloat01, seedStream, type PrngState } from "./prng";
 import { quantize001 } from "./quantize";
 import { pickMonthRegimes, type MonthRegimes } from "./regimes";
-import { DEFAULT_SCENARIO, scenarioToStateFields, type Scenario } from "./scenario";
+import { MAP_V1 } from "./mapV1";
+import { scenarioToStateFields, type Scenario } from "./scenario";
 import {
   DAYS_PER_MONTH,
   DAYS_PER_YEAR,
@@ -157,7 +158,7 @@ function generateDayTruth(
   };
 }
 
-export function newGame(seed: number, scenario: Scenario = DEFAULT_SCENARIO): GameState {
+export function newGame(seed: number, scenario: Scenario = MAP_V1): GameState {
   const fields = scenarioToStateFields(scenario);
   const gen = generateDayTruth(
     seedStream(seed, "weather"),

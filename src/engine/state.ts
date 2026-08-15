@@ -7,6 +7,7 @@ import type {
   WindClass,
 } from "./config";
 import type { DayType } from "./demand";
+import type { MapSize } from "./map";
 import type { HexCoord } from "./network";
 import type { PrngState } from "./prng";
 import type { MonthRegimes, RegimeId } from "./regimes";
@@ -15,7 +16,7 @@ import type { MonthRegimes, RegimeId } from "./regimes";
 // functions. Serializability is load-bearing: saves, replay, golden tests and
 // (later) a server all rely on JSON.parse(JSON.stringify(s)) being lossless.
 
-export const STATE_SCHEMA_VERSION = 5;
+export const STATE_SCHEMA_VERSION = 6;
 
 export const TURNS_PER_DAY = 8;
 export const HOURS_PER_TURN = 3;
@@ -84,6 +85,8 @@ export interface FarmState {
   enabled: boolean;
   /** Wind location class of the farm's hex; unused for PV. */
   windClass: WindClass;
+  /** Regional insolation multiplier of the hex (01 §3.2); unused for wind. */
+  solarMultiplier: number;
 }
 
 export type StorageMode = "idle" | "charge" | "discharge";
@@ -309,10 +312,16 @@ export interface GameState {
   constructions: ConstructionState[];
   /** Monotonic counter for engine-assigned object ids (replay-stable). */
   nextObjectId: number;
-  /** Map data (doc 07 territory): terrain per hex key; missing = plains. */
+  /** Map bounds (01 §3.1); hexes outside the rectangle do not exist. */
+  map: MapSize;
+  /** 01 §5.7: hexes on the map edge where a border connection may be built. */
+  borderSites: HexCoord[];
+  /** Terrain per hex key (01 §3.2, cost multipliers 02 §8.1); missing = plains. */
   terrain: Record<string, TerrainId>;
   /** Wind location class per hex key; missing = open. */
   windClasses: Record<string, WindClass>;
+  /** Regional insolation multiplier per hex key (01 §3.2); missing = 1.0. */
+  solarMultipliers: Record<string, number>;
   dayTruth: DayTruth;
   /** Report of the last resolved turn; null until the first resolution. */
   lastTurnReport: TurnReport | null;

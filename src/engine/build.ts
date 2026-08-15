@@ -20,25 +20,21 @@ import {
   type LineType,
   type PlantTech,
 } from "./config";
+import { areNeighbors, hexNeighbors, isInsideMap } from "./map";
 import { hexKey, type HexCoord } from "./network";
 import type { GameState, PendingObject } from "./state";
 
-// Flat-top axial neighbors (01 §3.1).
-const NEIGHBOR_OFFSETS = [
-  [1, 0],
-  [1, -1],
-  [0, -1],
-  [-1, 0],
-  [-1, 1],
-  [0, 1],
-] as const;
-
-function areNeighbors(a: HexCoord, b: HexCoord): boolean {
-  return NEIGHBOR_OFFSETS.some(([dq, dr]) => a.q + dq === b.q && a.r + dr === b.r);
-}
-
 function terrainAt(state: GameState, hex: HexCoord) {
   return TERRAIN[state.terrain[hexKey(hex)] ?? "plains"];
+}
+
+/** Whether one of the six neighbors is a lake or sea hex of this map. */
+function hasWaterNeighbor(state: GameState, hex: HexCoord): boolean {
+  return hexNeighbors(hex).some((neighbor) => {
+    if (!isInsideMap(state.map, neighbor)) return false;
+    const terrainId = state.terrain[hexKey(neighbor)] ?? "plains";
+    return terrainId === "lake" || terrainId === "sea";
+  });
 }
 
 function pendingHex(pending: PendingObject): HexCoord {
@@ -100,6 +96,7 @@ function queueObject(
   hex: HexCoord,
   makePending: (id: string) => PendingObject,
 ): GameState {
+  if (!isInsideMap(state.map, hex)) return state;
   const multiplier = terrainAt(state, hex).object;
   if (multiplier === null) return state;
   if (occupiedHexKeys(state).has(hexKey(hex))) return state;
@@ -149,7 +146,9 @@ export function buildFarm(
   if (!Number.isFinite(capacityMw) || capacityMw <= 0 || capacityMw > spec.maxMwPerHex) {
     return state;
   }
+  // Location properties are frozen at build time (01 §3.2), like the wind class.
   const windClass = state.windClasses[hexKey(hex)] ?? "open";
+  const solarMultiplier = state.solarMultipliers[hexKey(hex)] ?? 1;
   return queueObject(
     state,
     capacityMw * spec.capexPlnPerMw,
@@ -157,7 +156,16 @@ export function buildFarm(
     hex,
     (id) => ({
       kind: "farm",
-      farm: { id, name: id, hex, tech, capacityMw, enabled: true, windClass },
+      farm: {
+        id,
+        name: id,
+        hex,
+        tech,
+        capacityMw,
+        enabled: true,
+        windClass,
+        solarMultiplier,
+      },
     }),
   );
 }
@@ -196,10 +204,11 @@ export function buildBattery(
 }
 
 export function buildPumpedStorage(state: GameState, hex: HexCoord): GameState {
-  // 01 §3.2: mountains/highlands + water; the water flag arrives with the map
-  // model (doc 07) — until then the elevation requirement is the gate.
+  // 01 §3.2, 02 §8.1: the only legal sites are mountains or highlands with
+  // water next to them — elevation for the head, a lake or the sea to pump from.
   const terrainId = state.terrain[hexKey(hex)] ?? "plains";
   if (terrainId !== "mountains" && terrainId !== "highlands") return state;
+  if (!hasWaterNeighbor(state, hex)) return state;
   return queueObject(state, PUMPED_BLOCK.capexPln, 5, hex, (id) => ({
     kind: "storage",
     storage: {
@@ -223,6 +232,10 @@ export function buildJunction(state: GameState, hex: HexCoord): GameState {
 }
 
 export function buildBorder(state: GameState, hex: HexCoord): GameState {
+  // 01 §5.7: border points lie on the map edge and are part of the map data —
+  // the interconnector goes at one of them or nowhere.
+  const key = hexKey(hex);
+  if (!state.borderSites.some((site) => hexKey(site) === key)) return state;
   return queueObject(state, BORDER_SPEC.capexPln, BORDER_SPEC.buildDays, hex, (id) => ({
     kind: "border",
     border: {
@@ -242,6 +255,11 @@ export function buildLine(
   path: HexCoord[],
 ): GameState {
   if (path.length < 2) return state;
+  // The whole route lies on the map (01 §3.1) — a detour off the grid is not a
+  // shortcut but a broken route.
+  for (const hex of path) {
+    if (!isInsideMap(state.map, hex)) return state;
+  }
   for (let i = 0; i + 1 < path.length; i++) {
     const a = path[i];
     const b = path[i + 1];

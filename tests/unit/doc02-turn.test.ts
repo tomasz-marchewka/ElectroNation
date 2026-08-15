@@ -92,6 +92,7 @@ describe("doc 02 §5: dump penalty on dispatchable surplus", () => {
           capacityMw: 200,
           enabled: true,
           windClass: "open",
+          solarMultiplier: 1,
         },
       ],
     });

@@ -85,16 +85,28 @@ export function pvPowerMw(
   return capacityMw * (ghiW / 1000) * etaTemp * PV.etaSystem;
 }
 
-/** Production of one farm at one truth hour [MW]. */
+/**
+ * Production of one farm at one truth hour [MW]. PV scales with the regional
+ * insolation multiplier the farm recorded at build time (01 §3.2) — a location
+ * property, so it multiplies the output rather than the irradiance itself.
+ */
 export function farmPowerMwAtHour(
-  farm: { tech: FarmTech; capacityMw: number; windClass: WindClass },
+  farm: {
+    tech: FarmTech;
+    capacityMw: number;
+    windClass: WindClass;
+    solarMultiplier: number;
+  },
   weather: { ghiW: number[]; tempC: number[]; windMs: Record<WindClass, number[]> },
   hour: number,
 ): number {
   if (farm.tech === "wind") {
     return farm.capacityMw * turbinePowerFraction(weather.windMs[farm.windClass][hour] ?? 0);
   }
-  return pvPowerMw(farm.capacityMw, weather.ghiW[hour] ?? 0, weather.tempC[hour] ?? 15);
+  return (
+    farm.solarMultiplier *
+    pvPowerMw(farm.capacityMw, weather.ghiW[hour] ?? 0, weather.tempC[hour] ?? 15)
+  );
 }
 
 /** Hourly weather truth for one day (see state.ts WeatherTruth). */

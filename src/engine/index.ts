@@ -69,6 +69,17 @@ export {
 } from "./forecast";
 export { evaluateMonthlyGrowth } from "./growth";
 export {
+  DEFAULT_MAP_SIZE,
+  areNeighbors,
+  axialToOffset,
+  hexNeighbors,
+  isInsideMap,
+  offsetToAxial,
+  type MapSize,
+  type OffsetCoord,
+} from "./map";
+export { MAP_V1 } from "./mapV1";
+export {
   buildSegments,
   emptyResidual,
   hexKey,
@@ -95,7 +106,7 @@ export {
   type RegimeId,
 } from "./regimes";
 export {
-  DEFAULT_SCENARIO,
+  MINIMAL_SCENARIO,
   finishedLine,
   scenarioToStateFields,
   type Scenario,
