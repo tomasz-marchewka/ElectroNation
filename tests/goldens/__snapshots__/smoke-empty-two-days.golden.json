@@ -6,194 +6,194 @@
       "turn": 0,
       "phase": "night",
       "day": 0,
-      "moneyPln": 9994685160,
-      "demandMw": 40.633,
+      "moneyPln": 9994811600,
+      "demandMw": 39.667,
       "deliveredMw": 0,
-      "ensMw": 40.633,
+      "ensMw": 39.667,
       "lossesMw": 0,
       "dumpMw": 0,
-      "netPln": -5314840
+      "netPln": -5188400
     },
     {
       "turn": 1,
       "phase": "preDawn",
       "day": 0,
-      "moneyPln": 9989326720,
-      "demandMw": 40.967,
+      "moneyPln": 9989588320,
+      "demandMw": 39.933,
       "deliveredMw": 0,
-      "ensMw": 40.967,
+      "ensMw": 39.933,
       "lossesMw": 0,
       "dumpMw": 0,
-      "netPln": -5358440
+      "netPln": -5223280
     },
     {
       "turn": 2,
       "phase": "morningRamp",
       "day": 0,
-      "moneyPln": 9981090680,
-      "demandMw": 62.967,
+      "moneyPln": 9981565920,
+      "demandMw": 61.333,
       "deliveredMw": 0,
-      "ensMw": 62.967,
+      "ensMw": 61.333,
       "lossesMw": 0,
       "dumpMw": 0,
-      "netPln": -8236040
+      "netPln": -8022400
     },
     {
       "turn": 3,
       "phase": "lateMorning",
       "day": 0,
-      "moneyPln": 9971795160,
-      "demandMw": 71.067,
+      "moneyPln": 9972523280,
+      "demandMw": 69.133,
       "deliveredMw": 0,
-      "ensMw": 71.067,
+      "ensMw": 69.133,
       "lossesMw": 0,
       "dumpMw": 0,
-      "netPln": -9295520
+      "netPln": -9042640
     },
     {
       "turn": 4,
       "phase": "noon",
       "day": 0,
-      "moneyPln": 9962534520,
-      "demandMw": 70.8,
+      "moneyPln": 9963524240,
+      "demandMw": 68.8,
       "deliveredMw": 0,
-      "ensMw": 70.8,
+      "ensMw": 68.8,
       "lossesMw": 0,
       "dumpMw": 0,
-      "netPln": -9260640
+      "netPln": -8999040
     },
     {
       "turn": 5,
       "phase": "afternoon",
       "day": 0,
-      "moneyPln": 9953025360,
-      "demandMw": 72.7,
+      "moneyPln": 9954285400,
+      "demandMw": 70.633,
       "deliveredMw": 0,
-      "ensMw": 72.7,
+      "ensMw": 70.633,
       "lossesMw": 0,
       "dumpMw": 0,
-      "netPln": -9509160
+      "netPln": -9238840
     },
     {
       "turn": 6,
       "phase": "eveningPeak",
       "day": 0,
-      "moneyPln": 9942979920,
-      "demandMw": 76.8,
+      "moneyPln": 9944510280,
+      "demandMw": 74.733,
       "deliveredMw": 0,
-      "ensMw": 76.8,
+      "ensMw": 74.733,
       "lossesMw": 0,
       "dumpMw": 0,
-      "netPln": -10045440
+      "netPln": -9775120
     },
     {
       "turn": 7,
       "phase": "lateEvening",
       "day": 1,
-      "moneyPln": 9934019986,
-      "demandMw": 56.9,
+      "moneyPln": 9935746546,
+      "demandMw": 55.4,
       "deliveredMw": 0,
-      "ensMw": 56.9,
+      "ensMw": 55.4,
       "lossesMw": 0,
       "dumpMw": 0,
-      "netPln": -8959934
+      "netPln": -8763734
     },
     {
       "turn": 8,
       "phase": "night",
       "day": 1,
-      "moneyPln": 9928678986,
-      "demandMw": 40.833,
+      "moneyPln": 9930505826,
+      "demandMw": 40.067,
       "deliveredMw": 0,
-      "ensMw": 40.833,
+      "ensMw": 40.067,
       "lossesMw": 0,
       "dumpMw": 0,
-      "netPln": -5341000
+      "netPln": -5240720
     },
     {
       "turn": 9,
       "phase": "preDawn",
       "day": 1,
-      "moneyPln": 9923298746,
-      "demandMw": 41.133,
+      "moneyPln": 9925221506,
+      "demandMw": 40.4,
       "deliveredMw": 0,
-      "ensMw": 41.133,
+      "ensMw": 40.4,
       "lossesMw": 0,
       "dumpMw": 0,
-      "netPln": -5380240
+      "netPln": -5284320
     },
     {
       "turn": 10,
       "phase": "morningRamp",
       "day": 1,
-      "moneyPln": 9915027826,
-      "demandMw": 63.233,
+      "moneyPln": 9917116266,
+      "demandMw": 61.967,
       "deliveredMw": 0,
-      "ensMw": 63.233,
+      "ensMw": 61.967,
       "lossesMw": 0,
       "dumpMw": 0,
-      "netPln": -8270920
+      "netPln": -8105240
     },
     {
       "turn": 11,
       "phase": "lateMorning",
       "day": 1,
-      "moneyPln": 9905697426,
-      "demandMw": 71.333,
+      "moneyPln": 9907990786,
+      "demandMw": 69.767,
       "deliveredMw": 0,
-      "ensMw": 71.333,
+      "ensMw": 69.767,
       "lossesMw": 0,
       "dumpMw": 0,
-      "netPln": -9330400
+      "netPln": -9125480
     },
     {
       "turn": 12,
       "phase": "noon",
       "day": 1,
-      "moneyPln": 9896401906,
-      "demandMw": 71.067,
+      "moneyPln": 9898913266,
+      "demandMw": 69.4,
       "deliveredMw": 0,
-      "ensMw": 71.067,
+      "ensMw": 69.4,
       "lossesMw": 0,
       "dumpMw": 0,
-      "netPln": -9295520
+      "netPln": -9077520
     },
     {
       "turn": 13,
       "phase": "afternoon",
       "day": 1,
-      "moneyPln": 9886853506,
-      "demandMw": 73,
+      "moneyPln": 9889587226,
+      "demandMw": 71.3,
       "deliveredMw": 0,
-      "ensMw": 73,
+      "ensMw": 71.3,
       "lossesMw": 0,
       "dumpMw": 0,
-      "netPln": -9548400
+      "netPln": -9326040
     },
     {
       "turn": 14,
       "phase": "eveningPeak",
       "day": 1,
-      "moneyPln": 9876764466,
-      "demandMw": 77.133,
+      "moneyPln": 9879716186,
+      "demandMw": 75.467,
       "deliveredMw": 0,
-      "ensMw": 77.133,
+      "ensMw": 75.467,
       "lossesMw": 0,
       "dumpMw": 0,
-      "netPln": -10089040
+      "netPln": -9871040
     },
     {
       "turn": 15,
       "phase": "lateEvening",
       "day": 2,
-      "moneyPln": 9867774012,
-      "demandMw": 57.133,
+      "moneyPln": 9870873972,
+      "demandMw": 56,
       "deliveredMw": 0,
-      "ensMw": 57.133,
+      "ensMw": 56,
       "lossesMw": 0,
       "dumpMw": 0,
-      "netPln": -8990454
+      "netPln": -8842214
     }
   ],
-  "finalStateHash": "9f2743dfd431a7fe4872dbbb742f16d65f11deeee43233b18efebd3ea0f10a60"
+  "finalStateHash": "121d3863b38cf741d1203c9fbcc2cfc7b6fc48c7cf207557a4eb4a1e35d43740"
 }
