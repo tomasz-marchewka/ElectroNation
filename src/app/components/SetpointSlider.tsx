@@ -3,6 +3,12 @@
 // thumb is a 3×12 px bar, not a circle — this is switchgear, not a form. A
 // native range input lies transparent over the drawn track, so the keyboard and
 // the pointer both work without reimplementing either.
+//
+// One divergence from the handoff: `min` may go below zero, which the extracted
+// component cannot do. A storage is the only bidirectional object in the game
+// (01 §5.3) and the handoff drove it with a three-state switch instead — but
+// then charging at 0 MW looks armed while nothing flows. With zero in the
+// middle the drawn state and the dispatched state are the same number.
 
 import { formatSetpoint } from "../format";
 
@@ -11,10 +17,12 @@ export interface SetpointSliderProps {
   name: string;
   /** Technology in lowercase, e.g. "węgiel", "CCGT". */
   tech?: string;
-  /** Current setpoint [MW]. */
+  /** Current setpoint [MW]; negative on a bipolar slider. */
   value: number;
   /** Rated power [MW]. */
   max: number;
+  /** Lower bound [MW]. Below zero the track fills from the zero tick either way. */
+  min?: number;
   unit?: string;
   /** Note under the slider — the variable cost, e.g. "250 zł/MWh". */
   note?: string;
@@ -25,6 +33,11 @@ export interface SetpointSliderProps {
    * dispatches in 10 MW and so does the game.
    */
   step?: number;
+  /**
+   * Replaces the readout and the value the slider speaks. A bipolar slider
+   * needs it: `−100 / 150 MW` says nothing about which way the power flows.
+   */
+  valueText?: string;
   /** Without it the slider is read-only. */
   onChange?: (value: number) => void;
 }
@@ -34,13 +47,21 @@ export function SetpointSlider({
   tech,
   value,
   max,
+  min = 0,
   unit = "MW",
   note,
   color,
   step = 10,
+  valueText,
   onChange,
 }: SetpointSliderProps) {
-  const percent = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0;
+  const span = max - min;
+  const percentAt = (mw: number) =>
+    span > 0 ? Math.max(0, Math.min(100, ((mw - min) / span) * 100)) : 0;
+  // Same arithmetic for both shapes: a unipolar slider simply has its zero at
+  // the left edge, so the fill grows from 0% as it always did.
+  const zeroPercent = percentAt(0);
+  const valuePercent = percentAt(value);
   // A unit at zero goes dim: the player is meant to see the headroom there.
   const off = value === 0;
 
@@ -50,22 +71,30 @@ export function SetpointSlider({
         <span>
           {name} {tech && <small>{tech}</small>}
         </span>
-        <span className={off ? "is-muted" : undefined}>{formatSetpoint(value, max, unit)}</span>
+        <span className={off ? "is-muted" : undefined}>
+          {valueText ?? formatSetpoint(value, max, unit)}
+        </span>
       </div>
       <label className="en-setpoint__track">
         <span
-          className="en-setpoint__fill"
-          style={{ width: `${percent}%`, background: color ?? "var(--en-gas-ico)" }}
+          className={value < 0 ? "en-setpoint__fill is-below" : "en-setpoint__fill"}
+          style={{
+            left: `${Math.min(zeroPercent, valuePercent)}%`,
+            width: `${Math.abs(valuePercent - zeroPercent)}%`,
+            background: color ?? "var(--en-gas-ico)",
+          }}
         />
-        <span className="en-setpoint__thumb" style={{ left: `${percent}%` }} />
+        {min < 0 && <span className="en-setpoint__zero" style={{ left: `${zeroPercent}%` }} />}
+        <span className="en-setpoint__thumb" style={{ left: `${valuePercent}%` }} />
         <input
           className="en-setpoint__input"
           type="range"
-          min={0}
+          min={min}
           max={max}
           step={step}
           value={value}
           aria-label={name}
+          aria-valuetext={valueText}
           disabled={onChange === undefined}
           onChange={onChange ? (event) => onChange(Number(event.target.value)) : undefined}
         />

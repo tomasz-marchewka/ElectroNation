@@ -9,7 +9,9 @@ import {
   PLANT_TECHS,
   farmProductionForecast,
   newGame,
+  type GameState,
   type PlantState,
+  type StorageState,
 } from "../../../src/engine";
 import { formatMw } from "../../../src/app/format";
 import {
@@ -46,9 +48,9 @@ describe("plants — merit order as a lesson (SetpointSlider.prompt.md)", () => 
   });
 });
 
-describe("storage — three modes and the state of charge (01 §5.3)", () => {
-  test("row carries the mode, the power limit and the SOC share", () => {
-    const state = newGame(7, {
+describe("storage — one signed setpoint and the state of charge (01 §5.3)", () => {
+  function storageState(setpoint: StorageState["setpoint"]): GameState {
+    return newGame(7, {
       ...makeScenario(),
       plants: [],
       storages: [
@@ -60,19 +62,40 @@ describe("storage — three modes and the state of charge (01 §5.3)", () => {
           powerMw: 150,
           capacityMwh: 300,
           socMwh: 186,
-          setpoint: { mode: "discharge", mw: 100 },
+          setpoint,
         },
       ],
     });
-    const row = setpointRows(state)[0] as StorageSetpointRow;
+  }
+
+  test("row carries the mode, the power limit and the SOC share", () => {
+    const row = setpointRows(storageState({ mode: "discharge", mw: 100 }))[0] as StorageSetpointRow;
 
     expect(row.kind).toBe("storage");
     expect(row.mode).toBe("discharge");
     expect(row.valueMw).toBe(100);
     expect(row.maxMw).toBe(150);
+    expect(row.valueLabel).toBe("ODDAWAJ 100 / 150 MW");
     expect(row.socPercent).toBeCloseTo(62, 6);
     expect(row.socLabel).toBe("SOC 62%");
     expect(row.tech).toBe("150 MW / 300 MWh");
+  });
+
+  test("charging is the negative half of the range", () => {
+    const row = setpointRows(storageState({ mode: "charge", mw: 100 }))[0] as StorageSetpointRow;
+
+    expect(row.valueMw).toBe(-100);
+    expect(row.mode).toBe("charge");
+    // The power keeps its sign out of the label — the direction is a word.
+    expect(row.valueLabel).toBe("ŁADUJ 100 / 150 MW");
+  });
+
+  test("a power of zero rests, whatever mode the state carries", () => {
+    const row = setpointRows(storageState({ mode: "discharge", mw: 0 }))[0] as StorageSetpointRow;
+
+    expect(row.valueMw).toBe(0);
+    expect(row.mode).toBe("idle");
+    expect(row.valueLabel).toBe("STOP 0 / 150 MW");
   });
 });
 

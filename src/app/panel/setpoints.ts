@@ -14,8 +14,8 @@ import {
   type PlantTech,
   type StorageMode,
 } from "../../engine";
-import { formatMw, formatMwh, formatNumber, formatPercent } from "../format";
-import { PLANT_TECH_INLINE_LABELS } from "../labels";
+import { formatMw, formatMwh, formatNumber, formatPercent, formatSetpoint } from "../format";
+import { PLANT_TECH_INLINE_LABELS, STORAGE_MODE_LABELS } from "../labels";
 
 /**
  * Technology colours of the handoff ("Color — technologies": one colour per
@@ -55,9 +55,14 @@ export interface StorageSetpointRow {
   name: string;
   /** "150 MW / 300 MWh". */
   tech: string;
+  /** Signed setpoint: below zero the storage charges, above it gives back. */
   valueMw: number;
+  /** Rated power — the slider runs from `-maxMw` to `+maxMw`. */
   maxMw: number;
+  /** Direction the signed setpoint actually means; zero always rests. */
   mode: StorageMode;
+  /** "ODDAWAJ 100 / 150 MW" — the sign spelled out, the power without it. */
+  valueLabel: string;
   socPercent: number;
   /** "SOC 62%". */
   socLabel: string;
@@ -127,17 +132,32 @@ function plantRows(state: GameState): PlantSetpointRow[] {
     }));
 }
 
+/**
+ * The engine keeps direction and power apart (`{ mode, mw }`); the panel shows
+ * them as one signed number, charging to the left of zero. A storage at rest
+ * has no direction at all, so a power of 0 reads as `idle` whatever mode the
+ * state carries — that pair is reachable in old saves and in replays.
+ */
+function signedSetpointMw(setpoint: { mode: StorageMode; mw: number }): number {
+  if (setpoint.mode === "charge") return -setpoint.mw;
+  if (setpoint.mode === "discharge") return setpoint.mw;
+  return 0;
+}
+
 function storageRows(state: GameState): StorageSetpointRow[] {
   return state.storages.map((storage) => {
     const socPercent = storage.capacityMwh > 0 ? (storage.socMwh / storage.capacityMwh) * 100 : 0;
+    const valueMw = signedSetpointMw(storage.setpoint);
+    const mode: StorageMode = valueMw === 0 ? "idle" : valueMw < 0 ? "charge" : "discharge";
     return {
       kind: "storage",
       id: storage.id,
       name: storage.name.toUpperCase(),
       tech: `${formatMw(storage.powerMw)} / ${formatMwh(storage.capacityMwh)}`,
-      valueMw: storage.setpoint.mw,
+      valueMw,
       maxMw: storage.powerMw,
-      mode: storage.setpoint.mode,
+      mode,
+      valueLabel: `${STORAGE_MODE_LABELS[mode]} ${formatSetpoint(Math.abs(valueMw), storage.powerMw)}`,
       socPercent,
       socLabel: `SOC ${formatPercent(socPercent)}`,
       color: STORAGE_COLOR,
