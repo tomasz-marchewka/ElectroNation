@@ -12,6 +12,7 @@
       "ensMw": 0,
       "lossesMw": 0.469,
       "dumpMw": 28.731,
+      "resCurtailedMw": 0,
       "netPln": -79021
     },
     {
@@ -24,6 +25,7 @@
       "ensMw": 0,
       "lossesMw": 0.473,
       "dumpMw": 28.46,
+      "resCurtailedMw": 0,
       "netPln": -72910
     },
     {
@@ -36,6 +38,7 @@
       "ensMw": 0,
       "lossesMw": 0.725,
       "dumpMw": 11.675,
+      "resCurtailedMw": 0,
       "netPln": 305949
     },
     {
@@ -48,6 +51,7 @@
       "ensMw": 0,
       "lossesMw": 0.816,
       "dumpMw": 5.618,
+      "resCurtailedMw": 0,
       "netPln": 442675
     },
     {
@@ -60,6 +64,7 @@
       "ensMw": 0,
       "lossesMw": 0.811,
       "dumpMw": 5.922,
+      "resCurtailedMw": 0,
       "netPln": 435800
     },
     {
@@ -72,6 +77,7 @@
       "ensMw": 0,
       "lossesMw": 0.834,
       "dumpMw": 4.399,
+      "resCurtailedMw": 0,
       "netPln": 470173
     },
     {
@@ -84,6 +90,7 @@
       "ensMw": 0,
       "lossesMw": 0.884,
       "dumpMw": 1.049,
+      "resCurtailedMw": 0,
       "netPln": 545792
     },
     {
@@ -96,6 +103,7 @@
       "ensMw": 0,
       "lossesMw": 0.656,
       "dumpMw": 16.277,
+      "resCurtailedMw": 0,
       "netPln": -1315346
     },
     {
@@ -108,6 +116,7 @@
       "ensMw": 0,
       "lossesMw": 0.459,
       "dumpMw": 29.374,
+      "resCurtailedMw": 0,
       "netPln": -93534
     },
     {
@@ -120,6 +129,7 @@
       "ensMw": 0,
       "lossesMw": 0.463,
       "dumpMw": 29.137,
+      "resCurtailedMw": 0,
       "netPln": -88187
     },
     {
@@ -132,6 +142,7 @@
       "ensMw": 0,
       "lossesMw": 0.71,
       "dumpMw": 12.657,
+      "resCurtailedMw": 0.439,
       "netPln": 283798
     },
     {
@@ -144,6 +155,7 @@
       "ensMw": 0,
       "lossesMw": 0.767,
       "dumpMw": 13.253,
+      "resCurtailedMw": 0,
       "netPln": 408227
     },
     {
@@ -156,6 +168,7 @@
       "ensMw": 0,
       "lossesMw": 0.766,
       "dumpMw": 7.859,
+      "resCurtailedMw": 0,
       "netPln": 468603
     },
     {
@@ -168,6 +181,7 @@
       "ensMw": 0,
       "lossesMw": 0.815,
       "dumpMw": 1.023,
+      "resCurtailedMw": 0,
       "netPln": 510245
     },
     {
@@ -180,6 +194,7 @@
       "ensMw": 2.725,
       "lossesMw": 0.825,
       "dumpMw": 0,
+      "resCurtailedMw": 0,
       "netPln": 165585
     },
     {
@@ -192,6 +207,7 @@
       "ensMw": 0,
       "lossesMw": 0.643,
       "dumpMw": 12.157,
+      "resCurtailedMw": 0,
       "netPln": -1372833
     },
     {
@@ -204,6 +220,7 @@
       "ensMw": 0,
       "lossesMw": 0.452,
       "dumpMw": 24.882,
+      "resCurtailedMw": 0,
       "netPln": -31600
     },
     {
@@ -216,6 +233,7 @@
       "ensMw": 0,
       "lossesMw": 0.4,
       "dumpMw": 28.333,
+      "resCurtailedMw": 0,
       "netPln": -93786
     },
     {
@@ -228,6 +246,7 @@
       "ensMw": 0,
       "lossesMw": 0.51,
       "dumpMw": 21.3,
+      "resCurtailedMw": 0,
       "netPln": 40933
     },
     {
@@ -240,6 +259,7 @@
       "ensMw": 0,
       "lossesMw": 0.595,
       "dumpMw": 20.304,
+      "resCurtailedMw": 0,
       "netPln": 175691
     },
     {
@@ -252,6 +272,7 @@
       "ensMw": 0,
       "lossesMw": 0.579,
       "dumpMw": 21.526,
+      "resCurtailedMw": 0,
       "netPln": 158263
     },
     {
@@ -264,6 +285,7 @@
       "ensMw": 0,
       "lossesMw": 0.647,
       "dumpMw": 12.253,
+      "resCurtailedMw": 0,
       "netPln": 205425
     },
     {
@@ -276,6 +298,7 @@
       "ensMw": 0,
       "lossesMw": 0.792,
       "dumpMw": 2.208,
+      "resCurtailedMw": 0,
       "netPln": 376873
     },
     {
@@ -288,6 +311,7 @@
       "ensMw": 0,
       "lossesMw": 0.599,
       "dumpMw": 15.034,
+      "resCurtailedMw": 0,
       "netPln": -1147569
     }
   ],
