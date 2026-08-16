@@ -95,12 +95,7 @@ function terrainsOn(state: GameState, path: readonly HexCoord[]): TerrainId[] {
 describe("auto route — cheapest chain of hexes (01 §3.3, 02 §10 pt 2)", () => {
   // A mountain block hanging off the top edge: crossing it costs 2,5 per hex
   // (02 §8.1), dipping under it costs a few plains hexes at 1,0.
-  const MOUNTAIN_WALL = [
-    "..mmmm..",
-    "..mmmm..",
-    "........",
-    "........",
-  ] as const;
+  const MOUNTAIN_WALL = ["..mmmm..", "..mmmm..", "........", "........"] as const;
 
   test("goes around the mountains when the detour is cheaper", () => {
     const state = world(MOUNTAIN_WALL, at(0, 0), at(7, 0));
@@ -178,9 +173,7 @@ describe("routing refusals mirror the engine (01 §3.3)", () => {
   });
 
   test("an object with every line slot taken cannot be reached", () => {
-    const taken = Array.from({ length: 6 }, (_, index) =>
-      occupying(`mv-${index}`, "mv", at(4, 0)),
-    );
+    const taken = Array.from({ length: 6 }, (_, index) => occupying(`mv-${index}`, "mv", at(4, 0)));
     const state = world(CORRIDOR, at(0, 0), at(4, 0), taken);
 
     expect(findRoute(state, at(0, 0), at(4, 0), "mv")).toBeNull();

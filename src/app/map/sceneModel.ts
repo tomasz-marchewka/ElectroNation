@@ -182,8 +182,7 @@ export interface MapSceneOverlay {
 
 /** What POKAŻ WĄSKIE GARDŁO points at — the tightest place in the report. */
 export type BottleneckRef =
-  | { kind: "segment"; segmentId: string }
-  | { kind: "node"; nodeId: string };
+  { kind: "segment"; segmentId: string } | { kind: "node"; nodeId: string };
 
 /**
  * The tightest spot of the resolved turn: the segment or capped node closest

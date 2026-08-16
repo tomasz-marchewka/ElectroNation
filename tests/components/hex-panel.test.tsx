@@ -142,9 +142,7 @@ describe("catalogue — prices carry the terrain multiplier (02 §8.1)", () => {
     const base = 400 * PLANT_TECHS.ccgt.capexPlnPerMw;
 
     const plains = renderPanel(game, at(1, 1));
-    expect(priceOf(plains.container, "CCGT")).toBe(
-      formatMoneyPln(base * TERRAIN.plains.object!),
-    );
+    expect(priceOf(plains.container, "CCGT")).toBe(formatMoneyPln(base * TERRAIN.plains.object!));
     expect(value(plains.container, "MNOŻNIK — OBIEKTY")).toBe("×1,0");
     plains.unmount();
 
@@ -159,8 +157,7 @@ describe("catalogue — prices carry the terrain multiplier (02 §8.1)", () => {
     // The reference build prints "150 MW / 300 MWh — 900 mln"; 02 §8.2 makes it
     // 150 × 1,6 mln + 300 × 1,1 mln = 570 mln.
     const { container } = renderPanel(newGame(7, fixture()), at(1, 1));
-    const expected =
-      150 * BATTERY.powerCapexPlnPerMw + 300 * BATTERY.energyCapexPlnPerMwh;
+    const expected = 150 * BATTERY.powerCapexPlnPerMw + 300 * BATTERY.energyCapexPlnPerMwh;
 
     expect(expected).toBe(570_000_000);
     expect(priceOf(container, "Bateria BESS")).toBe(formatMoneyPln(expected));
@@ -170,9 +167,7 @@ describe("catalogue — prices carry the terrain multiplier (02 §8.1)", () => {
     const { container, onAction } = renderPanel(newGame(7, fixture()), at(1, 1));
 
     await userEvent.click(action("CCGT — blok gazowy · BLOK +50 MW"));
-    expect(priceOf(container, "CCGT")).toBe(
-      formatMoneyPln(450 * PLANT_TECHS.ccgt.capexPlnPerMw),
-    );
+    expect(priceOf(container, "CCGT")).toBe(formatMoneyPln(450 * PLANT_TECHS.ccgt.capexPlnPerMw));
 
     await userEvent.click(entry(container, "CCGT"));
     expect(onAction).toHaveBeenCalledWith({
@@ -194,9 +189,7 @@ describe("catalogue — prices carry the terrain multiplier (02 §8.1)", () => {
     expect(container.textContent).toContain("✕ tylko w punkcie granicznym");
     // The junction fits everywhere and stays clickable.
     expect(entry(container, "Stacja rozdzielcza").disabled).toBe(false);
-    expect(priceOf(container, "Stacja rozdzielcza")).toBe(
-      formatMoneyPln(JUNCTION_SPEC.capexPln),
-    );
+    expect(priceOf(container, "Stacja rozdzielcza")).toBe(formatMoneyPln(JUNCTION_SPEC.capexPln));
   });
 
   test("on water nothing can be built, but a line is still priced (01 §3.2)", () => {
@@ -234,14 +227,21 @@ describe("object — parameters and contextual actions (01 §8 pt 6)", () => {
       newGame(
         7,
         fixture({
-          lines: [finishedLine("line-1", "mv", [at(0, 1), at(1, 1), at(2, 1), at(3, 1), at(4, 1), at(5, 1)])],
+          lines: [
+            finishedLine("line-1", "mv", [
+              at(0, 1),
+              at(1, 1),
+              at(2, 1),
+              at(3, 1),
+              at(4, 1),
+              at(5, 1),
+            ]),
+          ],
         }),
       ),
       at(5, 1),
     );
-    const connect = action(
-      `PRZYŁĄCZ MIASTO — ${formatMoneyPln(CITY_CONNECTION_COST_PLN)}`,
-    );
+    const connect = action(`PRZYŁĄCZ MIASTO — ${formatMoneyPln(CITY_CONNECTION_COST_PLN)}`);
     expect(connect.disabled).toBe(false);
     await userEvent.click(connect);
     expect(wired.onAction).toHaveBeenCalledWith({ type: "connectCity", cityId: "city-a" });

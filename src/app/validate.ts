@@ -115,8 +115,10 @@ export function linesAt(census: Map<string, HexLineCount>, key: string): HexLine
 
 /** Line slots of the object on a hex: 6, or a junction's own count (01 §5.4). */
 export function lineSlotsAt(state: GameState, key: string): number {
-  return state.junctions.find((junction) => hexKey(junction.hex) === key)?.lineSlots ??
-    LINE_SLOTS_PER_OBJECT;
+  return (
+    state.junctions.find((junction) => hexKey(junction.hex) === key)?.lineSlots ??
+    LINE_SLOTS_PER_OBJECT
+  );
 }
 
 // --- money ------------------------------------------------------------------

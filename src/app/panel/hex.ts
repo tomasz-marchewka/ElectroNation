@@ -228,8 +228,8 @@ function objectAt(state: GameState, hex: HexCoord) {
 
 function objectNameAt(state: GameState, hex: HexCoord): string | null {
   const found = objectAt(state, hex);
-  const object = found.city ?? found.plant ?? found.farm ?? found.storage ?? found.junction ??
-    found.border;
+  const object =
+    found.city ?? found.plant ?? found.farm ?? found.storage ?? found.junction ?? found.border;
   return object ? object.name.toUpperCase() : null;
 }
 
@@ -290,8 +290,7 @@ function inBottleneck(state: GameState, report: TurnReport | null, hex: HexCoord
   }
   const ids = new Set(linesThrough(state, hex).map((line) => line.id));
   return report.segments.some(
-    (segment) =>
-      ids.has(segment.lineId) && lineLoad(segment.usedMw, segment.capacityMw) === "over",
+    (segment) => ids.has(segment.lineId) && lineLoad(segment.usedMw, segment.capacityMw) === "over",
   );
 }
 
@@ -399,9 +398,7 @@ export function hexLineRows(
     const index = line.path.findIndex((step) => hexKey(step) === key);
     const segment = (report?.segments ?? []).find(
       (candidate) =>
-        candidate.lineId === line.id &&
-        index >= candidate.fromIndex &&
-        index <= candidate.toIndex,
+        candidate.lineId === line.id && index >= candidate.fromIndex && index <= candidate.toIndex,
     );
     const capacityMw = LINE_TYPES[line.type].capacityMw;
     return {
@@ -445,7 +442,8 @@ function entry(
   },
 ): CatalogEntry {
   const cost = siteCostPln(state, hex, spec.basePln);
-  const note = siteNote(state, hex) ?? spec.extraNote ?? (cost === null ? null : moneyNote(state, cost));
+  const note =
+    siteNote(state, hex) ?? spec.extraNote ?? (cost === null ? null : moneyNote(state, cost));
   return {
     key: spec.key,
     name: spec.name,
@@ -594,9 +592,10 @@ function routeAction(state: GameState, hex: HexCoord): HexAction {
   return {
     key: "route",
     label: "POPROWADŹ LINIĘ STĄD",
-    note: used < slots
-      ? null
-      : `✕ brak wolnego przyłącza — ${formatNumber(used)}/${formatNumber(slots)}`,
+    note:
+      used < slots
+        ? null
+        : `✕ brak wolnego przyłącza — ${formatNumber(used)}/${formatNumber(slots)}`,
     intent: { kind: "route" },
   };
 }
@@ -914,9 +913,7 @@ function junctionView(
       {
         key: "throughput",
         label: "PRZEPUSTOWOŚĆ",
-        value: row
-          ? formatSetpoint(row.usedMw, row.throughputMw)
-          : formatMw(junction.throughputMw),
+        value: row ? formatSetpoint(row.usedMw, row.throughputMw) : formatMw(junction.throughputMw),
       },
       {
         key: "modules",
