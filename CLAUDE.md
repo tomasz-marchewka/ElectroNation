@@ -31,6 +31,9 @@ land iteratively per the docs; the docs remain the source of truth.
 - **Never commit on your own.** Only run `git commit` when the user explicitly
   asks for a commit. Editing files does not imply committing them.
 - Commit messages: Conventional Commits, terse (see `caveman-commit` skill).
+- **Never name a branch `claude/*`.** Branches follow the commit-type
+  convention: `feat/…`, `fix/…`, `docs/…`, `ci/…`, `refactor/…`. If a harness
+  hands you a `claude/*` branch, rename it before pushing.
 
 ## Repository layout
 
