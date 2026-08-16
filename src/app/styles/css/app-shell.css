@@ -119,3 +119,28 @@ body,
 .en-themeswitch {
   background: var(--en-bg-app);
 }
+
+/* ── session bar (M9) ───────────────────────────────────
+   New game, save to file, load from file, in the same utility strip and with
+   the same discretion as the theme switch next to it. The bar borrows the
+   segmented control's small button — these are actions, not a choice, so none
+   of them is ever pressed. The legend's own type carries the notice line. */
+.en-sessionbar {
+  display: flex;
+  align-items: center;
+  gap: var(--en-space-5);
+}
+
+.en-sessionbar__note.is-ok {
+  color: var(--en-ok);
+}
+
+.en-sessionbar__note.is-danger {
+  color: var(--en-danger);
+}
+
+/* The picker is driven by the WCZYTAJ Z PLIKU button; the browser's own file
+   widget carries none of the design system's values. */
+.en-sessionbar__file {
+  display: none;
+}

@@ -162,6 +162,62 @@ test("both themes render the whole screen without errors", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test("a resolved turn survives closing the tab", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("EC MODRZYCA").press("End");
+  await page.getByRole("button", { name: "ZATWIERDŹ TURĘ ▸" }).click();
+
+  const budget = page.locator(".en-kpi", { hasText: "BUDŻET" }).locator("b");
+  const shown = await budget.innerText();
+  await expect(page.locator(".en-panel__meta")).toContainText("TURA 2/8");
+
+  await page.reload();
+
+  // The autosave carries the whole state: calendar, budget and the standing
+  // report of the last resolved turn (01 §2.3).
+  await expect(page.locator(".en-panel__meta")).toContainText("TURA 2/8");
+  await expect(budget).toHaveText(shown);
+  await expect(page.locator(".en-report__label")).toContainText("TURA 1 · NOC");
+  await expect(page.locator(".en-turn").nth(1)).toHaveClass(/is-current/);
+});
+
+test("the session travels through a save file", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "ZATWIERDŹ TURĘ ▸" }).click();
+  await expect(page.locator(".en-panel__meta")).toContainText("TURA 2/8");
+
+  const downloading = page.waitForEvent("download");
+  await page.getByRole("button", { name: "ZAPISZ DO PLIKU" }).click();
+  const download = await downloading;
+  expect(download.suggestedFilename()).toMatch(/^electronation-save-\d{4}-\d{2}-\d{2}\.json$/);
+  const savedPath = await download.path();
+
+  // A fresh session on the same origin, then the file put back into it.
+  await page.getByRole("button", { name: "NOWA GRA" }).click();
+  await page.getByRole("button", { name: "POTWIERDŹ ✓" }).click();
+  await expect(page.locator(".en-panel__meta")).toContainText("TURA 1/8");
+
+  await page.locator(".en-sessionbar__file").setInputFiles(savedPath);
+
+  await expect(page.locator(".en-sessionbar__note")).toHaveText("✓ ZAPIS WCZYTANY");
+  await expect(page.locator(".en-panel__meta")).toContainText("TURA 2/8");
+});
+
+test("a file that is not a save is refused with a diagnosis", async ({ page }) => {
+  await page.goto("/");
+
+  await page.locator(".en-sessionbar__file").setInputFiles({
+    name: "strona.html",
+    mimeType: "text/html",
+    buffer: Buffer.from("<html></html>"),
+  });
+
+  await expect(page.locator(".en-sessionbar__note")).toHaveText(
+    "✕ PLIK NIE JEST ZAPISEM ELECTRONATION",
+  );
+  await expect(page.locator(".en-panel__meta")).toContainText("TURA 1/8");
+});
+
 test("the theme switch repaints the page and survives a reload", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");

@@ -82,6 +82,16 @@ export {
 } from "./map";
 export { MAP_V1 } from "./mapV1";
 export {
+  MIGRATIONS,
+  migrateState,
+  parseSaveJson,
+  type LoadError,
+  type LoadErrorCode,
+  type LoadResult,
+  type Migration,
+  type MigrationRegistry,
+} from "./migrations";
+export {
   buildSegments,
   emptyResidual,
   hexKey,

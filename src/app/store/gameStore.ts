@@ -1,8 +1,13 @@
 // State bridge UI ↔ engine. The store owns a GameState and nothing else:
-// every transition goes through a pure engine call (applyAction / resolveTurn)
-// and replaces the state immutably. No domain logic lives here or in the
-// components — derived numbers come from the engine or from ./selectors, and
-// the routing session's own transitions come from ../routing/session.
+// every transition goes through a pure engine call (applyAction / resolveTurn /
+// migrateState) and replaces the state immutably. No domain logic lives here or
+// in the components — derived numbers come from the engine or from ./selectors,
+// and the routing session's own transitions come from ../routing/session.
+//
+// Since M9 the store also owns the autosave. It is written on the transitions
+// that end a decision — time moving forward, a new game, an imported file — and
+// not on every setpoint move: an interrupted session resumes at the turn it was
+// planning, with its setpoints to redo.
 
 import { create } from "zustand";
 import {
@@ -13,6 +18,7 @@ import {
   type GameState,
   type HexCoord,
   type LineType,
+  type LoadError,
 } from "../../engine";
 import type { BottleneckRef } from "../map/sceneModel";
 import {
@@ -22,6 +28,8 @@ import {
   startRouting,
   type RoutingSession,
 } from "../routing/session";
+import { loadGame, saveGame } from "../save/autosave";
+import { readSaveFile } from "../save/file";
 import { scrubToTurn, skipTurns, type SkipStop } from "./skip";
 
 /** Seed of the default session; `?seed=` in the URL overrides it. */
@@ -38,10 +46,34 @@ export function seedFromSearch(search: string, fallback: number = DEFAULT_SEED):
   return Number.isFinite(parsed) ? Math.trunc(parsed) : fallback;
 }
 
-function initialSeed(): number {
-  if (typeof window === "undefined") return DEFAULT_SEED;
-  return seedFromSearch(window.location.search);
+/**
+ * A URL that names a seed asks for THAT session, so it starts fresh instead of
+ * continuing the autosave. Without this the dev/debug affordance of M4 would be
+ * silently swallowed by whatever was played last.
+ */
+export function seedIsPinned(search: string): boolean {
+  return new URLSearchParams(search).has("seed");
 }
+
+function currentSearch(): string {
+  return typeof window === "undefined" ? "" : window.location.search;
+}
+
+function initialSeed(): number {
+  return seedFromSearch(currentSearch());
+}
+
+/**
+ * Seed of a session started from the UI. Reading the clock is an app-layer
+ * affordance — the engine may never do it (determinism rules), but choosing
+ * which world to play is not simulation.
+ */
+export function newSessionSeed(): number {
+  return Date.now() % 2 ** 31;
+}
+
+/** Outcome of the last save-file interaction; the session bar prints it. */
+export type SaveNotice = { kind: "loaded" } | { kind: "error"; error: LoadError };
 
 export interface GameStore {
   game: GameState;
@@ -56,6 +88,7 @@ export interface GameStore {
    * at a time, so the diagnosis never outlives the run that produced it.
    */
   skipStop: SkipStop | null;
+  saveNotice: SaveNotice | null;
   /**
    * Applies a player action (a JSON object — the future replay protocol).
    * Returns false when the engine refused it: an illegal action comes back as
@@ -78,72 +111,113 @@ export interface GameStore {
   /** Orders the routed line and leaves routing mode. */
   confirmRouting: (path: HexCoord[]) => boolean;
   showBottleneck: (ref: BottleneckRef | null) => void;
-  /** Starts a fresh session on `seed`; clears the selection. */
+  /** Starts a fresh session on `seed`; clears the selection and the autosave. */
   restart: (seed: number) => void;
+  /**
+   * Boot step: continues the autosave when there is one. Never rejects — a
+   * broken or unreadable slot only leaves the fresh session standing, with the
+   * reason in `saveNotice`.
+   */
+  hydrate: () => Promise<void>;
+  /** Takes over a state read from a save file, then autosaves it. */
+  importSave: (file: Blob) => Promise<void>;
 }
 
-export const useGameStore = create<GameStore>()((set, get) => ({
-  game: newGame(initialSeed()),
+/** Everything that pointed into the world being replaced (new game, load). */
+const CLEARED_VIEW = {
   selectedHex: null,
   routing: null,
   bottleneck: null,
   skipStop: null,
-  dispatch: (action) => {
-    const before = get().game;
-    const game = applyAction(before, action);
-    if (game === before) return false;
-    set({ game });
-    return true;
-  },
-  // A new turn makes the previous report — and anything pointing into it —
-  // history, so the bottleneck highlight goes with it. So does the diagnosis of
-  // the last scrub: time moved by hand this time (01 §2.5).
-  resolve: () =>
-    set((store) => ({ game: resolveTurn(store.game), bottleneck: null, skipStop: null })),
-  resolveUntilTurn: (turnIndex) =>
-    set((store) => ({
-      game: scrubToTurn(store.game, turnIndex),
-      bottleneck: null,
-      skipStop: null,
-    })),
-  skip: () =>
-    set((store) => {
-      const { game, stop } = skipTurns(store.game);
-      return { game, bottleneck: null, skipStop: stop };
-    }),
-  // Routing owns the map clicks until it ends (M7 brief pt 3).
-  selectHex: (hex) =>
-    set((store) => (store.routing ? store : { selectedHex: hex, bottleneck: null })),
-  startRouting: (from) => set({ selectedHex: from, routing: startRouting(from), bottleneck: null }),
-  setRoutingType: (lineType) =>
-    set((store) => (store.routing ? { routing: setRoutingType(store.routing, lineType) } : store)),
-  hoverRouting: (hex) =>
-    set((store) => (store.routing ? { routing: hoverRouting(store.routing, hex) } : store)),
-  clickRouting: (hex) =>
-    set((store) =>
-      store.routing ? { routing: applyRoutingClick(store.game, store.routing, hex) } : store,
-    ),
-  cancelRouting: () => set({ routing: null }),
-  confirmRouting: (path) => {
-    const store = get();
-    if (!store.routing) return false;
-    const before = store.game;
-    const game = applyAction(before, {
-      type: "buildLine",
-      lineType: store.routing.lineType,
-      path,
-    });
-    if (game === before) return false;
-    set({ game, routing: null });
-    return true;
-  },
-  showBottleneck: (ref) => set({ bottleneck: ref }),
-  restart: (seed) =>
-    set({
-      game: newGame(seed),
-      selectedHex: null,
-      routing: null,
-      bottleneck: null,
-      skipStop: null,
-    }),
-}));
+} as const;
+
+export const useGameStore = create<GameStore>()((set, get) => {
+  /**
+   * Every transition that moves time lands the same way. A new turn makes the
+   * previous report — and anything pointing into it — history, so the
+   * bottleneck highlight goes with it, and so does the diagnosis of the last
+   * scrub unless this run produced its own (01 §2.5). The state then goes to
+   * the autosave slot: fire and forget, because the turn is on screen long
+   * before the write lands (M9 brief §1 — the save must not block the loop).
+   */
+  function advance(game: GameState, skipStop: SkipStop | null = null): void {
+    set({ game, bottleneck: null, skipStop, saveNotice: null });
+    void saveGame(game);
+  }
+
+  return {
+    game: newGame(initialSeed()),
+    selectedHex: null,
+    routing: null,
+    bottleneck: null,
+    skipStop: null,
+    saveNotice: null,
+    dispatch: (action) => {
+      const before = get().game;
+      const game = applyAction(before, action);
+      if (game === before) return false;
+      set({ game });
+      return true;
+    },
+    resolve: () => advance(resolveTurn(get().game)),
+    resolveUntilTurn: (turnIndex) => advance(scrubToTurn(get().game, turnIndex)),
+    skip: () => {
+      const { game, stop } = skipTurns(get().game);
+      advance(game, stop);
+    },
+    // Routing owns the map clicks until it ends (M7 brief pt 3).
+    selectHex: (hex) =>
+      set((store) => (store.routing ? store : { selectedHex: hex, bottleneck: null })),
+    startRouting: (from) =>
+      set({ selectedHex: from, routing: startRouting(from), bottleneck: null }),
+    setRoutingType: (lineType) =>
+      set((store) =>
+        store.routing ? { routing: setRoutingType(store.routing, lineType) } : store,
+      ),
+    hoverRouting: (hex) =>
+      set((store) => (store.routing ? { routing: hoverRouting(store.routing, hex) } : store)),
+    clickRouting: (hex) =>
+      set((store) =>
+        store.routing ? { routing: applyRoutingClick(store.game, store.routing, hex) } : store,
+      ),
+    cancelRouting: () => set({ routing: null }),
+    confirmRouting: (path) => {
+      const store = get();
+      if (!store.routing) return false;
+      const before = store.game;
+      const game = applyAction(before, {
+        type: "buildLine",
+        lineType: store.routing.lineType,
+        path,
+      });
+      if (game === before) return false;
+      set({ game, routing: null });
+      return true;
+    },
+    showBottleneck: (ref) => set({ bottleneck: ref }),
+    restart: (seed) => {
+      const game = newGame(seed);
+      set({ game, ...CLEARED_VIEW, saveNotice: null });
+      void saveGame(game);
+    },
+    hydrate: async () => {
+      if (seedIsPinned(currentSearch())) return;
+      const result = await loadGame();
+      if (result === null) return;
+      if (!result.ok) {
+        set({ saveNotice: { kind: "error", error: result.error } });
+        return;
+      }
+      set({ game: result.state, ...CLEARED_VIEW });
+    },
+    importSave: async (file) => {
+      const result = await readSaveFile(file);
+      if (!result.ok) {
+        set({ saveNotice: { kind: "error", error: result.error } });
+        return;
+      }
+      set({ game: result.state, ...CLEARED_VIEW, saveNotice: { kind: "loaded" } });
+      void saveGame(result.state);
+    },
+  };
+});

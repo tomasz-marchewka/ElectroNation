@@ -15,6 +15,7 @@ import { buildDayChart } from "./chart/dayChart";
 import { HexPanel } from "./components/HexPanel";
 import { ReportStrip } from "./components/ReportStrip";
 import { RoutingPanel } from "./components/RoutingPanel";
+import { SessionBar } from "./components/SessionBar";
 import { ThemeSwitch } from "./components/ThemeSwitch";
 import { TopBar } from "./components/TopBar";
 import { TurnBar } from "./components/TurnBar";
@@ -111,6 +112,7 @@ export function App() {
           </div>
           <TurnBar current={game.calendar.turnIndex} onSelect={resolveUntilTurn} />
           <DayChartView model={chart}>
+            <SessionBar />
             <ThemeSwitch />
           </DayChartView>
         </div>
