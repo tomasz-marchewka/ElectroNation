@@ -12,7 +12,9 @@ import type {
   RegimeId,
   StorageMode,
   StorageTech,
+  TerrainId,
   TurnPhase,
+  WindClass,
 } from "../engine";
 
 /** Months of the calendar year, index 0..11 as the engine counts them. */
@@ -101,6 +103,57 @@ export const STORAGE_MODE_LABELS: Record<StorageMode, string> = {
   idle: "STOP",
   discharge: "ODDAWAJ",
 };
+
+/**
+ * Terrain types of 01 §3.2 as the hex panel names them. The map legend keeps
+ * its own shorter set (map/biomes.ts) — a legend chip has 14 characters, a
+ * panel row has the whole column.
+ */
+export const TERRAIN_NAMES: Record<TerrainId, string> = {
+  plains: "nizina",
+  forest: "las",
+  highlands: "wyżyna",
+  swamp: "bagno",
+  urban: "teren zurbanizowany",
+  mountains: "góry",
+  lake: "jezioro",
+  sea: "morze",
+};
+
+/** Wind location classes of 06 §6.1 — the class the hex's Weibull λ comes from. */
+export const WIND_CLASS_LABELS: Record<WindClass, string> = {
+  sheltered: "osłonięty",
+  open: "otwarty",
+  coastal: "nadmorski",
+  baltic: "morski",
+};
+
+/**
+ * Build catalogue wording of the reference build (DispatcherScreen.jsx
+ * `CATALOG`). Only the names are the design's: every number next to them is
+ * computed from the engine's own CONFIG (plan/README.md).
+ */
+export const PLANT_CATALOG_NAMES: Record<PlantTech, string> = {
+  nuclear: "Blok jądrowy",
+  coal: "Blok węglowy",
+  ccgt: "CCGT — blok gazowy",
+  ocgt: "OCGT — turbina szczytowa",
+};
+
+export const FARM_CATALOG_NAMES: Record<FarmTech, string> = {
+  wind: "Farma wiatrowa",
+  pv: "Farma PV",
+};
+
+export const STORAGE_CATALOG_NAMES: Record<StorageTech, string> = {
+  battery: "Bateria BESS",
+  pumped: "Szczytowo-pompowa",
+};
+
+/** Node objects of 01 §5.4 and §5.7, and the city — named the same way. */
+export const JUNCTION_CATALOG_NAME = "Stacja rozdzielcza";
+export const BORDER_CATALOG_NAME = "Przyłącze graniczne";
+export const CITY_CATALOG_NAME = "Miasto";
 
 /**
  * Polish plural of "doba" — 1 DOBA, 2–4 DOBY, otherwise DÓB (teens take DÓB).

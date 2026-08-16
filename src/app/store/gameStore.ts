@@ -1,7 +1,8 @@
 // State bridge UI ↔ engine. The store owns a GameState and nothing else:
 // every transition goes through a pure engine call (applyAction / resolveTurn /
 // migrateState) and replaces the state immutably. No domain logic lives here or
-// in the components — derived numbers come from the engine or from ./selectors.
+// in the components — derived numbers come from the engine or from ./selectors,
+// and the routing session's own transitions come from ../routing/session.
 //
 // Since M9 the store also owns the autosave. It is written on the transitions
 // that end a decision — a resolved turn, a new game, an imported file — and not
@@ -16,8 +17,17 @@ import {
   type Action,
   type GameState,
   type HexCoord,
+  type LineType,
   type LoadError,
 } from "../../engine";
+import type { BottleneckRef } from "../map/sceneModel";
+import {
+  applyRoutingClick,
+  hoverRouting,
+  setRoutingType,
+  startRouting,
+  type RoutingSession,
+} from "../routing/session";
 import { loadGame, saveGame } from "../save/autosave";
 import { readSaveFile } from "../save/file";
 
@@ -66,14 +76,31 @@ export type SaveNotice = { kind: "loaded" } | { kind: "error"; error: LoadError 
 
 export interface GameStore {
   game: GameState;
-  /** Hex selected on the map; drives the hex panel from M5/M7 on. */
+  /** Hex selected on the map; drives the hex panel (01 §8 pt 6). */
   selectedHex: HexCoord | null;
+  /** The line being drawn right now, or null (01 §3.3). */
+  routing: RoutingSession | null;
+  /** What POKAŻ WĄSKIE GARDŁO pointed at, until the view moves on. */
+  bottleneck: BottleneckRef | null;
   saveNotice: SaveNotice | null;
-  /** Applies a player action (a JSON object — the future replay protocol). */
-  dispatch: (action: Action) => void;
+  /**
+   * Applies a player action (a JSON object — the future replay protocol).
+   * Returns false when the engine refused it: an illegal action comes back as
+   * the very same state (build.ts), which is the interface's cue to explain.
+   */
+  dispatch: (action: Action) => boolean;
   /** Resolves the current turn: reveals the truth and advances the calendar. */
   resolve: () => void;
   selectHex: (hex: HexCoord | null) => void;
+  /** Enters line-routing mode from the object on `from` (01 §3.3). */
+  startRouting: (from: HexCoord) => void;
+  setRoutingType: (lineType: LineType) => void;
+  hoverRouting: (hex: HexCoord | null) => void;
+  clickRouting: (hex: HexCoord) => void;
+  cancelRouting: () => void;
+  /** Orders the routed line and leaves routing mode. */
+  confirmRouting: (path: HexCoord[]) => boolean;
+  showBottleneck: (ref: BottleneckRef | null) => void;
   /** Starts a fresh session on `seed`; clears the selection and the autosave. */
   restart: (seed: number) => void;
   /**
@@ -86,22 +113,61 @@ export interface GameStore {
   importSave: (file: Blob) => Promise<void>;
 }
 
+/** Everything that pointed into the world being replaced (new game, load). */
+const CLEARED_VIEW = { selectedHex: null, routing: null, bottleneck: null } as const;
+
 export const useGameStore = create<GameStore>()((set, get) => ({
   game: newGame(initialSeed()),
   selectedHex: null,
+  routing: null,
+  bottleneck: null,
   saveNotice: null,
-  dispatch: (action) => set((store) => ({ game: applyAction(store.game, action) })),
+  dispatch: (action) => {
+    const before = get().game;
+    const game = applyAction(before, action);
+    if (game === before) return false;
+    set({ game });
+    return true;
+  },
   resolve: () => {
     const game = resolveTurn(get().game);
-    set({ game, saveNotice: null });
+    // A new turn makes the previous report — and anything pointing into it —
+    // history, so the bottleneck highlight goes with it.
+    set({ game, bottleneck: null, saveNotice: null });
     // Fire and forget: the resolved turn is on screen long before the write
     // lands (M9 brief §1 — the save must not block the loop).
     void saveGame(game);
   },
-  selectHex: (hex) => set({ selectedHex: hex }),
+  // Routing owns the map clicks until it ends (M7 brief pt 3).
+  selectHex: (hex) =>
+    set((store) => (store.routing ? store : { selectedHex: hex, bottleneck: null })),
+  startRouting: (from) => set({ selectedHex: from, routing: startRouting(from), bottleneck: null }),
+  setRoutingType: (lineType) =>
+    set((store) => (store.routing ? { routing: setRoutingType(store.routing, lineType) } : store)),
+  hoverRouting: (hex) =>
+    set((store) => (store.routing ? { routing: hoverRouting(store.routing, hex) } : store)),
+  clickRouting: (hex) =>
+    set((store) =>
+      store.routing ? { routing: applyRoutingClick(store.game, store.routing, hex) } : store,
+    ),
+  cancelRouting: () => set({ routing: null }),
+  confirmRouting: (path) => {
+    const store = get();
+    if (!store.routing) return false;
+    const before = store.game;
+    const game = applyAction(before, {
+      type: "buildLine",
+      lineType: store.routing.lineType,
+      path,
+    });
+    if (game === before) return false;
+    set({ game, routing: null });
+    return true;
+  },
+  showBottleneck: (ref) => set({ bottleneck: ref }),
   restart: (seed) => {
     const game = newGame(seed);
-    set({ game, selectedHex: null, saveNotice: null });
+    set({ game, ...CLEARED_VIEW, saveNotice: null });
     void saveGame(game);
   },
   hydrate: async () => {
@@ -112,7 +178,7 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       set({ saveNotice: { kind: "error", error: result.error } });
       return;
     }
-    set({ game: result.state, selectedHex: null });
+    set({ game: result.state, ...CLEARED_VIEW });
   },
   importSave: async (file) => {
     const result = await readSaveFile(file);
@@ -120,7 +186,7 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       set({ saveNotice: { kind: "error", error: result.error } });
       return;
     }
-    set({ game: result.state, selectedHex: null, saveNotice: { kind: "loaded" } });
+    set({ game: result.state, ...CLEARED_VIEW, saveNotice: { kind: "loaded" } });
     void saveGame(result.state);
   },
 }));
