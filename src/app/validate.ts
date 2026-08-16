@@ -218,11 +218,7 @@ export function hexRouteNote(
  * the raise is paid up front. The line's own slot stays in its OLD counter, so
  * the check is the same "+1" a fresh line would face.
  */
-export function lineUpgradeNote(
-  state: GameState,
-  line: LineState,
-  lineType: LineType,
-): Diagnosis {
+export function lineUpgradeNote(state: GameState, line: LineState, lineType: LineType): Diagnosis {
   const census = lineCensus(state);
   for (const key of new Set(line.path.map(hexKey))) {
     if (linesAt(census, key).byType[lineType] + 1 > MAX_LINES_PER_HEX_PER_TYPE) {

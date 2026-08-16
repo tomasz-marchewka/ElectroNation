@@ -354,11 +354,7 @@ export function buildLine(state: GameState, lineType: LineType, path: HexCoord[]
  * so the interface can price the button off the engine's own arithmetic instead
  * of a copy that drifts.
  */
-export function lineUpgradeCostPln(
-  state: GameState,
-  line: LineState,
-  lineType: LineType,
-): number {
+export function lineUpgradeCostPln(state: GameState, line: LineState, lineType: LineType): number {
   return Math.round(routeCapexPln(state, line.path, lineType) * EXPANSION.capexShare);
 }
 

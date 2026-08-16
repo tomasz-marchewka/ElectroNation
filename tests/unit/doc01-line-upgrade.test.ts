@@ -238,7 +238,9 @@ describe("doc 01 §2.6: cancelling a raise forfeits the money and keeps the old 
     expect(line?.upgrade).toBeNull();
     expect(cancelled.moneyPln).toBe(state.moneyPln); // paid, not refunded
     // The target type's place is released with the raise.
-    expect(apply(cancelled, { type: "buildLine", lineType: "mv", path: SHORT })).not.toBe(cancelled);
+    expect(apply(cancelled, { type: "buildLine", lineType: "mv", path: SHORT })).not.toBe(
+      cancelled,
+    );
   });
 
   test("cancelling a line that is not being raised is a no-op", () => {
