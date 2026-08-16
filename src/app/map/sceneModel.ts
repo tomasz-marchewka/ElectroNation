@@ -123,7 +123,10 @@ export interface MapSceneSelection extends Point {
 }
 
 export interface MapScene {
-  /** Pixel bounds of the board; the renderer fits this into its viewport. */
+  /**
+   * Pixel size of the board. The view fits it together with the labels around
+   * it (`drawnBounds`), which reach past its edges.
+   */
   world: Size;
   hexes: MapSceneHex[];
   lines: MapSceneLine[];

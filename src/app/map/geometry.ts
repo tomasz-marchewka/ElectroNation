@@ -36,6 +36,9 @@ export interface Size {
   height: number;
 }
 
+/** A rectangle in world pixels — a {@link Size} that knows where it starts. */
+export interface Bounds extends Point, Size {}
+
 /** Center of a hex addressed in offset coordinates (handoff `hexCenter`). */
 export function hexCenter(col: number, row: number): Point {
   return { x: HEX_R + STEP_X * col, y: (col % 2 ? STEP_Y : STEP_Y / 2) + STEP_Y * row };
@@ -59,6 +62,67 @@ export function worldSize(map: MapSize): Size {
     width: hexCenter(lastCol, 0).x + HEX_R,
     height: hexCenter(deepestCol, lastRow).y + STEP_Y / 2,
   };
+}
+
+// --- Drawn extent ------------------------------------------------------------
+// Labels hang BELOW their hex and are centered on it, so the board's own box is
+// not everything the map paints: an object on the outermost column or the last
+// row writes past the edge. The view fits and clamps against the drawn extent
+// instead, otherwise that text can never be brought on screen — and border
+// points live on the map's edge by definition (01 §3.3).
+
+/** Label typography of the renderer; mono, so a width is exact per character. */
+export const LABEL_FONT_SIZE = 10.5;
+export const OVERLOAD_FONT_SIZE = 11;
+/** Halo of `paint-order: stroke`; half of it sits outside the glyphs. */
+export const LABEL_HALO = 3.5;
+/** IBM Plex Mono: one character advances 0.6 em, and 1.1 em tall covers it. */
+const MONO_ADVANCE = 0.6;
+const TEXT_ASCENT = 0.8;
+const TEXT_DESCENT = 0.3;
+
+/** A piece of map text, positioned the way the scene model positions it. */
+export interface TextMark {
+  x: number;
+  y: number;
+  text: string;
+}
+
+function textBounds(mark: TextMark, fontSize: number, centered: boolean): Bounds {
+  const width = mark.text.length * fontSize * MONO_ADVANCE + LABEL_HALO;
+  return {
+    x: centered ? mark.x - width / 2 : mark.x - LABEL_HALO / 2,
+    y: mark.y - fontSize * TEXT_ASCENT - LABEL_HALO / 2,
+    width,
+    height: fontSize * (TEXT_ASCENT + TEXT_DESCENT) + LABEL_HALO,
+  };
+}
+
+function union(a: Bounds, b: Bounds): Bounds {
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+  return {
+    x,
+    y,
+    width: Math.max(a.x + a.width, b.x + b.width) - x,
+    height: Math.max(a.y + a.height, b.y + b.height) - y,
+  };
+}
+
+/**
+ * Everything the map paints: the board plus the text hanging off its edges.
+ * Takes the scene's parts structurally, so the geometry stays independent of
+ * the scene model that feeds it.
+ */
+export function drawnBounds(
+  world: Size,
+  labels: readonly TextMark[],
+  overload: TextMark | null,
+): Bounds {
+  let bounds: Bounds = { x: 0, y: 0, ...world };
+  for (const label of labels) bounds = union(bounds, textBounds(label, LABEL_FONT_SIZE, true));
+  if (overload) bounds = union(bounds, textBounds(overload, OVERLOAD_FONT_SIZE, false));
+  return bounds;
 }
 
 /** Sub-pixel precision of routed points — the handoff rounds to 0.1 px. */

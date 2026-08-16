@@ -11,14 +11,15 @@ import {
   zoomView,
 } from "../../../src/app/map/view";
 
-const WORLD = { width: 1241, height: 973.5 }; // the 24×16 board (02 §8.6)
+// The 24×16 board (02 §8.6), with no label reaching past it.
+const WORLD = { x: 0, y: 0, width: 1241, height: 973.5 };
 const VIEWPORT = { width: 1060, height: 640 };
 
 describe("starting view: the whole board", () => {
   test("fit is the tighter of the two axes, capped at 1:1", () => {
     expect(fitScale(WORLD, VIEWPORT)).toBeCloseTo(VIEWPORT.height / WORLD.height, 6);
     // A board smaller than the viewport is not blown up.
-    expect(fitScale({ width: 200, height: 100 }, VIEWPORT)).toBe(MAX_SCALE);
+    expect(fitScale({ x: 0, y: 0, width: 200, height: 100 }, VIEWPORT)).toBe(MAX_SCALE);
   });
 
   test("the fitted board is centered and fully inside the viewport", () => {
@@ -83,5 +84,40 @@ describe("zooming", () => {
     expect(framed).toEqual(zoomed);
     expect(zoomed.x).toBeLessThanOrEqual(0);
     expect(zoomed.x).toBeGreaterThanOrEqual(VIEWPORT.width - WORLD.width * zoomed.scale - 1e-9);
+  });
+});
+
+describe("labels reaching past the board", () => {
+  // An object on the outermost column writes its label past the board's edge:
+  // the drawn box starts left of the origin and ends right of the last hex.
+  const CONTENT = { x: -66, y: 0, width: WORLD.width + 132, height: WORLD.height + 22 };
+  /** Where the viewport's left and right edges sit in world coordinates. */
+  const visible = (view: { scale: number; x: number }) => ({
+    left: -view.x / view.scale,
+    right: (VIEWPORT.width - view.x) / view.scale,
+  });
+
+  test("the fitted view shows the overhang, not just the board", () => {
+    const view = fitView(CONTENT, VIEWPORT);
+    const seen = visible(view);
+    expect(seen.left).toBeLessThanOrEqual(CONTENT.x + 1e-9);
+    expect(seen.right).toBeGreaterThanOrEqual(CONTENT.x + CONTENT.width - 1e-9);
+  });
+
+  test("zoomed in, the overhanging label is still reachable", () => {
+    const zoomed = { scale: 1, x: 0, y: 0 };
+    // Dragged as far right as the clamp allows: the left overhang comes in.
+    const left = panView(zoomed, CONTENT, VIEWPORT, { x: 5000, y: 0 });
+    expect(visible(left).left).toBeCloseTo(CONTENT.x, 6);
+    // And as far left: the right overhang comes in.
+    const right = panView(zoomed, CONTENT, VIEWPORT, { x: -5000, y: 0 });
+    expect(visible(right).right).toBeCloseTo(CONTENT.x + CONTENT.width, 6);
+  });
+
+  test("an axis that fits is centered on the drawn box, overhang included", () => {
+    const narrow = { x: -40, y: 0, width: 200, height: 100 };
+    const view = fitView(narrow, VIEWPORT);
+    const seen = visible(view);
+    expect((seen.left + seen.right) / 2).toBeCloseTo(narrow.x + narrow.width / 2, 6);
   });
 });
