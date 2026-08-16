@@ -59,6 +59,17 @@ const RING_STROKES: Record<MapObjectRing, string> = {
 
 const RING_WIDTHS: Record<MapObjectRing, number> = { object: 2, city: 3, alert: 3, planned: 2 };
 
+/**
+ * The route being drawn (M7): dashed, in the action colour, over the tracks it
+ * will become. The bottleneck the player asked to see gets a wide, flat halo
+ * under the lines — no animation anywhere, by design (brand-motion).
+ */
+const ROUTE_DASH = "6 4";
+const WAYPOINT_SIZE = 9;
+const HIGHLIGHT_WIDTH = 14;
+const HIGHLIGHT_OPACITY = 0.35;
+const HIGHLIGHT_RING_WIDTH = 4;
+
 const LABEL_FILLS = {
   default: "--en-map-label",
   city: "--en-map-label-city",
@@ -116,11 +127,17 @@ function useElementSize(target: { current: Element | null }): Size {
 
 export interface HexMapViewProps {
   scene: MapScene;
-  /** Click on a hex — the hex panel follows in M7, selection is visual here. */
+  /** Click on a hex — selects it, or lands a routing click while routing. */
   onHexClick?: (hex: HexCoord) => void;
+  /**
+   * Hex under the cursor, `null` once it leaves the board. Wired only while a
+   * line is being routed (01 §3.3): the preview follows the cursor, and
+   * nothing else on the screen cares where the pointer is.
+   */
+  onHexHover?: (hex: HexCoord | null) => void;
 }
 
-export function HexMapView({ scene, onHexClick }: HexMapViewProps) {
+export function HexMapView({ scene, onHexClick, onHexHover }: HexMapViewProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const viewport = useElementSize(hostRef);
@@ -260,6 +277,7 @@ export function HexMapView({ scene, onHexClick }: HexMapViewProps) {
         onPointerMove={onPointerMove}
         onPointerUp={endPan}
         onPointerCancel={endPan}
+        onPointerLeave={onHexHover ? () => onHexHover(null) : undefined}
       >
         <g transform={`translate(${current.x} ${current.y}) scale(${current.scale})`}>
           {BIOMES.map((biome) => {
@@ -279,6 +297,7 @@ export function HexMapView({ scene, onHexClick }: HexMapViewProps) {
                     data-hex={hex.key}
                     data-selected={scene.selection?.key === hex.key ? "true" : undefined}
                     onClick={() => handleHexClick(hex.hex)}
+                    onPointerEnter={onHexHover ? () => onHexHover(hex.hex) : undefined}
                   />
                 ))}
               </g>
@@ -305,6 +324,31 @@ export function HexMapView({ scene, onHexClick }: HexMapViewProps) {
             ) : null;
           })}
 
+          {scene.highlight && (
+            <g className="en-map__highlight" fill="none" pointerEvents="none">
+              {scene.highlight.kind === "segment" ? (
+                <polyline
+                  points={pointsAttr(scene.highlight.points)}
+                  stroke="var(--en-danger)"
+                  strokeWidth={HIGHLIGHT_WIDTH}
+                  strokeOpacity={HIGHLIGHT_OPACITY}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              ) : (
+                scene.highlight.points.map((point) => (
+                  <path
+                    key={`${point.x},${point.y}`}
+                    d={HEX_PATH}
+                    transform={`translate(${point.x} ${point.y})`}
+                    stroke="var(--en-danger)"
+                    strokeWidth={HIGHLIGHT_RING_WIDTH}
+                  />
+                ))
+              )}
+            </g>
+          )}
+
           <g fill="none" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none">
             {scene.lines.map((line) =>
               line.segments.map((segment) => (
@@ -319,6 +363,46 @@ export function HexMapView({ scene, onHexClick }: HexMapViewProps) {
               )),
             )}
           </g>
+
+          {scene.route && (
+            <g className="en-map__route" pointerEvents="none">
+              <polyline
+                points={pointsAttr(scene.route.points)}
+                fill="none"
+                stroke={`var(${scene.route.valid ? "--en-action" : "--en-danger"})`}
+                strokeWidth={LINE_WIDTHS[scene.route.lineType]}
+                strokeDasharray={ROUTE_DASH}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              {scene.route.waypoints.map((point) => (
+                <rect
+                  key={`${point.x},${point.y}`}
+                  x={point.x - WAYPOINT_SIZE / 2}
+                  y={point.y - WAYPOINT_SIZE / 2}
+                  width={WAYPOINT_SIZE}
+                  height={WAYPOINT_SIZE}
+                  fill="var(--en-action)"
+                />
+              ))}
+              {scene.route.label && (
+                <text
+                  className="en-map__route-label"
+                  x={scene.route.label.x}
+                  y={scene.route.label.y}
+                  fill={`var(${scene.route.valid ? "--en-action" : "--en-danger"})`}
+                  fontSize={OVERLOAD_FONT_SIZE}
+                  fontFamily="var(--en-font-mono)"
+                  fontWeight="600"
+                  paintOrder="stroke"
+                  stroke="var(--en-bg-map)"
+                  strokeWidth={LABEL_HALO}
+                >
+                  {scene.route.label.text}
+                </text>
+              )}
+            </g>
+          )}
 
           {scene.selection && (
             <path

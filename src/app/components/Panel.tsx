@@ -11,13 +11,20 @@ export interface PanelProps {
   title?: string;
   /** Hour block of the turn, e.g. "18–21". Rendered dimmer next to the title. */
   hours?: string;
+  /**
+   * Whatever else belongs in that same dimmer slot next to the title — the hex
+   * panel writes the terrain's cost multiplier there (design: `HexPanel`).
+   * Ignored when `hours` is given; the slot holds one thing.
+   */
+  note?: string;
   /** Panel width. Defaults to the --en-panel-w token (400 px). */
   width?: number | string;
   /** Panel sections (PanelSection). Max 4 — see PanelSection.prompt.md. */
   children?: ReactNode;
 }
 
-export function Panel({ meta, title, hours, width, children }: PanelProps) {
+export function Panel({ meta, title, hours, note, width, children }: PanelProps) {
+  const aside = hours ?? note;
   return (
     <aside className="en-panel" style={width !== undefined ? { width } : undefined}>
       {(meta ?? title) && (
@@ -25,7 +32,7 @@ export function Panel({ meta, title, hours, width, children }: PanelProps) {
           {meta && <div className="en-panel__meta">{meta}</div>}
           {title && (
             <div className="en-panel__title">
-              {title} {hours && <span>{hours}</span>}
+              {title} {aside && <span>{aside}</span>}
             </div>
           )}
         </div>

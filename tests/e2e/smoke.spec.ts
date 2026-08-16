@@ -64,6 +64,55 @@ test("setting a setpoint and committing runs one turn of the loop", async ({ pag
   expect(errors).toEqual([]);
 });
 
+test("an empty hex opens the catalogue and orders a plant (01 §8 pt 6)", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(String(error)));
+  await page.goto("/");
+
+  // A free plains hex east of the starting endowment.
+  await page.locator("path[data-hex='5,7']").click();
+  await expect(page.getByText("KATALOG BUDOWY — CENY Z MNOŻNIKIEM TERENU")).toBeVisible();
+  await expect(page.locator(".en-panel")).toContainText("MNOŻNIK — OBIEKTY");
+  await expect(page.getByText("NASTAWY")).toBeHidden();
+
+  await page.locator(".en-catalog__buy", { hasText: "OCGT — turbina szczytowa" }).click();
+
+  // The hex is taken now: the catalogue gives way to the site being built.
+  await expect(page.locator(".en-panel")).toContainText("BUDOWA W TOKU");
+  await expect(page.locator("[data-region='map']").getByText("BUDOWA · 1 DOBA")).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("a line routed to a city is built and the city connected (01 §3.3–3.4)", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(String(error)));
+  await page.goto("/");
+
+  // From the starting plant (01 §3.4) to Turów, which starts unconnected.
+  await page.locator("path[data-hex='1,9']").click();
+  await page.getByRole("button", { name: "POPROWADŹ LINIĘ STĄD" }).click();
+  await expect(page.getByText("TRASOWANIE LINII")).toBeVisible();
+
+  await page.locator("path[data-hex='2,5']").click();
+  await expect(page.locator(".en-panel")).toContainText("TURÓW");
+  await expect(page.locator(".en-map__route")).toBeVisible();
+  await page.getByRole("button", { name: /^ZATWIERDŹ — / }).click();
+  await expect(page.locator(".en-panel")).toContainText("w budowie");
+
+  // Lines grow 3 h per resolved turn (01 §2.6); one day finishes this one.
+  await page.keyboard.press("Escape");
+  for (let turn = 0; turn < 8; turn++) {
+    await page.getByRole("button", { name: "ZATWIERDŹ TURĘ ▸" }).click();
+  }
+
+  await page.locator("path[data-hex='2,5']").click();
+  const connect = page.getByRole("button", { name: /^PRZYŁĄCZ MIASTO/ });
+  await expect(connect).toBeEnabled();
+  await connect.click();
+  await expect(page.locator(".en-panel")).toContainText("zasilane");
+  expect(errors).toEqual([]);
+});
+
 test("scrubbing to the evening peak plays every turn on the way", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(String(error)));
