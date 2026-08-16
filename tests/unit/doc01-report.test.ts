@@ -44,6 +44,49 @@ describe("01 §2.3: the report describes the RESOLVED turn", () => {
   });
 });
 
+describe("01 §8 pt 2 + pt 5: history of the day being played", () => {
+  test("a full day leaves 8 reports in order; the new day restarts the history", () => {
+    let state = newGame(7, makeScenario());
+    expect(state.dayReports).toStrictEqual([]);
+
+    for (let turn = 0; turn < TURNS_PER_DAY; turn++) {
+      state = resolveTurn(state);
+      expect(state.dayReports).toHaveLength(turn + 1);
+    }
+    expect(state.dayReports.map((report) => report.turnIndex)).toStrictEqual([
+      0, 1, 2, 3, 4, 5, 6, 7,
+    ]);
+    expect(state.dayReports.every((report) => report.dayIndex === 0)).toBe(true);
+    // The day is over, yet its history stands: the calendar already shows the
+    // next day while the chart and WYNIK DOBY still describe the finished one.
+    expect(state.calendar).toStrictEqual({ dayIndex: 1, turnIndex: 0 });
+    expect(state.dayReports.at(-1)).toStrictEqual(state.lastTurnReport);
+
+    const next = resolveTurn(state);
+    expect(next.dayReports).toHaveLength(1);
+    expect(next.dayReports[0]?.dayIndex).toBe(1);
+    expect(next.dayReports[0]?.turnIndex).toBe(0);
+  });
+
+  test("WYNIK DOBY: the reports sum to exactly the day's money delta", () => {
+    let state = applyAction(newGame(7, makeScenario()), {
+      type: "setPlantSetpoint",
+      plantId: "plant-1",
+      mw: 200,
+    });
+    const before = state.moneyPln;
+    for (let turn = 0; turn < TURNS_PER_DAY; turn++) state = resolveTurn(state);
+    const dayResultPln = state.dayReports.reduce((sum, report) => sum + report.finance.netPln, 0);
+    expect(dayResultPln).toBe(state.moneyPln - before);
+  });
+
+  test("survives the JSON round-trip like the rest of the state", () => {
+    const next = resolveTurn(resolveTurn(newGame(7, makeScenario())));
+    const revived = JSON.parse(JSON.stringify(next)) as GameState;
+    expect(revived.dayReports).toStrictEqual(next.dayReports);
+  });
+});
+
 describe("01 §2.3 + 02 §4: finance breakdown", () => {
   test("netPln is exactly the money delta; components add up to it", () => {
     const base = applyAction(newGame(7, makeScenario()), {
