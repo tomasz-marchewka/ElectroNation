@@ -1,14 +1,15 @@
-/* ═══ ElectroNation — fonty ═══
-   IBM Plex Mono (dane, etykiety, akcje) + IBM Plex Sans (tekst UI).
+/* ═══ ElectroNation — fonts ═══
+   IBM Plex Mono (data, labels, actions) + IBM Plex Sans (UI text).
 
-   Handoff ładował je z CDN Google Fonts; build gry hostuje je u siebie
-   (design-system/assets/README.md). Pliki woff2 pochodzą z paczek npm
-   @fontsource/*, a bundler emituje wyłącznie te, do których sięga url() —
-   podzbiory latin + latin-ext w wagach 400/500/600 (polskie znaki diakrytyczne
-   siedzą w latin-ext, więc oba podzbiory są obowiązkowe).
+   The handoff pulled them from the Google Fonts CDN; the game's build hosts
+   them itself (design-system/assets/README.md). The woff2 files come from the
+   @fontsource/* npm packages, and the bundler emits only the ones a url()
+   reaches — the latin and latin-ext subsets in weights 400/500/600 (Polish
+   diacritics live in latin-ext, so both subsets are mandatory).
 
-   unicode-range przepisany z paczek @fontsource — bez niego przeglądarka
-   wzięłaby ostatnią deklarację danej wagi (latin-ext) także dla ASCII. */
+   The unicode-range values are copied from the @fontsource packages; without
+   them the browser would use the last declaration of a weight (latin-ext) for
+   ASCII as well. */
 
 /* — IBM Plex Mono — */
 @font-face {

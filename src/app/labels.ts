@@ -2,7 +2,15 @@
 // layer; the engine only ever speaks in identifiers. Pure data and pure
 // functions — nothing here imports React, so selectors may lean on it.
 
-import type { ForecastLevel, RegimeId, TurnPhase } from "../engine";
+import type {
+  FarmTech,
+  ForecastLevel,
+  LineType,
+  PlantTech,
+  RegimeId,
+  StorageTech,
+  TurnPhase,
+} from "../engine";
 
 /** Months of the calendar year, index 0..11 as the engine counts them. */
 export const MONTH_NAMES = [
@@ -38,6 +46,52 @@ export const FORECAST_LEVEL_LABELS: Record<ForecastLevel, string> = {
   advanced: "ZAAWANSOWANY",
   ensemble: "ANSAMBLOWY",
 };
+
+/**
+ * Line types of 01 §4.2 under the names the design system prints on the map
+ * (brand-lines: NN 150 MW, SN 500 MW, WN 1500 MW).
+ */
+export const LINE_TYPE_LABELS: Record<LineType, string> = {
+  lv: "NN",
+  mv: "SN",
+  hv: "WN",
+};
+
+/**
+ * Technology suffixes of an object's map label (handoff README, Content & Copy
+ * Rules: "Technology is a suffix: EC DOLINA CCGT"). Object names are player
+ * data and need not say what the object burns, so the label does — that is
+ * also why OCGT and CCGT can share one icon.
+ */
+export const PLANT_TECH_LABELS: Record<PlantTech, string> = {
+  nuclear: "JĄDROWA",
+  coal: "WĘGIEL",
+  ccgt: "CCGT",
+  ocgt: "OCGT",
+};
+
+export const FARM_TECH_LABELS: Record<FarmTech, string> = {
+  wind: "WIATR",
+  pv: "PV",
+};
+
+export const STORAGE_TECH_LABELS: Record<StorageTech, string> = {
+  battery: "BESS",
+  pumped: "ESP",
+};
+
+/**
+ * Polish plural of "doba" — 1 DOBA, 2–4 DOBY, otherwise DÓB (teens take DÓB).
+ * Build countdowns are player-facing text, so they decline properly.
+ */
+export function daysLabel(days: number): string {
+  const whole = Math.max(0, Math.round(days));
+  const lastDigit = whole % 10;
+  const lastTwo = whole % 100;
+  if (whole === 1) return `${whole} DOBA`;
+  if (lastDigit >= 2 && lastDigit <= 4 && (lastTwo < 12 || lastTwo > 14)) return `${whole} DOBY`;
+  return `${whole} DÓB`;
+}
 
 export interface DayTurn {
   /** Engine phase this cell stands for — the two lists are 1:1 by index. */

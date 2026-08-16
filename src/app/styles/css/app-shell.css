@@ -1,8 +1,9 @@
-/* ═══ ElectroNation — rama ekranu gry ═══
-   Warstwa gry, nie design systemu: pliki obok (tokens/, base.css, components.css)
-   są kopią handoffu i mają nią pozostać, więc geometria „na pełny ekran" — której
-   handoff nie miał, bo jego build referencyjny to karta 1500 px — mieszka tutaj.
-   Zero nowych wartości wizualnych: same tokeny i proporcje z plików źródłowych. */
+/* ═══ ElectroNation — game screen frame ═══
+   The game's own layer, not the design system's: the files next to this one
+   (tokens/, base.css, components.css) are a copy of the handoff and are meant
+   to stay one, so the full-screen geometry — which the handoff never had, its
+   reference build being a 1500 px card — lives here. No new visual values:
+   tokens and proportions from the source files only. */
 
 html,
 body,
@@ -10,8 +11,8 @@ body,
   height: 100%;
 }
 
-/* Rama: pasek górny → korpus (mapa + panel) → pas raportu. Ekran się nie
-   przewija; przewijają się wnętrza regionów. */
+/* The frame: top bar → body (map + panel) → report strip. The screen itself
+   never scrolls; the insides of the regions do. */
 .en-app {
   height: 100%;
   overflow: hidden;
@@ -22,8 +23,8 @@ body,
   min-height: 0;
 }
 
-/* Lewa kolumna korpusu: mapa (elastyczna) → oś doby → pas wykresu.
-   Pozycjonowana, bo kotwiczy pływający przełącznik motywu. */
+/* Left column of the body: map (elastic) → day axis → chart strip. Positioned
+   because it anchors the floating theme switch. */
 .en-body > .en-main {
   position: relative;
   display: flex;
@@ -35,36 +36,64 @@ body,
   flex: none;
 }
 
-/* Panel 400 px: sztywna szerokość ma components.css, tu tylko przewijanie,
-   żeby sekcje nie rozpychały ramy. */
+/* The 400 px panel: components.css owns the fixed width, this is scrolling
+   only, so the sections cannot push the frame apart. */
 .en-panel {
   min-height: 0;
   overflow-y: auto;
 }
 
-/* ── regiony wypełniane w M5–M8 ─────────────────────────
-   Placeholder = samo tokenowe tło. Żadnej treści, która mogłaby zostać
-   wzięta za dane. */
+/* ── regions filled in M6–M8 ────────────────────────────
+   A placeholder is a token background and nothing else. No content that could
+   be mistaken for data. */
 .en-region--map {
   flex: 1;
   min-height: 0;
   background: var(--en-bg-map);
 }
 
+/* ── map (M5) ───────────────────────────────────────────
+   The map region is the SVG viewport itself: the renderer measures it and sets
+   a 1:1 pixel viewBox, so hexes are never stretched and the overlays keep the
+   design's geometry. Dragging pans the board and the cursor is the only
+   feedback there is — the interface does not animate (brand-motion). */
+.en-map {
+  width: 100%;
+  height: 100%;
+  background: var(--en-bg-map);
+}
+
+.en-map__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* The renderer owns the gesture; the browser has nothing to scroll here. */
+  touch-action: none;
+  cursor: grab;
+}
+
+.en-map__canvas.is-panning {
+  cursor: grabbing;
+}
+
+.en-map__canvas path[data-hex] {
+  cursor: pointer;
+}
+
 .en-region--chart {
-  /* Proporcja z handoffu: DayChart ma viewBox 0 0 1060 130. */
+  /* Proportion of the handoff: DayChart has a viewBox of 0 0 1060 130. */
   flex: none;
   aspect-ratio: 1060 / 130;
   background: var(--en-bg-chart);
   border-top: var(--en-border-w) solid var(--en-border-subtle);
 }
 
-/* ── przełącznik motywu ─────────────────────────────────
-   Prawy dolny róg, dyskretnie, jak w buildzie referencyjnym
-   (ui_kits/dispatcher/index.html) — pasek górny zostaje bez akcji.
-   Różnica wobec referencji: kotwica to kolumna robocza, nie viewport.
-   Referencyjne `position: fixed` przykrywałoby prawy dolny róg panelu,
-   czyli jedyny przycisk primary ekranu, i przechwytywało jego kliknięcia. */
+/* ── theme switch ───────────────────────────────────────
+   Bottom right, discreetly, as in the reference build
+   (ui_kits/dispatcher/index.html) — the top bar stays free of actions.
+   One difference from the reference: the anchor is the working column, not the
+   viewport. The reference's `position: fixed` would cover the bottom right of
+   the panel — the screen's only primary button — and swallow its clicks. */
 .en-themeswitch {
   position: absolute;
   right: var(--en-space-5);
