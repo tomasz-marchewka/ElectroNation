@@ -2,7 +2,9 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  // GitHub Pages serves the build from a repo subpath; dev and e2e stay at root.
+  base: command === "build" ? "/ElectroNation/" : "/",
   plugins: [react()],
   test: {
     projects: [
@@ -41,4 +43,4 @@ export default defineConfig({
       },
     ],
   },
-});
+}));
