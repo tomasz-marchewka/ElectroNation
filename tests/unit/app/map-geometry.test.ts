@@ -7,6 +7,7 @@ import { axialToOffset, offsetToAxial, type HexCoord } from "../../../src/engine
 import {
   CORRIDOR_SPACING,
   MAX_CORRIDOR_FAN,
+  drawnBounds,
   hexCenter,
   hexCenterOf,
   routeLines,
@@ -64,6 +65,57 @@ describe("hex layout of the design system", () => {
   test("the 24×16 board of 02 §8.6 is 1241 × 973,5 px", () => {
     expect(worldSize({ cols: 24, rows: 16 })).toEqual({ width: 1241, height: 973.5 });
     expect(worldSize({ cols: 1, rows: 1 })).toEqual({ width: 68, height: 59 });
+  });
+});
+
+describe("the drawn extent covers the labels, not just the board", () => {
+  // The fixture board of tests/unit/app/map-scene.test.ts: 6 × 3 hexes.
+  const board = worldSize({ cols: 6, rows: 3 });
+
+  test("text that stays over the board leaves the box alone", () => {
+    expect(drawnBounds(board, [{ x: 160, y: 100, text: "JASIENICA" }], null)).toEqual({
+      x: 0,
+      y: 0,
+      ...board,
+    });
+  });
+
+  test("01 §3.3: a border point sits on the edge, so its label hangs off it", () => {
+    const lastColumn = hexCenter(5, 0).x;
+    const bounds = drawnBounds(
+      board,
+      [{ x: lastColumn, y: 100, text: "GRANICA WSCHÓD · +100" }],
+      null,
+    );
+    expect(bounds.x).toBe(0);
+    expect(bounds.width).toBeGreaterThan(board.width);
+  });
+
+  test("a label on the first column starts the box left of the origin", () => {
+    const firstColumn = hexCenter(0, 0).x;
+    const bounds = drawnBounds(
+      board,
+      [{ x: firstColumn, y: 100, text: "GRANICA ZACHÓD · +100" }],
+      null,
+    );
+    expect(bounds.x).toBeLessThan(0);
+    expect(bounds.x + bounds.width).toBeGreaterThanOrEqual(board.width);
+  });
+
+  test("a label under the last row hangs below the board", () => {
+    const bounds = drawnBounds(
+      board,
+      [{ x: 160, y: board.height + 18, text: "BUDOWA · 2 DOBY" }],
+      null,
+    );
+    expect(bounds.y).toBe(0);
+    expect(bounds.height).toBeGreaterThan(board.height);
+  });
+
+  test("the overload callout counts too, and it runs to the right of its anchor", () => {
+    const anchored = { x: board.width - 10, y: 100, text: "SN 500/500 ⚠" };
+    const bounds = drawnBounds(board, [], anchored);
+    expect(bounds.width).toBeGreaterThan(board.width + 10);
   });
 });
 

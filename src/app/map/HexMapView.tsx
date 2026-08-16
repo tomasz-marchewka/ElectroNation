@@ -13,7 +13,16 @@ import { LINE_TYPES, type HexCoord, type LineType } from "../../engine";
 import { formatNumber } from "../format";
 import { LINE_TYPE_LABELS } from "../labels";
 import { BIOMES } from "./biomes";
-import { HEX_PATH, type Point, type Size } from "./geometry";
+import {
+  HEX_PATH,
+  LABEL_FONT_SIZE,
+  LABEL_HALO,
+  OVERLOAD_FONT_SIZE,
+  drawnBounds,
+  type Bounds,
+  type Point,
+  type Size,
+} from "./geometry";
 import { biomeTexture, iconColor, objectIcon } from "./icons";
 import type {
   LineLoad,
@@ -116,24 +125,34 @@ export function HexMapView({ scene, onHexClick }: HexMapViewProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const viewport = useElementSize(hostRef);
 
+  // Labels reach past the board's edges, so the view works on what is actually
+  // drawn — otherwise the text of an edge object could never be scrolled to.
+  const content = useMemo(
+    () => drawnBounds(scene.world, scene.labels, scene.overload),
+    [scene.world, scene.labels, scene.overload],
+  );
+
   // No view of its own until the player pans or zooms: the map opens on the
   // whole board and refits itself whenever the region is resized.
   const [view, setView] = useState<View | null>(null);
   const [panning, setPanning] = useState(false);
-  const current = view === null ? fitView(scene.world, viewport) : view;
+  const current = view === null ? fitView(content, viewport) : view;
 
-  const stateRef = useRef({ view: current, world: scene.world, viewport });
-  stateRef.current = { view: current, world: scene.world, viewport };
+  const stateRef = useRef({ view: current, content, viewport });
+  stateRef.current = { view: current, content, viewport };
 
   /**
    * Applies a gesture to the CURRENT view, not the rendered one: several wheel
    * or move events can land in a single React batch, and each has to build on
    * the previous one or the gesture loses steps.
    */
-  const applyGesture = useCallback((gesture: (from: View, world: Size, viewport: Size) => View) => {
-    const { view: rendered, world, viewport: box } = stateRef.current;
-    setView((pending) => gesture(pending ?? rendered, world, box));
-  }, []);
+  const applyGesture = useCallback(
+    (gesture: (from: View, content: Bounds, viewport: Size) => View) => {
+      const { view: rendered, content: box, viewport: frame } = stateRef.current;
+      setView((pending) => gesture(pending ?? rendered, box, frame));
+    },
+    [],
+  );
 
   const dragRef = useRef<{ pointerId: number; x: number; y: number; moved: number } | null>(null);
   const suppressClickRef = useRef(false);
@@ -147,7 +166,7 @@ export function HexMapView({ scene, onHexClick }: HexMapViewProps) {
       const rect = node.getBoundingClientRect();
       const at = { x: event.clientX - rect.left, y: event.clientY - rect.top };
       const factor = event.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP;
-      applyGesture((from, world, box) => zoomView(from, world, box, factor, at));
+      applyGesture((from, box, frame) => zoomView(from, box, frame, factor, at));
     };
     node.addEventListener("wheel", onWheel, { passive: false });
     return () => node.removeEventListener("wheel", onWheel);
@@ -155,8 +174,8 @@ export function HexMapView({ scene, onHexClick }: HexMapViewProps) {
 
   // A resize can leave the board off-center; clamping keeps it in the frame.
   useEffect(() => {
-    setView((from) => (from === null ? null : clampView(from, scene.world, viewport)));
-  }, [scene.world, viewport]);
+    setView((from) => (from === null ? null : clampView(from, content, viewport)));
+  }, [content, viewport]);
 
   const onPointerDown = useCallback((event: PointerEvent<SVGSVGElement>) => {
     if (event.button !== 0) return;
@@ -169,6 +188,14 @@ export function HexMapView({ scene, onHexClick }: HexMapViewProps) {
     (event: PointerEvent<SVGSVGElement>) => {
       const drag = dragRef.current;
       if (!drag || drag.pointerId !== event.pointerId) return;
+      // A gesture that never crossed the slop holds no pointer capture, so a
+      // button released off the map sends its `pointerup` elsewhere and the
+      // drag would otherwise keep running with nothing pressed.
+      if (event.buttons === 0) {
+        dragRef.current = null;
+        setPanning(false);
+        return;
+      }
       const by = { x: event.clientX - drag.x, y: event.clientY - drag.y };
       drag.x = event.clientX;
       drag.y = event.clientY;
@@ -179,7 +206,7 @@ export function HexMapView({ scene, onHexClick }: HexMapViewProps) {
       if (wasClick && drag.moved > CLICK_SLOP) {
         event.currentTarget.setPointerCapture?.(event.pointerId);
       }
-      applyGesture((from, world, box) => panView(from, world, box, by));
+      applyGesture((from, box, frame) => panView(from, box, frame, by));
     },
     [applyGesture],
   );
@@ -335,11 +362,11 @@ export function HexMapView({ scene, onHexClick }: HexMapViewProps) {
 
           <g
             fontFamily="var(--en-font-mono)"
-            fontSize="10.5"
+            fontSize={LABEL_FONT_SIZE}
             textAnchor="middle"
             paintOrder="stroke"
             stroke="var(--en-bg-map)"
-            strokeWidth="3.5"
+            strokeWidth={LABEL_HALO}
             strokeLinejoin="round"
             pointerEvents="none"
           >
@@ -362,12 +389,12 @@ export function HexMapView({ scene, onHexClick }: HexMapViewProps) {
               x={scene.overload.x}
               y={scene.overload.y}
               fill="var(--en-danger)"
-              fontSize="11"
+              fontSize={OVERLOAD_FONT_SIZE}
               fontFamily="var(--en-font-mono)"
               fontWeight="600"
               paintOrder="stroke"
               stroke="var(--en-bg-map)"
-              strokeWidth="3.5"
+              strokeWidth={LABEL_HALO}
               pointerEvents="none"
             >
               {scene.overload.text}

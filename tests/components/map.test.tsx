@@ -73,6 +73,38 @@ describe("HexMapView", () => {
     expect(onHexClick).toHaveBeenCalledWith({ q: 3, r: 1 });
   });
 
+  test("a drag orphaned outside the map does not keep panning", () => {
+    const { container } = render(<HexMapView scene={sceneOf(newGame(1, MAP_V1))} />);
+    const svg = container.querySelector("svg") as SVGSVGElement;
+    const hex = container.querySelector("path[data-hex='3,1']") as Element;
+    const board = () => container.querySelector("svg > g")?.getAttribute("transform") ?? "";
+
+    // Zoomed in, so the board is larger than the frame and a pan can move it.
+    act(() => {
+      svg.dispatchEvent(
+        new WheelEvent("wheel", { deltaY: -100, clientX: 500, clientY: 300, bubbles: true }),
+      );
+    });
+
+    const fire = (type: string, init: Record<string, unknown>) =>
+      act(() => {
+        hex.dispatchEvent(
+          Object.assign(new Event(type, { bubbles: true }), { pointerId: 1, button: 0, ...init }),
+        );
+      });
+
+    // Pressed and nudged below the slop, so no pointer capture was taken; the
+    // button is then released off the map and no pointerup ever comes back.
+    fire("pointerdown", { clientX: 100, clientY: 100 });
+    fire("pointermove", { clientX: 101, clientY: 101, buttons: 1 });
+    const parked = board();
+
+    // The pointer comes back over the map with nothing pressed.
+    fire("pointermove", { clientX: 300, clientY: 260, buttons: 0 });
+    expect(board()).toBe(parked);
+    expect(svg.getAttribute("class")).toBe("en-map__canvas");
+  });
+
   test("the selected hex is marked and outlined in the action colour", () => {
     const state = newGame(1, MAP_V1);
     const { container } = render(<HexMapView scene={sceneOf(state, { q: 3, r: 1 })} />);

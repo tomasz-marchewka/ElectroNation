@@ -17,6 +17,7 @@ import {
   type TurnReport,
 } from "../../../src/engine";
 import { biomeLegend } from "../../../src/app/map/biomes";
+import { drawnBounds } from "../../../src/app/map/geometry";
 import { buildMapScene, lineLoad, type MapScene } from "../../../src/app/map/sceneModel";
 
 /** Offset (col, row) → axial, the way a hand-authored map is written down. */
@@ -378,6 +379,14 @@ describe("scene of a resolved turn", () => {
     // An expansion has no site of its own — it annotates the object it grows.
     expect(labelOf(scene, "obj-8:build")).toBe("ROZBUDOWA · 4 DOBY");
     expect(labelOf(scene, "line-5:build")).toBe("BUDOWA · 1 DOBA");
+  });
+
+  test("the labels of edge objects reach outside the board", () => {
+    // border-1 stands on the last column and the storage on the last row, so
+    // what the map draws is wider and taller than the board it stands on.
+    const drawn = drawnBounds(scene.world, scene.labels, scene.overload);
+    expect(drawn.x + drawn.width).toBeGreaterThan(scene.world.width);
+    expect(drawn.y + drawn.height).toBeGreaterThan(scene.world.height);
   });
 
   test("the selected hex is reported by key and by position", () => {
