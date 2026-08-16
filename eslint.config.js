@@ -10,6 +10,9 @@ export default tseslint.config(
       "playwright-report/",
       "test-results/",
       "prototyp/",
+      // Scratch git worktrees: a second checkout of this very source, whose
+      // tsconfigs leave the type-aware parser with no single root directory.
+      ".claude/worktrees/",
       // Delivered handoff — an external artifact, kept byte for byte.
       "design_handoff_electronation_design_system/",
     ],
