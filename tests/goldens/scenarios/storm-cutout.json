@@ -1,0 +1,222 @@
+{
+  "name": "storm-cutout",
+  "description": "A storm month (06 §8.2) with 600 MW of coastal wind against a 165–310 MW load — both halves of the regime in one run. Days 1–2: the farms sit at rated power for whole blocks and most of it is curtailed for free (200–430 MW per turn, 02 §5.1), the plants idle at zero. Day 3: gusts cross the 25 m/s cutout (06 §6.3) and the same farms fall to zero inside one block; the CCGT ramps to 390 MW and the dispatcher pays for the overshoot in dump. The farms are ordered on day 0 and held off (01 §4.1) until their MV spurs stand on turn 10 — an unwired farm the dispatcher trusted would have blacked out the cities.",
+  "map": "mapV1",
+  "seed": 20261130,
+  "days": 6,
+  "actions": [
+    {
+      "beforeTurn": 0,
+      "note": "corridors north to Turow and Nadmorze",
+      "action": {
+        "type": "buildLine",
+        "lineType": "mv",
+        "path": [
+          { "q": 4, "r": 7 },
+          { "q": 3, "r": 7 },
+          { "q": 3, "r": 6 },
+          { "q": 2, "r": 6 },
+          { "q": 2, "r": 5 }
+        ]
+      }
+    },
+    {
+      "beforeTurn": 0,
+      "action": {
+        "type": "buildLine",
+        "lineType": "mv",
+        "path": [
+          { "q": 2, "r": 5 },
+          { "q": 2, "r": 4 },
+          { "q": 2, "r": 3 },
+          { "q": 3, "r": 2 },
+          { "q": 3, "r": 1 }
+        ]
+      }
+    },
+    {
+      "beforeTurn": 0,
+      "note": "two coastal wind farms of 300 MW and a battery next to Nadmorze",
+      "action": {
+        "type": "buildFarm",
+        "tech": "wind",
+        "capacityMw": 300,
+        "hex": { "q": 4, "r": 0 }
+      }
+    },
+    {
+      "beforeTurn": 0,
+      "action": {
+        "type": "buildFarm",
+        "tech": "wind",
+        "capacityMw": 300,
+        "hex": { "q": 3, "r": 0 }
+      }
+    },
+    {
+      "beforeTurn": 0,
+      "action": {
+        "type": "buildBattery",
+        "powerMw": 150,
+        "capacityMwh": 600,
+        "hex": { "q": 2, "r": 1 }
+      }
+    },
+    {
+      "beforeTurn": 0,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 30 }
+    },
+    {
+      "beforeTurn": 2,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 50 }
+    },
+    {
+      "beforeTurn": 3,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 60 }
+    },
+    {
+      "beforeTurn": 7,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 50 }
+    },
+    {
+      "beforeTurn": 8,
+      "note": "connect the cities, wire the new units, keep the farms off until the spurs stand",
+      "action": { "type": "connectCity", "cityId": "city-turow" }
+    },
+    { "beforeTurn": 8, "action": { "type": "connectCity", "cityId": "city-nadmorze" } },
+    {
+      "beforeTurn": 8,
+      "action": {
+        "type": "buildLine",
+        "lineType": "mv",
+        "path": [
+          { "q": 4, "r": 0 },
+          { "q": 3, "r": 1 }
+        ]
+      }
+    },
+    {
+      "beforeTurn": 8,
+      "action": {
+        "type": "buildLine",
+        "lineType": "mv",
+        "path": [
+          { "q": 3, "r": 0 },
+          { "q": 3, "r": 1 }
+        ]
+      }
+    },
+    {
+      "beforeTurn": 8,
+      "action": {
+        "type": "buildLine",
+        "lineType": "mv",
+        "path": [
+          { "q": 2, "r": 1 },
+          { "q": 3, "r": 1 }
+        ]
+      }
+    },
+    {
+      "beforeTurn": 8,
+      "action": { "type": "setFarmEnabled", "farmId": "obj-3", "enabled": false }
+    },
+    {
+      "beforeTurn": 8,
+      "action": { "type": "setFarmEnabled", "farmId": "obj-4", "enabled": false }
+    },
+    {
+      "beforeTurn": 8,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 180 }
+    },
+    {
+      "beforeTurn": 10,
+      "note": "spurs finished — the farms go online",
+      "action": { "type": "setFarmEnabled", "farmId": "obj-3", "enabled": true }
+    },
+    {
+      "beforeTurn": 10,
+      "action": { "type": "setFarmEnabled", "farmId": "obj-4", "enabled": true }
+    },
+    {
+      "beforeTurn": 10,
+      "action": { "type": "setStorage", "storageId": "obj-5", "mode": "charge", "mw": 120 }
+    },
+    {
+      "beforeTurn": 10,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 0 }
+    },
+    {
+      "beforeTurn": 11,
+      "action": { "type": "setStorage", "storageId": "obj-5", "mode": "charge", "mw": 30 }
+    },
+    {
+      "beforeTurn": 12,
+      "action": { "type": "setStorage", "storageId": "obj-5", "mode": "idle", "mw": 0 }
+    },
+    {
+      "beforeTurn": 12,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 10 }
+    },
+    {
+      "beforeTurn": 13,
+      "action": { "type": "setStorage", "storageId": "obj-5", "mode": "charge", "mw": 60 }
+    },
+    {
+      "beforeTurn": 13,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 0 }
+    },
+    {
+      "beforeTurn": 14,
+      "action": { "type": "setStorage", "storageId": "obj-5", "mode": "idle", "mw": 0 }
+    },
+    {
+      "beforeTurn": 24,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 60 }
+    },
+    {
+      "beforeTurn": 25,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 0 }
+    },
+    {
+      "beforeTurn": 26,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 150 }
+    },
+    {
+      "beforeTurn": 27,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 380 }
+    },
+    {
+      "beforeTurn": 28,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 180 }
+    },
+    {
+      "beforeTurn": 29,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 390 }
+    },
+    {
+      "beforeTurn": 30,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 210 }
+    },
+    {
+      "beforeTurn": 31,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 130 }
+    },
+    {
+      "beforeTurn": 32,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 0 }
+    },
+    {
+      "beforeTurn": 36,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 50 }
+    },
+    {
+      "beforeTurn": 37,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 120 }
+    },
+    {
+      "beforeTurn": 38,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 0 }
+    }
+  ]
+}

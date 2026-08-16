@@ -218,6 +218,79 @@ test("a file that is not a save is refused with a diagnosis", async ({ page }) =
   await expect(page.locator(".en-panel__meta")).toContainText("TURA 1/8");
 });
 
+/**
+ * The whole loop in one session, in the order a player lives it (plan M10 §3):
+ * new game → setpoints → resolve → build → route a line → scrub the day out →
+ * reload on the autosave → keep playing. The tests above check each step on its
+ * own; this one checks that they still hold when the state carries between them.
+ */
+test("pełna pętla: nowa gra, budowa, linia, koniec doby, wznowienie po przeładowaniu", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  page.on("pageerror", (error) => errors.push(String(error)));
+
+  await page.goto("/");
+
+  // A known starting point: whatever the autosave slot held is overwritten.
+  await page.getByRole("button", { name: "NOWA GRA" }).click();
+  await page.getByRole("button", { name: "POTWIERDŹ ✓" }).click();
+  await expect(page.locator(".en-panel__meta")).toContainText("TURA 1/8");
+  await expect(page.locator(".en-topbar__ctx")).toContainText("DOBA ROBOCZA A");
+
+  // Setpoints, then the turn (01 §2.3).
+  await page.getByLabel("EC MODRZYCA").press("End");
+  await expect(page.locator(".en-setpoint__head")).toContainText("400 / 400 MW");
+  await page.getByRole("button", { name: "ZATWIERDŹ TURĘ ▸" }).click();
+  await expect(page.locator(".en-report__label")).toContainText("TURA 1 · NOC");
+  await expect(page.locator(".en-panel__meta")).toContainText("TURA 2/8");
+
+  // A PV farm ordered from the hex panel, on the plains east of Modrzyca.
+  await page.locator("path[data-hex='5,7']").click();
+  await page.locator(".en-catalog__buy", { hasText: "Farma PV" }).click();
+  await expect(page.locator(".en-panel")).toContainText("BUDOWA W TOKU");
+
+  // A line routed from the starting plant to Turów (01 §3.3).
+  await page.locator("path[data-hex='1,9']").click();
+  await page.getByRole("button", { name: "POPROWADŹ LINIĘ STĄD" }).click();
+  await page.locator("path[data-hex='2,5']").click();
+  await expect(page.locator(".en-map__route")).toBeVisible();
+  await page.getByRole("button", { name: /^ZATWIERDŹ — / }).click();
+  await expect(page.locator(".en-panel")).toContainText("w budowie");
+  await page.keyboard.press("Escape");
+
+  // Scrub to the last turn of the day, then commit it — the day rolls over
+  // and the PV farm ordered above joins the map (01 §2.5, §2.6).
+  await page.locator(".en-turn", { hasText: "PÓŹNY WIECZ." }).click();
+  await expect(page.locator(".en-panel__meta")).toContainText("TURA 8/8");
+  await page.getByRole("button", { name: "ZATWIERDŹ TURĘ ▸" }).click();
+  await expect(page.locator(".en-panel__meta")).toContainText("TURA 1/8");
+  await expect(page.locator(".en-topbar__ctx")).toContainText("DOBA ROBOCZA B");
+
+  const budget = page.locator(".en-kpi", { hasText: "BUDŻET" }).locator("b");
+  const carried = await budget.innerText();
+
+  // The autosave written on that turn carries the whole session across a reload.
+  await page.reload();
+  await expect(page.locator(".en-panel__meta")).toContainText("TURA 1/8");
+  await expect(page.locator(".en-topbar__ctx")).toContainText("DOBA ROBOCZA B");
+  await expect(budget).toHaveText(carried);
+  await expect(page.locator(".en-report__label")).toContainText("TURA 8 · PÓŹNY WIECZ.");
+  await page.locator("path[data-hex='5,7']").click();
+  await expect(page.locator(".en-panel")).toContainText("Farma PV");
+  await expect(page.locator(".en-panel")).toContainText("praca normalna");
+
+  // And the session simply goes on from there.
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "ZATWIERDŹ TURĘ ▸" }).click();
+  await expect(page.locator(".en-report__label")).toContainText("TURA 1 · NOC");
+  await expect(page.locator(".en-panel__meta")).toContainText("TURA 2/8");
+  expect(errors).toEqual([]);
+});
+
 test("the theme switch repaints the page and survives a reload", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");

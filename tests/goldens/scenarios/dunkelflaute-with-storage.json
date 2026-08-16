@@ -1,0 +1,328 @@
+{
+  "name": "dunkelflaute-with-storage",
+  "description": "Seed picked so that month 2 (days 6–8) runs under a foggy winter high — the Dunkelflaute of 06 §8.2: no wind, no PV, cold. The player doubles the MV corridor to Jasienica, connects the 620k-household city on day 2 and puts 300 MW of wind, 200 MW of PV and a 200 MW / 1 200 MWh battery straight onto the corridor, where the passing line taps them (01 §3.3). The interconnector ordered on day 0 only stands on day 4 and its MV line on day 5, so import is bought from turn 40 on. Storage rule: charge from any surplus and at night from spare plant capacity, discharge only what the plants cannot cover — the last resort before import. Pins the crisis: on days 3–4 the wind drops before the interconnector is wired and the shortfall is paid in ENS (318 and 214 MW-turns); on day 6 the battery starts full, empties by noon and import takes over at 800 zł/MWh (up to 234 MW — 01 §5.7); days 7–8 repeat it on a battery the night can only partly refill.",
+  "map": "mapV1",
+  "seed": 20260837,
+  "days": 9,
+  "actions": [
+    {
+      "beforeTurn": 0,
+      "note": "double MV corridor to Jasienica and an interconnector in the west",
+      "action": {
+        "type": "buildLine",
+        "lineType": "mv",
+        "path": [
+          { "q": 4, "r": 7 },
+          { "q": 5, "r": 6 },
+          { "q": 6, "r": 6 },
+          { "q": 7, "r": 6 },
+          { "q": 8, "r": 5 },
+          { "q": 9, "r": 4 },
+          { "q": 10, "r": 3 },
+          { "q": 11, "r": 2 }
+        ]
+      }
+    },
+    {
+      "beforeTurn": 0,
+      "action": {
+        "type": "buildLine",
+        "lineType": "mv",
+        "path": [
+          { "q": 4, "r": 7 },
+          { "q": 5, "r": 6 },
+          { "q": 6, "r": 6 },
+          { "q": 7, "r": 6 },
+          { "q": 8, "r": 5 },
+          { "q": 9, "r": 4 },
+          { "q": 10, "r": 3 },
+          { "q": 11, "r": 2 }
+        ]
+      }
+    },
+    { "beforeTurn": 0, "action": { "type": "buildBorder", "hex": { "q": 0, "r": 7 } } },
+    {
+      "beforeTurn": 0,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 30 }
+    },
+    {
+      "beforeTurn": 2,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 50 }
+    },
+    {
+      "beforeTurn": 3,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 60 }
+    },
+    {
+      "beforeTurn": 7,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 50 }
+    },
+    {
+      "beforeTurn": 8,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 30 }
+    },
+    {
+      "beforeTurn": 10,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 50 }
+    },
+    {
+      "beforeTurn": 11,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 60 }
+    },
+    {
+      "beforeTurn": 14,
+      "note": "wind, PV and a battery straight onto the finished corridor",
+      "action": {
+        "type": "buildFarm",
+        "tech": "wind",
+        "capacityMw": 300,
+        "hex": { "q": 9, "r": 4 }
+      }
+    },
+    {
+      "beforeTurn": 14,
+      "action": { "type": "buildFarm", "tech": "pv", "capacityMw": 200, "hex": { "q": 10, "r": 3 } }
+    },
+    {
+      "beforeTurn": 14,
+      "action": {
+        "type": "buildBattery",
+        "powerMw": 200,
+        "capacityMwh": 1200,
+        "hex": { "q": 8, "r": 5 }
+      }
+    },
+    {
+      "beforeTurn": 15,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 50 }
+    },
+    {
+      "beforeTurn": 16,
+      "note": "connect Jasienica",
+      "action": { "type": "connectCity", "cityId": "city-jasienica" }
+    },
+    {
+      "beforeTurn": 16,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 150 }
+    },
+    {
+      "beforeTurn": 16,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 400 }
+    },
+    {
+      "beforeTurn": 17,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 200 }
+    },
+    {
+      "beforeTurn": 18,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    {
+      "beforeTurn": 18,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 220 }
+    },
+    {
+      "beforeTurn": 19,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 310 }
+    },
+    {
+      "beforeTurn": 22,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 30 }
+    },
+    {
+      "beforeTurn": 22,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 400 }
+    },
+    {
+      "beforeTurn": 23,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    {
+      "beforeTurn": 23,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 220 }
+    },
+    {
+      "beforeTurn": 24,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    {
+      "beforeTurn": 24,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 390 }
+    },
+    {
+      "beforeTurn": 25,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    {
+      "beforeTurn": 25,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 280 }
+    },
+    {
+      "beforeTurn": 26,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 90 }
+    },
+    {
+      "beforeTurn": 26,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 400 }
+    },
+    {
+      "beforeTurn": 27,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 140 }
+    },
+    {
+      "beforeTurn": 28,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 110 }
+    },
+    {
+      "beforeTurn": 29,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 30 }
+    },
+    {
+      "beforeTurn": 30,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    {
+      "beforeTurn": 32,
+      "note": "MV line from the finished border point to Modrzyca",
+      "action": {
+        "type": "buildLine",
+        "lineType": "mv",
+        "path": [
+          { "q": 0, "r": 7 },
+          { "q": 1, "r": 7 },
+          { "q": 2, "r": 7 },
+          { "q": 3, "r": 7 },
+          { "q": 4, "r": 7 }
+        ]
+      }
+    },
+    {
+      "beforeTurn": 32,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 140 }
+    },
+    {
+      "beforeTurn": 33,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 90 }
+    },
+    {
+      "beforeTurn": 34,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 110 }
+    },
+    {
+      "beforeTurn": 35,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 90 }
+    },
+    {
+      "beforeTurn": 36,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 10 }
+    },
+    {
+      "beforeTurn": 37,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    {
+      "beforeTurn": 40,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 200 }
+    },
+    {
+      "beforeTurn": 40,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 320 }
+    },
+    {
+      "beforeTurn": 41,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 350 }
+    },
+    {
+      "beforeTurn": 42,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    {
+      "beforeTurn": 42,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 130 }
+    },
+    {
+      "beforeTurn": 43,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 240 }
+    },
+    {
+      "beforeTurn": 44,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 200 }
+    },
+    {
+      "beforeTurn": 45,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 240 }
+    },
+    {
+      "beforeTurn": 46,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 350 }
+    },
+    {
+      "beforeTurn": 47,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 390 }
+    },
+    {
+      "beforeTurn": 48,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 20 }
+    },
+    {
+      "beforeTurn": 49,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    {
+      "beforeTurn": 50,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 130 }
+    },
+    {
+      "beforeTurn": 51,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 160 }
+    },
+    {
+      "beforeTurn": 52,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 90 }
+    },
+    { "beforeTurn": 52, "action": { "type": "setImport", "borderId": "obj-3", "mw": 80 } },
+    {
+      "beforeTurn": 53,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 53, "action": { "type": "setImport", "borderId": "obj-3", "mw": 210 } },
+    { "beforeTurn": 54, "action": { "type": "setImport", "borderId": "obj-3", "mw": 260 } },
+    { "beforeTurn": 55, "action": { "type": "setImport", "borderId": "obj-3", "mw": 100 } },
+    { "beforeTurn": 56, "action": { "type": "setImport", "borderId": "obj-3", "mw": 0 } },
+    { "beforeTurn": 58, "action": { "type": "setImport", "borderId": "obj-3", "mw": 170 } },
+    { "beforeTurn": 59, "action": { "type": "setImport", "borderId": "obj-3", "mw": 230 } },
+    { "beforeTurn": 60, "action": { "type": "setImport", "borderId": "obj-3", "mw": 210 } },
+    { "beforeTurn": 61, "action": { "type": "setImport", "borderId": "obj-3", "mw": 250 } },
+    { "beforeTurn": 62, "action": { "type": "setImport", "borderId": "obj-3", "mw": 300 } },
+    { "beforeTurn": 63, "action": { "type": "setImport", "borderId": "obj-3", "mw": 130 } },
+    {
+      "beforeTurn": 64,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 20 }
+    },
+    { "beforeTurn": 64, "action": { "type": "setImport", "borderId": "obj-3", "mw": 0 } },
+    {
+      "beforeTurn": 65,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 60 }
+    },
+    {
+      "beforeTurn": 66,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    {
+      "beforeTurn": 67,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 60 }
+    },
+    {
+      "beforeTurn": 68,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 10 }
+    },
+    { "beforeTurn": 68, "action": { "type": "setImport", "borderId": "obj-3", "mw": 40 } },
+    {
+      "beforeTurn": 69,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 69, "action": { "type": "setImport", "borderId": "obj-3", "mw": 100 } },
+    { "beforeTurn": 70, "action": { "type": "setImport", "borderId": "obj-3", "mw": 220 } },
+    { "beforeTurn": 71, "action": { "type": "setImport", "borderId": "obj-3", "mw": 80 } }
+  ]
+}

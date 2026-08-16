@@ -12,6 +12,7 @@
       "ensMw": 0,
       "lossesMw": 0.607,
       "dumpMw": 39.526,
+      "resCurtailedMw": 0,
       "netPln": -132859
     },
     {
@@ -24,6 +25,7 @@
       "ensMw": 0,
       "lossesMw": 0.612,
       "dumpMw": 39.222,
+      "resCurtailedMw": 0,
       "netPln": -125985
     },
     {
@@ -36,6 +38,7 @@
       "ensMw": 0,
       "lossesMw": 0.938,
       "dumpMw": 17.462,
+      "resCurtailedMw": 0,
       "netPln": 365158
     },
     {
@@ -48,6 +51,7 @@
       "ensMw": 0,
       "lossesMw": 1.056,
       "dumpMw": 9.577,
+      "resCurtailedMw": 0,
       "netPln": 543130
     },
     {
@@ -60,6 +64,7 @@
       "ensMw": 0,
       "lossesMw": 1.051,
       "dumpMw": 9.949,
+      "resCurtailedMw": 0,
       "netPln": 534728
     },
     {
@@ -72,6 +77,7 @@
       "ensMw": 0,
       "lossesMw": 1.079,
       "dumpMw": 8.054,
+      "resCurtailedMw": 0,
       "netPln": 577502
     },
     {
@@ -84,6 +90,7 @@
       "ensMw": 0,
       "lossesMw": 1.142,
       "dumpMw": 3.858,
+      "resCurtailedMw": 0,
       "netPln": 672217
     },
     {
@@ -96,6 +103,7 @@
       "ensMw": 0,
       "lossesMw": 0.848,
       "dumpMw": 23.486,
+      "resCurtailedMw": 0,
       "netPln": -1288218
     },
     {
@@ -108,6 +116,7 @@
       "ensMw": 0,
       "lossesMw": 0.592,
       "dumpMw": 40.374,
+      "resCurtailedMw": 0,
       "netPln": -151958
     },
     {
@@ -120,6 +129,7 @@
       "ensMw": 0,
       "lossesMw": 0.597,
       "dumpMw": 40.07,
+      "resCurtailedMw": 0,
       "netPln": -145084
     },
     {
@@ -132,6 +142,7 @@
       "ensMw": 0,
       "lossesMw": 0.916,
       "dumpMw": 18.717,
+      "resCurtailedMw": 0,
       "netPln": 336891
     },
     {
@@ -144,6 +155,7 @@
       "ensMw": 0,
       "lossesMw": 1.032,
       "dumpMw": 10.968,
+      "resCurtailedMw": 0,
       "netPln": 511807
     },
     {
@@ -156,6 +168,7 @@
       "ensMw": 0,
       "lossesMw": 1.027,
       "dumpMw": 11.306,
+      "resCurtailedMw": 0,
       "netPln": 504169
     },
     {
@@ -168,6 +181,7 @@
       "ensMw": 0,
       "lossesMw": 1.055,
       "dumpMw": 9.411,
+      "resCurtailedMw": 0,
       "netPln": 546943
     },
     {
@@ -180,6 +194,7 @@
       "ensMw": 0,
       "lossesMw": 1.116,
       "dumpMw": 5.351,
+      "resCurtailedMw": 0,
       "netPln": 638603
     },
     {
@@ -192,6 +207,7 @@
       "ensMw": 0,
       "lossesMw": 0.828,
       "dumpMw": 24.639,
+      "resCurtailedMw": 0,
       "netPln": -1403782
     },
     {
@@ -204,6 +220,7 @@
       "ensMw": 0,
       "lossesMw": 0.581,
       "dumpMw": 41.119,
+      "resCurtailedMw": 0,
       "netPln": -134700
     },
     {
@@ -216,6 +233,7 @@
       "ensMw": 0,
       "lossesMw": 0.515,
       "dumpMw": 45.552,
+      "resCurtailedMw": 0,
       "netPln": -214566
     },
     {
@@ -228,6 +246,7 @@
       "ensMw": 0,
       "lossesMw": 0.661,
       "dumpMw": 35.806,
+      "resCurtailedMw": 0,
       "netPln": -38984
     },
     {
@@ -240,6 +259,7 @@
       "ensMw": 0,
       "lossesMw": 0.814,
       "dumpMw": 25.519,
+      "resCurtailedMw": 0,
       "netPln": 146353
     },
     {
@@ -252,6 +272,7 @@
       "ensMw": 0,
       "lossesMw": 0.795,
       "dumpMw": 26.805,
+      "resCurtailedMw": 0,
       "netPln": 123186
     },
     {
@@ -264,6 +285,7 @@
       "ensMw": 0,
       "lossesMw": 0.837,
       "dumpMw": 24.03,
+      "resCurtailedMw": 0,
       "netPln": 173178
     },
     {
@@ -276,6 +298,7 @@
       "ensMw": 0,
       "lossesMw": 1.019,
       "dumpMw": 11.814,
+      "resCurtailedMw": 0,
       "netPln": 393265
     },
     {
@@ -288,6 +311,7 @@
       "ensMw": 0,
       "lossesMw": 0.771,
       "dumpMw": 28.395,
+      "resCurtailedMw": 0,
       "netPln": -1241752
     },
     {
@@ -300,6 +324,7 @@
       "ensMw": 0,
       "lossesMw": 0.588,
       "dumpMw": 460.645,
+      "resCurtailedMw": 0,
       "netPln": -5651669
     },
     {
@@ -312,6 +337,7 @@
       "ensMw": 0,
       "lossesMw": 0.593,
       "dumpMw": 460.34,
+      "resCurtailedMw": 0,
       "netPln": -5644795
     },
     {
@@ -324,6 +350,7 @@
       "ensMw": 0,
       "lossesMw": 0.911,
       "dumpMw": 439.089,
+      "resCurtailedMw": 0,
       "netPln": -5165111
     },
     {
@@ -336,6 +363,7 @@
       "ensMw": 0,
       "lossesMw": 1.026,
       "dumpMw": 431.374,
+      "resCurtailedMw": 0,
       "netPln": -4990959
     },
     {
@@ -348,6 +376,7 @@
       "ensMw": 0,
       "lossesMw": 1.022,
       "dumpMw": 431.611,
+      "resCurtailedMw": 0,
       "netPln": -4996305
     },
     {
@@ -360,6 +389,7 @@
       "ensMw": 0,
       "lossesMw": 1.051,
       "dumpMw": 429.716,
+      "resCurtailedMw": 0,
       "netPln": -4953531
     },
     {
@@ -372,6 +402,7 @@
       "ensMw": 0,
       "lossesMw": 1.11,
       "dumpMw": 425.723,
+      "resCurtailedMw": 0,
       "netPln": -4863399
     },
     {
@@ -384,6 +415,7 @@
       "ensMw": 0,
       "lossesMw": 0.823,
       "dumpMw": 444.977,
+      "resCurtailedMw": 0,
       "netPln": -7688925
     }
   ],

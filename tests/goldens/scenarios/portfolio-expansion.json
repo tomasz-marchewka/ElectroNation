@@ -1,0 +1,1021 @@
+{
+  "name": "portfolio-expansion",
+  "description": "A full game year (36 days) of portfolio growth on map v1. The player drops a 300 MW coal block onto the starting corridor (the existing MV line taps it — 01 §3.3), runs two MV corridors north, connects Turów and Nadmorze, adds a 100 MW coastal wind farm on an LV spur and a 100 MW / 400 MWh battery cycled night-charge / peak-discharge, and buys a second coal block (+200 MW) on day 18. Setpoints follow one fixed rule: cover (demand − RES) at the ~92nd percentile of the forecast band (+1.4σ — 02 §5.2) plus 4% for losses, merit order coal → CCGT, re-sent only when the target moves by more than 6% (min. 10 MW). Pins the slow half of the game: revenue climbing turn by turn as the three cities grow (05 §6 — they end the year 12–30% larger), the day-end fixed-cost charge rising with every finished object, the steady dump the forecast margin costs, and the nine turns out of 288 where the band bet loses.",
+  "map": "mapV1",
+  "seed": 20260901,
+  "days": 36,
+  "actions": [
+    {
+      "beforeTurn": 0,
+      "note": "coal 300 MW dropped onto the starting corridor (the MV line taps it)",
+      "action": {
+        "type": "buildPlant",
+        "tech": "coal",
+        "capacityMw": 300,
+        "hex": { "q": 2, "r": 8 }
+      }
+    },
+    {
+      "beforeTurn": 0,
+      "note": "MV corridor Modrzyca -> Turow",
+      "action": {
+        "type": "buildLine",
+        "lineType": "mv",
+        "path": [
+          { "q": 4, "r": 7 },
+          { "q": 3, "r": 7 },
+          { "q": 3, "r": 6 },
+          { "q": 2, "r": 6 },
+          { "q": 2, "r": 5 }
+        ]
+      }
+    },
+    {
+      "beforeTurn": 0,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 30 }
+    },
+    {
+      "beforeTurn": 2,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 50 }
+    },
+    {
+      "beforeTurn": 3,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 60 }
+    },
+    {
+      "beforeTurn": 7,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 40 }
+    },
+    {
+      "beforeTurn": 8,
+      "note": "connect Turow",
+      "action": { "type": "connectCity", "cityId": "city-turow" }
+    },
+    {
+      "beforeTurn": 8,
+      "note": "MV corridor Turow -> Nadmorze",
+      "action": {
+        "type": "buildLine",
+        "lineType": "mv",
+        "path": [
+          { "q": 2, "r": 5 },
+          { "q": 2, "r": 4 },
+          { "q": 2, "r": 3 },
+          { "q": 3, "r": 2 },
+          { "q": 3, "r": 1 }
+        ]
+      }
+    },
+    {
+      "beforeTurn": 8,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 80 }
+    },
+    {
+      "beforeTurn": 10,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 120 }
+    },
+    {
+      "beforeTurn": 11,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 130 }
+    },
+    {
+      "beforeTurn": 14,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 140 }
+    },
+    {
+      "beforeTurn": 15,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 110 }
+    },
+    {
+      "beforeTurn": 16,
+      "note": "connect Nadmorze",
+      "action": { "type": "connectCity", "cityId": "city-nadmorze" }
+    },
+    {
+      "beforeTurn": 16,
+      "note": "coastal wind farm 100 MW",
+      "action": {
+        "type": "buildFarm",
+        "tech": "wind",
+        "capacityMw": 100,
+        "hex": { "q": 4, "r": 0 }
+      }
+    },
+    {
+      "beforeTurn": 16,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 180 }
+    },
+    {
+      "beforeTurn": 17,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 160 }
+    },
+    {
+      "beforeTurn": 18,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 200 }
+    },
+    {
+      "beforeTurn": 19,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 240 }
+    },
+    {
+      "beforeTurn": 22,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 300 }
+    },
+    {
+      "beforeTurn": 23,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 230 }
+    },
+    {
+      "beforeTurn": 24,
+      "note": "LV spur wind -> Nadmorze",
+      "action": {
+        "type": "buildLine",
+        "lineType": "lv",
+        "path": [
+          { "q": 4, "r": 0 },
+          { "q": 3, "r": 1 }
+        ]
+      }
+    },
+    {
+      "beforeTurn": 24,
+      "note": "battery 100 MW / 400 MWh next to Modrzyca",
+      "action": {
+        "type": "buildBattery",
+        "powerMw": 100,
+        "capacityMwh": 400,
+        "hex": { "q": 5, "r": 7 }
+      }
+    },
+    {
+      "beforeTurn": 24,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 190 }
+    },
+    {
+      "beforeTurn": 26,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 290 }
+    },
+    {
+      "beforeTurn": 27,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 320 }
+    },
+    {
+      "beforeTurn": 30,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 350 }
+    },
+    {
+      "beforeTurn": 31,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 260 }
+    },
+    {
+      "beforeTurn": 32,
+      "note": "LV spur battery -> Modrzyca",
+      "action": {
+        "type": "buildLine",
+        "lineType": "lv",
+        "path": [
+          { "q": 5, "r": 7 },
+          { "q": 4, "r": 7 }
+        ]
+      }
+    },
+    {
+      "beforeTurn": 32,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    {
+      "beforeTurn": 32,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 310 }
+    },
+    {
+      "beforeTurn": 34,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    {
+      "beforeTurn": 35,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 330 }
+    },
+    {
+      "beforeTurn": 38,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 90 }
+    },
+    {
+      "beforeTurn": 38,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 270 }
+    },
+    {
+      "beforeTurn": 39,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    {
+      "beforeTurn": 40,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    { "beforeTurn": 40, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 210 } },
+    {
+      "beforeTurn": 40,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 0 }
+    },
+    {
+      "beforeTurn": 41,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 40 }
+    },
+    { "beforeTurn": 41, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 110 } },
+    {
+      "beforeTurn": 42,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 42, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 100 } },
+    { "beforeTurn": 43, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 220 } },
+    { "beforeTurn": 44, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 170 } },
+    { "beforeTurn": 45, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 150 } },
+    {
+      "beforeTurn": 46,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 100 }
+    },
+    { "beforeTurn": 46, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 100 } },
+    {
+      "beforeTurn": 47,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 47, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 130 } },
+    {
+      "beforeTurn": 48,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    { "beforeTurn": 48, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 230 } },
+    {
+      "beforeTurn": 49,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 10 }
+    },
+    { "beforeTurn": 49, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 150 } },
+    {
+      "beforeTurn": 50,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 50, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 230 } },
+    { "beforeTurn": 51, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 270 } },
+    {
+      "beforeTurn": 54,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 100 }
+    },
+    { "beforeTurn": 54, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 190 } },
+    {
+      "beforeTurn": 55,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    {
+      "beforeTurn": 56,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    { "beforeTurn": 56, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 260 } },
+    {
+      "beforeTurn": 57,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 10 }
+    },
+    { "beforeTurn": 57, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 170 } },
+    {
+      "beforeTurn": 58,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 58, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 250 } },
+    { "beforeTurn": 59, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 270 } },
+    { "beforeTurn": 61, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 290 } },
+    {
+      "beforeTurn": 62,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 100 }
+    },
+    { "beforeTurn": 62, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 200 } },
+    {
+      "beforeTurn": 63,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    {
+      "beforeTurn": 64,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    { "beforeTurn": 64, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 290 } },
+    {
+      "beforeTurn": 65,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 10 }
+    },
+    { "beforeTurn": 65, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 180 } },
+    {
+      "beforeTurn": 66,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 66, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 210 } },
+    { "beforeTurn": 67, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 260 } },
+    {
+      "beforeTurn": 70,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 100 }
+    },
+    { "beforeTurn": 70, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 220 } },
+    {
+      "beforeTurn": 71,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 71, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 240 } },
+    {
+      "beforeTurn": 72,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    { "beforeTurn": 72, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 210 } },
+    {
+      "beforeTurn": 73,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 10 }
+    },
+    { "beforeTurn": 73, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 140 } },
+    {
+      "beforeTurn": 74,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 74, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 180 } },
+    { "beforeTurn": 75, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 220 } },
+    {
+      "beforeTurn": 78,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 100 }
+    },
+    { "beforeTurn": 78, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 130 } },
+    {
+      "beforeTurn": 79,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 79, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 160 } },
+    {
+      "beforeTurn": 80,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    { "beforeTurn": 80, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 230 } },
+    {
+      "beforeTurn": 81,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 20 }
+    },
+    { "beforeTurn": 81, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 160 } },
+    {
+      "beforeTurn": 82,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 82, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 230 } },
+    { "beforeTurn": 85, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 260 } },
+    {
+      "beforeTurn": 86,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 100 }
+    },
+    { "beforeTurn": 86, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 170 } },
+    {
+      "beforeTurn": 87,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 87, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 200 } },
+    {
+      "beforeTurn": 88,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    { "beforeTurn": 88, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 220 } },
+    {
+      "beforeTurn": 89,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 10 }
+    },
+    { "beforeTurn": 89, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 110 } },
+    {
+      "beforeTurn": 90,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 90, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 150 } },
+    { "beforeTurn": 91, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 180 } },
+    {
+      "beforeTurn": 94,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 100 }
+    },
+    { "beforeTurn": 94, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 140 } },
+    {
+      "beforeTurn": 95,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 95, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 170 } },
+    {
+      "beforeTurn": 96,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    { "beforeTurn": 96, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 240 } },
+    {
+      "beforeTurn": 97,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 10 }
+    },
+    { "beforeTurn": 97, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 150 } },
+    {
+      "beforeTurn": 98,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 98, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 210 } },
+    { "beforeTurn": 99, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 230 } },
+    {
+      "beforeTurn": 102,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 100 }
+    },
+    { "beforeTurn": 102, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 140 } },
+    {
+      "beforeTurn": 103,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 103, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 180 } },
+    {
+      "beforeTurn": 104,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    { "beforeTurn": 104, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 210 } },
+    {
+      "beforeTurn": 105,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 20 }
+    },
+    { "beforeTurn": 105, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 130 } },
+    {
+      "beforeTurn": 106,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 106, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 170 } },
+    { "beforeTurn": 107, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 200 } },
+    { "beforeTurn": 109, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 220 } },
+    {
+      "beforeTurn": 110,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 100 }
+    },
+    { "beforeTurn": 110, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 120 } },
+    {
+      "beforeTurn": 111,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 111, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 160 } },
+    {
+      "beforeTurn": 112,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    { "beforeTurn": 112, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 240 } },
+    {
+      "beforeTurn": 113,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 10 }
+    },
+    { "beforeTurn": 113, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 130 } },
+    {
+      "beforeTurn": 114,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 114, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 150 } },
+    { "beforeTurn": 115, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 190 } },
+    {
+      "beforeTurn": 118,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 100 }
+    },
+    { "beforeTurn": 118, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 130 } },
+    {
+      "beforeTurn": 119,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 119, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 180 } },
+    {
+      "beforeTurn": 120,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    { "beforeTurn": 120, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 250 } },
+    {
+      "beforeTurn": 121,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 10 }
+    },
+    { "beforeTurn": 121, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 170 } },
+    {
+      "beforeTurn": 122,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 122, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 220 } },
+    { "beforeTurn": 123, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 250 } },
+    {
+      "beforeTurn": 126,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 100 }
+    },
+    { "beforeTurn": 126, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 170 } },
+    {
+      "beforeTurn": 127,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 127, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 200 } },
+    {
+      "beforeTurn": 128,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    { "beforeTurn": 128, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 230 } },
+    {
+      "beforeTurn": 129,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 10 }
+    },
+    { "beforeTurn": 129, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 140 } },
+    {
+      "beforeTurn": 130,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 130, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 200 } },
+    { "beforeTurn": 131, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 220 } },
+    {
+      "beforeTurn": 134,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 100 }
+    },
+    { "beforeTurn": 134, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 150 } },
+    {
+      "beforeTurn": 135,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 135, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 180 } },
+    {
+      "beforeTurn": 136,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    { "beforeTurn": 136, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 230 } },
+    {
+      "beforeTurn": 137,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 10 }
+    },
+    { "beforeTurn": 137, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 130 } },
+    {
+      "beforeTurn": 138,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 138, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 150 } },
+    { "beforeTurn": 139, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 180 } },
+    {
+      "beforeTurn": 142,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 100 }
+    },
+    { "beforeTurn": 142, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 130 } },
+    {
+      "beforeTurn": 143,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 143, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 170 } },
+    {
+      "beforeTurn": 144,
+      "note": "second coal block (+200 MW)",
+      "action": { "type": "expandPlant", "plantId": "obj-1", "capacityMw": 200 }
+    },
+    {
+      "beforeTurn": 144,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    { "beforeTurn": 144, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 270 } },
+    {
+      "beforeTurn": 145,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 20 }
+    },
+    { "beforeTurn": 145, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 190 } },
+    {
+      "beforeTurn": 146,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 146, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 240 } },
+    { "beforeTurn": 147, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 260 } },
+    {
+      "beforeTurn": 150,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 100 }
+    },
+    { "beforeTurn": 150, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 180 } },
+    {
+      "beforeTurn": 151,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 151, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 220 } },
+    {
+      "beforeTurn": 152,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    { "beforeTurn": 152, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 240 } },
+    {
+      "beforeTurn": 153,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 10 }
+    },
+    { "beforeTurn": 153, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 150 } },
+    {
+      "beforeTurn": 154,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 154, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 220 } },
+    { "beforeTurn": 155, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 240 } },
+    {
+      "beforeTurn": 158,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 100 }
+    },
+    { "beforeTurn": 158, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 150 } },
+    {
+      "beforeTurn": 159,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 159, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 190 } },
+    {
+      "beforeTurn": 160,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    { "beforeTurn": 160, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 230 } },
+    {
+      "beforeTurn": 161,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 10 }
+    },
+    { "beforeTurn": 161, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 130 } },
+    {
+      "beforeTurn": 162,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 162, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 160 } },
+    { "beforeTurn": 163, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 190 } },
+    {
+      "beforeTurn": 166,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 100 }
+    },
+    { "beforeTurn": 166, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 130 } },
+    {
+      "beforeTurn": 167,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 167, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 170 } },
+    {
+      "beforeTurn": 168,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    { "beforeTurn": 168, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 240 } },
+    {
+      "beforeTurn": 169,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 10 }
+    },
+    { "beforeTurn": 169, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 160 } },
+    {
+      "beforeTurn": 170,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 170, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 230 } },
+    { "beforeTurn": 171, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 250 } },
+    { "beforeTurn": 173, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 230 } },
+    {
+      "beforeTurn": 174,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 100 }
+    },
+    { "beforeTurn": 174, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 150 } },
+    {
+      "beforeTurn": 175,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 175, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 200 } },
+    {
+      "beforeTurn": 176,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    {
+      "beforeTurn": 177,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 10 }
+    },
+    { "beforeTurn": 177, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 130 } },
+    {
+      "beforeTurn": 178,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 178, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 190 } },
+    { "beforeTurn": 179, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 220 } },
+    {
+      "beforeTurn": 182,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 100 }
+    },
+    { "beforeTurn": 182, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 100 } },
+    {
+      "beforeTurn": 183,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 183, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 140 } },
+    {
+      "beforeTurn": 184,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    { "beforeTurn": 184, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 200 } },
+    {
+      "beforeTurn": 185,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 20 }
+    },
+    { "beforeTurn": 185, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 90 } },
+    {
+      "beforeTurn": 186,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 186, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 110 } },
+    { "beforeTurn": 187, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 150 } },
+    { "beforeTurn": 189, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 140 } },
+    {
+      "beforeTurn": 190,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 100 }
+    },
+    { "beforeTurn": 190, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 60 } },
+    {
+      "beforeTurn": 191,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 191, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 130 } },
+    {
+      "beforeTurn": 192,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    { "beforeTurn": 192, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 250 } },
+    {
+      "beforeTurn": 193,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 10 }
+    },
+    { "beforeTurn": 193, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 160 } },
+    {
+      "beforeTurn": 194,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 194, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 240 } },
+    { "beforeTurn": 195, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 260 } },
+    {
+      "beforeTurn": 198,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 100 }
+    },
+    { "beforeTurn": 198, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 170 } },
+    {
+      "beforeTurn": 199,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 199, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 190 } },
+    {
+      "beforeTurn": 200,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    { "beforeTurn": 200, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 260 } },
+    {
+      "beforeTurn": 201,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 10 }
+    },
+    { "beforeTurn": 201, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 150 } },
+    {
+      "beforeTurn": 202,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 202, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 240 } },
+    { "beforeTurn": 203, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 260 } },
+    {
+      "beforeTurn": 206,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 100 }
+    },
+    { "beforeTurn": 206, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 180 } },
+    {
+      "beforeTurn": 207,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 207, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 220 } },
+    {
+      "beforeTurn": 208,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    { "beforeTurn": 208, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 250 } },
+    {
+      "beforeTurn": 209,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 10 }
+    },
+    { "beforeTurn": 209, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 140 } },
+    {
+      "beforeTurn": 210,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 210, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 180 } },
+    { "beforeTurn": 211, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 220 } },
+    {
+      "beforeTurn": 214,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 100 }
+    },
+    { "beforeTurn": 214, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 180 } },
+    {
+      "beforeTurn": 215,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 215, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 210 } },
+    {
+      "beforeTurn": 216,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    { "beforeTurn": 216, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 290 } },
+    {
+      "beforeTurn": 217,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 10 }
+    },
+    { "beforeTurn": 217, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 200 } },
+    {
+      "beforeTurn": 218,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 218, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 290 } },
+    { "beforeTurn": 219, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 320 } },
+    {
+      "beforeTurn": 222,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 100 }
+    },
+    { "beforeTurn": 222, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 250 } },
+    {
+      "beforeTurn": 223,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    {
+      "beforeTurn": 224,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    { "beforeTurn": 224, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 300 } },
+    {
+      "beforeTurn": 225,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 20 }
+    },
+    { "beforeTurn": 225, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 220 } },
+    {
+      "beforeTurn": 226,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 226, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 300 } },
+    { "beforeTurn": 227, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 330 } },
+    {
+      "beforeTurn": 230,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 100 }
+    },
+    { "beforeTurn": 230, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 260 } },
+    {
+      "beforeTurn": 231,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    {
+      "beforeTurn": 232,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    {
+      "beforeTurn": 233,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 20 }
+    },
+    { "beforeTurn": 233, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 170 } },
+    {
+      "beforeTurn": 234,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 234, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 200 } },
+    { "beforeTurn": 235, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 240 } },
+    {
+      "beforeTurn": 238,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 100 }
+    },
+    { "beforeTurn": 238, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 200 } },
+    {
+      "beforeTurn": 239,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 239, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 230 } },
+    {
+      "beforeTurn": 240,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    { "beforeTurn": 240, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 320 } },
+    {
+      "beforeTurn": 241,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 10 }
+    },
+    { "beforeTurn": 241, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 230 } },
+    {
+      "beforeTurn": 242,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 242, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 320 } },
+    { "beforeTurn": 243, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 360 } },
+    {
+      "beforeTurn": 246,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 100 }
+    },
+    { "beforeTurn": 246, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 290 } },
+    {
+      "beforeTurn": 247,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    {
+      "beforeTurn": 248,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    { "beforeTurn": 248, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 310 } },
+    {
+      "beforeTurn": 249,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 10 }
+    },
+    { "beforeTurn": 249, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 220 } },
+    {
+      "beforeTurn": 250,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 250, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 310 } },
+    { "beforeTurn": 251, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 350 } },
+    {
+      "beforeTurn": 254,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 100 }
+    },
+    { "beforeTurn": 254, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 280 } },
+    {
+      "beforeTurn": 255,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    {
+      "beforeTurn": 256,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    { "beforeTurn": 256, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 310 } },
+    {
+      "beforeTurn": 257,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 10 }
+    },
+    { "beforeTurn": 257, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 200 } },
+    {
+      "beforeTurn": 258,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 258, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 240 } },
+    { "beforeTurn": 259, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 290 } },
+    {
+      "beforeTurn": 262,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 100 }
+    },
+    { "beforeTurn": 262, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 250 } },
+    {
+      "beforeTurn": 263,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 263, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 270 } },
+    {
+      "beforeTurn": 264,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    { "beforeTurn": 264, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 300 } },
+    {
+      "beforeTurn": 265,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 10 }
+    },
+    { "beforeTurn": 265, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 190 } },
+    {
+      "beforeTurn": 266,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 266, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 310 } },
+    { "beforeTurn": 267, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 340 } },
+    {
+      "beforeTurn": 270,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 100 }
+    },
+    { "beforeTurn": 270, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 280 } },
+    {
+      "beforeTurn": 271,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    {
+      "beforeTurn": 272,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    {
+      "beforeTurn": 273,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 20 }
+    },
+    { "beforeTurn": 273, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 210 } },
+    {
+      "beforeTurn": 274,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 274, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 320 } },
+    { "beforeTurn": 275, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 350 } },
+    {
+      "beforeTurn": 278,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 100 }
+    },
+    { "beforeTurn": 278, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 270 } },
+    {
+      "beforeTurn": 279,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    {
+      "beforeTurn": 280,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 100 }
+    },
+    {
+      "beforeTurn": 281,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "charge", "mw": 20 }
+    },
+    { "beforeTurn": 281, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 170 } },
+    {
+      "beforeTurn": 282,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    },
+    { "beforeTurn": 282, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 210 } },
+    { "beforeTurn": 283, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 260 } },
+    { "beforeTurn": 284, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 240 } },
+    { "beforeTurn": 285, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 260 } },
+    {
+      "beforeTurn": 286,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "discharge", "mw": 100 }
+    },
+    { "beforeTurn": 286, "action": { "type": "setPlantSetpoint", "plantId": "obj-1", "mw": 240 } },
+    {
+      "beforeTurn": 287,
+      "action": { "type": "setStorage", "storageId": "obj-6", "mode": "idle", "mw": 0 }
+    }
+  ]
+}

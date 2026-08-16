@@ -1,0 +1,282 @@
+{
+  "name": "forecast-upgrade",
+  "description": "Three months under the same regime (atlantic low), one dispatch rule throughout and a single purchase: the advanced forecast system on day 5 (01 §2.4, 06 §8.6.3 — every σ ×0.7). Days 0–4 are bit-for-bit what the same rule produces without the purchase; from day 5 the narrower band puts the setpoints closer to the truth and the balancing penalties fall — 7,3 mln zł of ENS+dump over days 5–8 against 10,6 mln for the basic system (−31%, measured by re-authoring this scenario without the purchase). The 600 mln zł does not pay for itself at this scale: input for doc 03, not a reason to retune anything here.",
+  "map": "mapV1",
+  "seed": 20260890,
+  "days": 9,
+  "actions": [
+    {
+      "beforeTurn": 0,
+      "note": "corridors north to Turow and Nadmorze",
+      "action": {
+        "type": "buildLine",
+        "lineType": "mv",
+        "path": [
+          { "q": 4, "r": 7 },
+          { "q": 3, "r": 7 },
+          { "q": 3, "r": 6 },
+          { "q": 2, "r": 6 },
+          { "q": 2, "r": 5 }
+        ]
+      }
+    },
+    {
+      "beforeTurn": 0,
+      "action": {
+        "type": "buildLine",
+        "lineType": "mv",
+        "path": [
+          { "q": 2, "r": 5 },
+          { "q": 2, "r": 4 },
+          { "q": 2, "r": 3 },
+          { "q": 3, "r": 2 },
+          { "q": 3, "r": 1 }
+        ]
+      }
+    },
+    {
+      "beforeTurn": 0,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 30 }
+    },
+    {
+      "beforeTurn": 2,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 50 }
+    },
+    {
+      "beforeTurn": 3,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 60 }
+    },
+    {
+      "beforeTurn": 7,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 50 }
+    },
+    {
+      "beforeTurn": 8,
+      "note": "connect both cities, order wind and PV onto the finished corridor",
+      "action": { "type": "connectCity", "cityId": "city-turow" }
+    },
+    { "beforeTurn": 8, "action": { "type": "connectCity", "cityId": "city-nadmorze" } },
+    {
+      "beforeTurn": 8,
+      "action": {
+        "type": "buildFarm",
+        "tech": "wind",
+        "capacityMw": 150,
+        "hex": { "q": 3, "r": 6 }
+      }
+    },
+    {
+      "beforeTurn": 8,
+      "action": { "type": "buildFarm", "tech": "pv", "capacityMw": 100, "hex": { "q": 3, "r": 7 } }
+    },
+    {
+      "beforeTurn": 8,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 170 }
+    },
+    {
+      "beforeTurn": 10,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 260 }
+    },
+    {
+      "beforeTurn": 11,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 300 }
+    },
+    {
+      "beforeTurn": 14,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 320 }
+    },
+    {
+      "beforeTurn": 15,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 240 }
+    },
+    {
+      "beforeTurn": 16,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 150 }
+    },
+    {
+      "beforeTurn": 17,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 110 }
+    },
+    {
+      "beforeTurn": 18,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 180 }
+    },
+    {
+      "beforeTurn": 19,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 220 }
+    },
+    {
+      "beforeTurn": 22,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 250 }
+    },
+    {
+      "beforeTurn": 23,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 220 }
+    },
+    {
+      "beforeTurn": 24,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 110 }
+    },
+    {
+      "beforeTurn": 25,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 60 }
+    },
+    {
+      "beforeTurn": 26,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 170 }
+    },
+    {
+      "beforeTurn": 28,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 260 }
+    },
+    {
+      "beforeTurn": 29,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 240 }
+    },
+    {
+      "beforeTurn": 30,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 200 }
+    },
+    {
+      "beforeTurn": 31,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 170 }
+    },
+    {
+      "beforeTurn": 32,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 80 }
+    },
+    {
+      "beforeTurn": 33,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 70 }
+    },
+    {
+      "beforeTurn": 34,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 180 }
+    },
+    {
+      "beforeTurn": 36,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 210 }
+    },
+    {
+      "beforeTurn": 37,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 240 }
+    },
+    {
+      "beforeTurn": 39,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 190 }
+    },
+    {
+      "beforeTurn": 40,
+      "note": "buy the advanced forecast system",
+      "action": { "type": "buyForecastSystem", "level": "advanced" }
+    },
+    {
+      "beforeTurn": 40,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 30 }
+    },
+    {
+      "beforeTurn": 41,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 20 }
+    },
+    {
+      "beforeTurn": 42,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 50 }
+    },
+    {
+      "beforeTurn": 43,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 90 }
+    },
+    {
+      "beforeTurn": 45,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 100 }
+    },
+    {
+      "beforeTurn": 46,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 150 }
+    },
+    {
+      "beforeTurn": 47,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 90 }
+    },
+    {
+      "beforeTurn": 48,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 150 }
+    },
+    {
+      "beforeTurn": 50,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 200 }
+    },
+    {
+      "beforeTurn": 52,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 220 }
+    },
+    {
+      "beforeTurn": 53,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 240 }
+    },
+    {
+      "beforeTurn": 55,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 180 }
+    },
+    {
+      "beforeTurn": 56,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 100 }
+    },
+    {
+      "beforeTurn": 57,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 90 }
+    },
+    {
+      "beforeTurn": 58,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 120 }
+    },
+    {
+      "beforeTurn": 59,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 180 }
+    },
+    {
+      "beforeTurn": 60,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 160 }
+    },
+    {
+      "beforeTurn": 61,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 180 }
+    },
+    {
+      "beforeTurn": 62,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 200 }
+    },
+    {
+      "beforeTurn": 63,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 150 }
+    },
+    {
+      "beforeTurn": 64,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 110 }
+    },
+    {
+      "beforeTurn": 65,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 80 }
+    },
+    {
+      "beforeTurn": 66,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 100 }
+    },
+    {
+      "beforeTurn": 67,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 120 }
+    },
+    {
+      "beforeTurn": 69,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 160 }
+    },
+    {
+      "beforeTurn": 70,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 240 }
+    },
+    {
+      "beforeTurn": 71,
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 150 }
+    }
+  ]
+}

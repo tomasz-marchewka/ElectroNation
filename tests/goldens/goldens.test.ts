@@ -21,6 +21,8 @@ import { stateHash } from "../helpers/hash";
 interface ScenarioAction {
   /** 0-based index of the turn before which the action is applied. */
   beforeTurn: number;
+  /** Why the player did this — documentation only, the run ignores it. */
+  note?: string;
   action: Action;
 }
 
@@ -70,6 +72,7 @@ describe("golden scenarios", () => {
         ensMw: report.totals.ensMw,
         lossesMw: report.totals.lossesMw,
         dumpMw: report.totals.dumpMw,
+        resCurtailedMw: report.totals.resCurtailedMw,
         netPln: report.finance.netPln,
       });
     }
