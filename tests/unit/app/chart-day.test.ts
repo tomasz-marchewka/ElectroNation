@@ -193,13 +193,26 @@ describe("01 §8 pt 2: coverage by technology, merit order from the bottom", () 
     );
   });
 
-  test("blocks are hard 3 h steps, never a slope", () => {
+  test("a block holds its 3 h average flat, and only its ends round off", () => {
     const model = buildDayChart(playedDay(2));
-    // Two points per block at the same height: the block's flat average.
+    const width = CHART_WIDTH / TURNS_PER_DAY;
+    // Two points per block at the same height: the block's flat average, which
+    // is what a turn is (01 §2.2) — the renderer may curve between the runs, it
+    // may never tilt one.
     expect(model.demandLine).toHaveLength(4);
     expect(model.demandLine[0]?.y).toBe(model.demandLine[1]?.y);
+    expect(model.demandLine[2]?.y).toBe(model.demandLine[3]?.y);
+    // The run of the day squares off at both its ends: nothing precedes the
+    // first turn, and past TERAZ there is no truth to lean toward.
     expect(model.demandLine[0]?.x).toBe(0);
-    expect(model.demandLine[1]?.x).toBe(CHART_WIDTH / TURNS_PER_DAY);
+    expect(model.demandLine[3]?.x).toBe(2 * width);
+    // What is left open at the inner boundary is the rounding window, centred
+    // on it — and never so wide that it eats the middle of either block.
+    const opens = model.demandLine[1]?.x ?? 0;
+    const closes = model.demandLine[2]?.x ?? 0;
+    expect(opens).toBeGreaterThan(width / 2);
+    expect(closes).toBeLessThan(1.5 * width);
+    expect(closes - width).toBeCloseTo(width - opens, 6);
   });
 
   test("the whole day fits under the scale, and the scale is a round number", () => {

@@ -126,6 +126,7 @@ test("scrubbing to the evening peak plays every turn on the way", async ({ page 
   await expect(page.locator(".en-turn").nth(6)).toHaveClass(/is-current/);
   await expect(page.locator(".en-report__label")).toContainText("TURA 6 · POPOŁ.");
   // The chart draws what was played: coverage layers plus the forecast band.
+  await expect(page.locator("[data-region='chart'] .en-chart__area").first()).toBeVisible();
   await expect(page.locator("[data-region='chart'] polygon").first()).toBeVisible();
   await expect(page.locator(".en-topbar")).toContainText("WYNIK DOBY");
   expect(errors).toEqual([]);
