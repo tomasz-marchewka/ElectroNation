@@ -17,6 +17,12 @@ import type { MonthRegimes, RegimeId } from "./regimes";
 // functions. Serializability is load-bearing: saves, replay, golden tests and
 // (later) a server all rely on JSON.parse(JSON.stringify(s)) being lossless.
 
+/**
+ * Bumping this is a contract with `./migrations.ts`: every bump adds the
+ * matching `MIGRATIONS[previous]` entry in the same commit, so a save written
+ * by the build before it still loads. A bump without its migration turns every
+ * existing save into a load error.
+ */
 export const STATE_SCHEMA_VERSION = 8;
 
 export const TURNS_PER_DAY = 8;
