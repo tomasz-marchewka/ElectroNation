@@ -16,6 +16,10 @@ test("dispatcher screen boots without console errors", async ({ page }) => {
   await expect(page.locator("[data-region='map'] svg")).toBeVisible();
   await expect(page.locator("path[data-hex]")).toHaveCount(24 * 16);
   await expect(page.getByText("1 HEKS = 25 KM")).toBeVisible();
+  // The day chart is a standing part of the view (01 §8 pt 2), with its key.
+  await expect(page.locator("[data-region='chart'] svg")).toBeVisible();
+  await expect(page.getByText("DOBA · POPYT vs POKRYCIE [MW]")).toBeVisible();
+  await expect(page.locator(".en-chartlegend .en-swatch")).toHaveCount(7);
   expect(errors).toEqual([]);
 });
 
@@ -57,8 +61,6 @@ test("setting a setpoint and committing runs one turn of the loop", async ({ pag
   await expect(result).not.toHaveText("0 zł");
   await expect(result).toContainText("zł");
 
-  // The skip button waits for turn scrubbing (01 §2.5, M8).
-  await expect(page.getByRole("button", { name: "PRZEWIŃ ⏭" })).toBeDisabled();
   expect(errors).toEqual([]);
 });
 
@@ -109,6 +111,36 @@ test("a line routed to a city is built and the city connected (01 §3.3–3.4)",
   await connect.click();
   await expect(page.locator(".en-panel")).toContainText("zasilane");
   expect(errors).toEqual([]);
+});
+
+test("scrubbing to the evening peak plays every turn on the way", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(String(error)));
+  await page.goto("/");
+
+  await page.getByLabel("EC MODRZYCA").press("End");
+  await page.locator(".en-turn", { hasText: "SZCZYT WIECZ." }).click();
+
+  // Six turns resolved on the way; the seventh is the one now pending.
+  await expect(page.locator(".en-panel__meta")).toContainText("TURA 7/8");
+  await expect(page.locator(".en-turn").nth(6)).toHaveClass(/is-current/);
+  await expect(page.locator(".en-report__label")).toContainText("TURA 6 · POPOŁ.");
+  // The chart draws what was played: coverage layers plus the forecast band.
+  await expect(page.locator("[data-region='chart'] polygon").first()).toBeVisible();
+  await expect(page.locator(".en-topbar")).toContainText("WYNIK DOBY");
+  expect(errors).toEqual([]);
+});
+
+test("skipping stops on the first event and says what it was", async ({ page }) => {
+  await page.goto("/");
+
+  // Nothing is dispatched, so the very first turn leaves the city dark and the
+  // scrub stops there instead of running the day out (01 §2.5).
+  await page.getByRole("button", { name: "PRZEWIŃ ⏭" }).click();
+
+  await expect(page.locator(".en-panel__stop")).toContainText("⏭ zatrzymano: TURA 1 — niedobór");
+  await expect(page.locator(".en-panel__meta")).toContainText("TURA 2/8");
+  await expect(page.locator(".en-report__label")).toContainText("TURA 1 · NOC");
 });
 
 test("both themes render the whole screen without errors", async ({ page }) => {

@@ -10,9 +10,9 @@ export interface TurnBarProps {
   /** Index of the current turn (0–7). */
   current?: number;
   /**
-   * Click on a turn — turn scrubbing (01 §2.5), wired in M8. Without it the
-   * axis is a read-out and every cell is inert: a resolved turn is never
-   * replayable, and jumping forward is a mechanic that does not exist yet.
+   * Scrub to a FUTURE turn (01 §2.5): every turn on the way is resolved with
+   * the setpoints as they stand. Only future cells offer it — a resolved turn
+   * is never replayable, and the current one is where time already is.
    */
   onSelect?: (index: number) => void;
 }
@@ -28,13 +28,15 @@ export function TurnBar({ turns = DAY_TURNS, current = 0, onSelect }: TurnBarPro
         ]
           .filter(Boolean)
           .join(" ");
+        const scrubbable = onSelect !== undefined && index > current;
         return (
           <button
             type="button"
             className={className}
             key={turn.phase}
-            disabled={onSelect === undefined}
-            onClick={onSelect ? () => onSelect(index) : undefined}
+            disabled={!scrubbable}
+            title={scrubbable ? `Przewiń do tury ${index + 1}` : undefined}
+            onClick={scrubbable ? () => onSelect(index) : undefined}
           >
             {turn.name}
             <br />

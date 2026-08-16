@@ -111,6 +111,25 @@ describe("store hooks", () => {
     if (result?.ok) expect(result.state).toStrictEqual(game);
   });
 
+  // Scrubbing moves time exactly like committing does (01 §2.5), so it owes the
+  // slot the same write — several turns are at stake, not one.
+  test("every transition that moves time writes the slot", async () => {
+    for (const moveTime of [
+      () => useGameStore.getState().resolveUntilTurn(4),
+      () => useGameStore.getState().skip(),
+    ]) {
+      setSaveStorage(memoryStorage());
+      moveTime();
+      const game = useGameStore.getState().game;
+      expect(game.calendar.turnIndex).not.toBe(0);
+
+      const result = await loadGame();
+      expect(result?.ok).toBe(true);
+      if (result?.ok) expect(result.state).toStrictEqual(game);
+      useGameStore.getState().restart(DEFAULT_SEED);
+    }
+  });
+
   test("hydrate() continues the stored session", async () => {
     const stored = playTurns(2026, 9);
     await saveGame(stored);

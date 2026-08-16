@@ -131,9 +131,19 @@ export interface DispatcherPanelProps {
   onAction: (action: Action) => void;
   /** The one action that moves time (01 §2.3). */
   onCommit: () => void;
+  /** Scrub until something happens or the day ends (01 §2.5). */
+  onSkip: () => void;
+  /** Why the last scrub stopped; absent when time moved one turn at a time. */
+  stopNote?: string;
 }
 
-export function DispatcherPanel({ game, onAction, onCommit }: DispatcherPanelProps) {
+export function DispatcherPanel({
+  game,
+  onAction,
+  onCommit,
+  onSkip,
+  stopNote,
+}: DispatcherPanelProps) {
   const turn = currentDayTurn(game);
   const forecast = useMemo(() => panelForecast(game), [game]);
   const units = useMemo(() => setpointRows(game), [game]);
@@ -195,12 +205,18 @@ export function DispatcherPanel({ game, onAction, onCommit }: DispatcherPanelPro
           tone={forecast.summary.tone}
           note={forecast.summary.note}
         />
+        {stopNote && <div className="en-panel__stop">{stopNote}</div>}
         <div className="en-panel__actions">
           <Button block onClick={onCommit}>
             ZATWIERDŹ TURĘ ▸
           </Button>
-          {/* Turn scrubbing is defined in 01 §2.5 and lands in M8. */}
-          <Button variant="ghost" disabled title="Przewijanie tur — niedostępne w tej wersji">
+          {/* Commit and skip diverge (open question of the handoff README):
+              commit is one turn, skip runs until a stop rule fires (01 §2.5). */}
+          <Button
+            variant="ghost"
+            onClick={onSkip}
+            title="Przewiń tury aż do zdarzenia albo do końca doby"
+          >
             PRZEWIŃ ⏭
           </Button>
         </div>

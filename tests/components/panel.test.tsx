@@ -53,8 +53,11 @@ const DISPATCH_SCENARIO: Scenario = makeScenario({
 function renderPanel(game: GameState) {
   const onAction = vi.fn<(action: Action) => void>();
   const onCommit = vi.fn();
-  const view = render(<DispatcherPanel game={game} onAction={onAction} onCommit={onCommit} />);
-  return { ...view, onAction, onCommit };
+  const onSkip = vi.fn();
+  const view = render(
+    <DispatcherPanel game={game} onAction={onAction} onCommit={onCommit} onSkip={onSkip} />,
+  );
+  return { ...view, onAction, onCommit, onSkip };
 }
 
 function slider(name: string): HTMLInputElement {
@@ -128,7 +131,12 @@ describe("setpoints — every unit set by hand (01 §8 pt 4)", () => {
     expect(action).toEqual({ type: "setFarmEnabled", farmId: "farm-wind", enabled: false });
 
     rerender(
-      <DispatcherPanel game={applyAction(game, action!)} onAction={onAction} onCommit={vi.fn()} />,
+      <DispatcherPanel
+        game={applyAction(game, action!)}
+        onAction={onAction}
+        onCommit={vi.fn()}
+        onSkip={vi.fn()}
+      />,
     );
     expect(screen.getByText("0 · WYŁ.")).toBeDefined();
     expect(screen.getByText("WIATR").parentElement?.textContent).not.toMatch(/±/);
@@ -155,18 +163,61 @@ describe("panel structure", () => {
     expect(container.querySelectorAll(".en-section")).toHaveLength(4);
   });
 
-  test("the skip button is present but inert until turn scrubbing lands", () => {
-    renderPanel(newGame(7, DISPATCH_SCENARIO));
+  test("the skip button scrubs; the commit stays the only primary action", async () => {
+    const { onSkip, onCommit } = renderPanel(newGame(7, DISPATCH_SCENARIO));
     const skip = screen.getByText("PRZEWIŃ ⏭");
-    expect(skip).toHaveProperty("disabled", true);
-    expect(skip.getAttribute("title")).toBe("Przewijanie tur — niedostępne w tej wersji");
-  });
+    expect(skip).toHaveProperty("disabled", false);
 
-  test("the day axis is a read-out — no cell is clickable yet (01 §2.5)", () => {
+    await userEvent.click(skip);
+    expect(onSkip).toHaveBeenCalledTimes(1);
+    expect(onCommit).not.toHaveBeenCalled();
+  });
+});
+
+describe("turn scrubbing (01 §2.5)", () => {
+  test("only future cells of the day axis scrub", () => {
+    useGameStore.setState({ game: newGame(7, DISPATCH_SCENARIO) });
+    useGameStore.getState().resolve();
     render(<App />);
+
     const cells = [...document.querySelectorAll<HTMLButtonElement>(".en-turn")];
     expect(cells).toHaveLength(8);
-    expect(cells.every((cell) => cell.disabled)).toBe(true);
+    // Resolved turns and the pending one are a read-out; the rest are targets.
+    expect(cells.slice(0, 2).every((cell) => cell.disabled)).toBe(true);
+    expect(cells.slice(2).every((cell) => !cell.disabled)).toBe(true);
+  });
+
+  test("clicking a future cell resolves every turn up to it", async () => {
+    useGameStore.setState({ game: newGame(7, DISPATCH_SCENARIO) });
+    const { container } = render(<App />);
+
+    const cells = container.querySelectorAll<HTMLButtonElement>(".en-turn");
+    await userEvent.click(cells[4] as HTMLElement);
+
+    const game = useGameStore.getState().game;
+    expect(game.calendar).toEqual({ dayIndex: 0, turnIndex: 4 });
+    expect(game.dayReports).toHaveLength(4);
+    expect(screen.getByText(/TURA 5\/8/)).toBeDefined();
+    // The report strip stands on the last turn the scrub resolved.
+    expect(screen.getByText("TURA 4 · PRZEDPOŁ.")).toBeDefined();
+  });
+
+  test("a scrub that stops prints the diagnosis above the buttons", async () => {
+    // Nothing is dispatched on the starting grid, so the very first turn is a
+    // shortfall — the first stop rule of 01 §2.5.
+    useGameStore.setState({ game: newGame(7, DISPATCH_SCENARIO) });
+    const { container } = render(<App />);
+    expect(container.querySelector(".en-panel__stop")).toBeNull();
+
+    await userEvent.click(screen.getByText("PRZEWIŃ ⏭"));
+
+    expect(useGameStore.getState().skipStop?.kind).toBe("shortfall");
+    expect(container.querySelector(".en-panel__stop")?.textContent).toMatch(
+      /^⏭ zatrzymano: TURA 1 — niedobór .* w A$/,
+    );
+    // Committing one turn by hand clears the diagnosis with it.
+    await userEvent.click(screen.getByText("ZATWIERDŹ TURĘ ▸"));
+    expect(container.querySelector(".en-panel__stop")).toBeNull();
   });
 });
 
@@ -205,8 +256,9 @@ describe("copy rules — plan/README.md", () => {
     await userEvent.click(screen.getByText("ZATWIERDŹ TURĘ ▸"));
 
     // Everything above U+2000 is a glyph decision: the design system allows
-    // exactly these, plus the dashes the typography already uses. No emoji.
-    const allowed = new Set(["–", "—", "−", "✓", "⚠", "✕", "◂", "▸", "⏭", "⬡"]);
+    // exactly these, plus the dashes the typography already uses, plus the "┄"
+    // its own chart legend prints for the dashed forecast line. No emoji.
+    const allowed = new Set(["–", "—", "−", "✓", "⚠", "✕", "◂", "▸", "⏭", "⬡", "┄"]);
     const used = new Set(
       [...(container.textContent ?? "")].filter((char) => (char.codePointAt(0) ?? 0) >= 0x2000),
     );

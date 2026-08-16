@@ -192,7 +192,17 @@
 }
 
 /* ── actions ────────────────────────────────────────────
-   The screen's one primary button, with the (still inert) skip beside it. */
+   The screen's one primary button, with the skip beside it. */
+
+/* Why a scrub stopped (01 §2.5) — a diagnosis in the same voice as the balance
+   note above it, so it reads as one column of reasoning, not as an alarm. */
+.en-panel__stop {
+  margin-top: var(--en-space-4);
+  font-size: var(--en-fs-caption);
+  line-height: 1.4;
+  color: var(--en-warn-text);
+}
+
 .en-panel__actions {
   display: flex;
   gap: var(--en-space-4);
@@ -205,8 +215,8 @@
 }
 
 /* ── day axis ───────────────────────────────────────────
-   The axis is a read-out until turn scrubbing lands (01 §2.5, M8): its cells
-   are disabled, so they may not offer a pointer or a hover state either. */
+   Only future cells scrub (01 §2.5); the past and the current turn are a
+   read-out, so their disabled cells offer neither a pointer nor a hover state. */
 .en-turn:disabled {
   cursor: default;
 }

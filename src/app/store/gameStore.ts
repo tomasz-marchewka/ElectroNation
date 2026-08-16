@@ -5,8 +5,8 @@
 // and the routing session's own transitions come from ../routing/session.
 //
 // Since M9 the store also owns the autosave. It is written on the transitions
-// that end a decision — a resolved turn, a new game, an imported file — and not
-// on every setpoint move: an interrupted session resumes at the turn it was
+// that end a decision — time moving forward, a new game, an imported file — and
+// not on every setpoint move: an interrupted session resumes at the turn it was
 // planning, with its setpoints to redo.
 
 import { create } from "zustand";
@@ -30,6 +30,7 @@ import {
 } from "../routing/session";
 import { loadGame, saveGame } from "../save/autosave";
 import { readSaveFile } from "../save/file";
+import { scrubToTurn, skipTurns, type SkipStop } from "./skip";
 
 /** Seed of the default session; `?seed=` in the URL overrides it. */
 export const DEFAULT_SEED = 1;
@@ -82,6 +83,11 @@ export interface GameStore {
   routing: RoutingSession | null;
   /** What POKAŻ WĄSKIE GARDŁO pointed at, until the view moves on. */
   bottleneck: BottleneckRef | null;
+  /**
+   * Why the last scrub stopped (01 §2.5) — null whenever time moved one turn
+   * at a time, so the diagnosis never outlives the run that produced it.
+   */
+  skipStop: SkipStop | null;
   saveNotice: SaveNotice | null;
   /**
    * Applies a player action (a JSON object — the future replay protocol).
@@ -91,6 +97,10 @@ export interface GameStore {
   dispatch: (action: Action) => boolean;
   /** Resolves the current turn: reveals the truth and advances the calendar. */
   resolve: () => void;
+  /** Scrubs to a future turn of the day, resolving every turn on the way. */
+  resolveUntilTurn: (turnIndex: number) => void;
+  /** Scrubs until a stop rule fires or the day ends (01 §2.5). */
+  skip: () => void;
   selectHex: (hex: HexCoord | null) => void;
   /** Enters line-routing mode from the object on `from` (01 §3.3). */
   startRouting: (from: HexCoord) => void;
@@ -114,79 +124,100 @@ export interface GameStore {
 }
 
 /** Everything that pointed into the world being replaced (new game, load). */
-const CLEARED_VIEW = { selectedHex: null, routing: null, bottleneck: null } as const;
-
-export const useGameStore = create<GameStore>()((set, get) => ({
-  game: newGame(initialSeed()),
+const CLEARED_VIEW = {
   selectedHex: null,
   routing: null,
   bottleneck: null,
-  saveNotice: null,
-  dispatch: (action) => {
-    const before = get().game;
-    const game = applyAction(before, action);
-    if (game === before) return false;
-    set({ game });
-    return true;
-  },
-  resolve: () => {
-    const game = resolveTurn(get().game);
-    // A new turn makes the previous report — and anything pointing into it —
-    // history, so the bottleneck highlight goes with it.
-    set({ game, bottleneck: null, saveNotice: null });
-    // Fire and forget: the resolved turn is on screen long before the write
-    // lands (M9 brief §1 — the save must not block the loop).
+  skipStop: null,
+} as const;
+
+export const useGameStore = create<GameStore>()((set, get) => {
+  /**
+   * Every transition that moves time lands the same way. A new turn makes the
+   * previous report — and anything pointing into it — history, so the
+   * bottleneck highlight goes with it, and so does the diagnosis of the last
+   * scrub unless this run produced its own (01 §2.5). The state then goes to
+   * the autosave slot: fire and forget, because the turn is on screen long
+   * before the write lands (M9 brief §1 — the save must not block the loop).
+   */
+  function advance(game: GameState, skipStop: SkipStop | null = null): void {
+    set({ game, bottleneck: null, skipStop, saveNotice: null });
     void saveGame(game);
-  },
-  // Routing owns the map clicks until it ends (M7 brief pt 3).
-  selectHex: (hex) =>
-    set((store) => (store.routing ? store : { selectedHex: hex, bottleneck: null })),
-  startRouting: (from) => set({ selectedHex: from, routing: startRouting(from), bottleneck: null }),
-  setRoutingType: (lineType) =>
-    set((store) => (store.routing ? { routing: setRoutingType(store.routing, lineType) } : store)),
-  hoverRouting: (hex) =>
-    set((store) => (store.routing ? { routing: hoverRouting(store.routing, hex) } : store)),
-  clickRouting: (hex) =>
-    set((store) =>
-      store.routing ? { routing: applyRoutingClick(store.game, store.routing, hex) } : store,
-    ),
-  cancelRouting: () => set({ routing: null }),
-  confirmRouting: (path) => {
-    const store = get();
-    if (!store.routing) return false;
-    const before = store.game;
-    const game = applyAction(before, {
-      type: "buildLine",
-      lineType: store.routing.lineType,
-      path,
-    });
-    if (game === before) return false;
-    set({ game, routing: null });
-    return true;
-  },
-  showBottleneck: (ref) => set({ bottleneck: ref }),
-  restart: (seed) => {
-    const game = newGame(seed);
-    set({ game, ...CLEARED_VIEW, saveNotice: null });
-    void saveGame(game);
-  },
-  hydrate: async () => {
-    if (seedIsPinned(currentSearch())) return;
-    const result = await loadGame();
-    if (result === null) return;
-    if (!result.ok) {
-      set({ saveNotice: { kind: "error", error: result.error } });
-      return;
-    }
-    set({ game: result.state, ...CLEARED_VIEW });
-  },
-  importSave: async (file) => {
-    const result = await readSaveFile(file);
-    if (!result.ok) {
-      set({ saveNotice: { kind: "error", error: result.error } });
-      return;
-    }
-    set({ game: result.state, ...CLEARED_VIEW, saveNotice: { kind: "loaded" } });
-    void saveGame(result.state);
-  },
-}));
+  }
+
+  return {
+    game: newGame(initialSeed()),
+    selectedHex: null,
+    routing: null,
+    bottleneck: null,
+    skipStop: null,
+    saveNotice: null,
+    dispatch: (action) => {
+      const before = get().game;
+      const game = applyAction(before, action);
+      if (game === before) return false;
+      set({ game });
+      return true;
+    },
+    resolve: () => advance(resolveTurn(get().game)),
+    resolveUntilTurn: (turnIndex) => advance(scrubToTurn(get().game, turnIndex)),
+    skip: () => {
+      const { game, stop } = skipTurns(get().game);
+      advance(game, stop);
+    },
+    // Routing owns the map clicks until it ends (M7 brief pt 3).
+    selectHex: (hex) =>
+      set((store) => (store.routing ? store : { selectedHex: hex, bottleneck: null })),
+    startRouting: (from) =>
+      set({ selectedHex: from, routing: startRouting(from), bottleneck: null }),
+    setRoutingType: (lineType) =>
+      set((store) =>
+        store.routing ? { routing: setRoutingType(store.routing, lineType) } : store,
+      ),
+    hoverRouting: (hex) =>
+      set((store) => (store.routing ? { routing: hoverRouting(store.routing, hex) } : store)),
+    clickRouting: (hex) =>
+      set((store) =>
+        store.routing ? { routing: applyRoutingClick(store.game, store.routing, hex) } : store,
+      ),
+    cancelRouting: () => set({ routing: null }),
+    confirmRouting: (path) => {
+      const store = get();
+      if (!store.routing) return false;
+      const before = store.game;
+      const game = applyAction(before, {
+        type: "buildLine",
+        lineType: store.routing.lineType,
+        path,
+      });
+      if (game === before) return false;
+      set({ game, routing: null });
+      return true;
+    },
+    showBottleneck: (ref) => set({ bottleneck: ref }),
+    restart: (seed) => {
+      const game = newGame(seed);
+      set({ game, ...CLEARED_VIEW, saveNotice: null });
+      void saveGame(game);
+    },
+    hydrate: async () => {
+      if (seedIsPinned(currentSearch())) return;
+      const result = await loadGame();
+      if (result === null) return;
+      if (!result.ok) {
+        set({ saveNotice: { kind: "error", error: result.error } });
+        return;
+      }
+      set({ game: result.state, ...CLEARED_VIEW });
+    },
+    importSave: async (file) => {
+      const result = await readSaveFile(file);
+      if (!result.ok) {
+        set({ saveNotice: { kind: "error", error: result.error } });
+        return;
+      }
+      set({ game: result.state, ...CLEARED_VIEW, saveNotice: { kind: "loaded" } });
+      void saveGame(result.state);
+    },
+  };
+});

@@ -83,10 +83,18 @@ export function formatSetpoint(value: number, max: number, unit = "MW"): string 
 
 /**
  * Forecast is always a band, never a single number (01 §2.4, 06 §8.6.4):
- * `320 ±60 MW`. `halfWidth` is the half-width of the band.
+ * `320 ±60 MW`. `halfWidth` is the half-width of the band. A caller comparing
+ * a value AGAINST the band asks for a decimal: rounded to whole MW, a value
+ * just outside a narrow band prints as if it sat right on its edge.
  */
-export function formatBand(center: number, halfWidth: number, unit = "MW"): string {
-  return `${formatNumber(center)} ±${formatNumber(Math.abs(halfWidth))} ${unit}`;
+export function formatBand(
+  center: number,
+  halfWidth: number,
+  unit = "MW",
+  fractionDigits = 0,
+): string {
+  const band = formatNumber(Math.abs(halfWidth), fractionDigits);
+  return `${formatNumber(center, fractionDigits)} ±${band} ${unit}`;
 }
 
 /** Cost multiplier of a biome or similar factor: `×2,5`. */

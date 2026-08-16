@@ -89,6 +89,7 @@ export function newGame(seed: number, scenario: Scenario = MAP_V1): GameState {
     ...fields,
     dayTruth: generateDayTruth(seed, 0, fields.cities),
     lastTurnReport: null,
+    dayReports: [],
   };
 }
 
@@ -605,6 +606,11 @@ export function resolveTurn(state: GameState): GameState {
     },
   };
 
+  // The day's history restarts with the day's FIRST resolution, not when the
+  // calendar rolls over: a finished day stays readable — chart and WYNIK DOBY
+  // still show it — until the new one is actually played.
+  const dayReports = state.calendar.turnIndex === 0 ? [report] : [...state.dayReports, report];
+
   // Line construction advances by the played block (01 §2.6).
   const lines = state.lines.map((line) =>
     isLineBuilt(line)
@@ -621,6 +627,7 @@ export function resolveTurn(state: GameState): GameState {
       storages,
       lines,
       lastTurnReport: report,
+      dayReports,
     };
   }
 
@@ -742,5 +749,6 @@ export function resolveTurn(state: GameState): GameState {
     constructions: stillBuilding,
     dayTruth: generateDayTruth(state.seed, nextDay, nextCities),
     lastTurnReport: report,
+    dayReports,
   };
 }

@@ -23,10 +23,8 @@ body,
   min-height: 0;
 }
 
-/* Left column of the body: map (elastic) → day axis → chart strip. Positioned
-   because it anchors the floating theme switch. */
+/* Left column of the body: map (elastic) → day axis → chart strip → legend. */
 .en-body > .en-main {
-  position: relative;
   display: flex;
   flex-direction: column;
 }
@@ -80,49 +78,57 @@ body,
   cursor: pointer;
 }
 
+/* ── day chart (M8) ─────────────────────────────────────
+   The region IS the chart box, so the SVG viewBox never has to stretch: its
+   proportion is the handoff's own (DayChart: viewBox 0 0 1060 130). The legend
+   is a strip of its own under it, as in the reference build. */
 .en-region--chart {
-  /* Proportion of the handoff: DayChart has a viewBox of 0 0 1060 130. */
   flex: none;
   aspect-ratio: 1060 / 130;
   background: var(--en-bg-chart);
   border-top: var(--en-border-w) solid var(--en-border-subtle);
 }
 
+.en-chart {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Also the screen's bottom utility strip: it ends with the theme switch, so it
+   wraps rather than letting the key and the control run into each other. */
+.en-chartlegend {
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* What solid and dashed mean, pushed to the far end of the legend. */
+.en-chartlegend__note {
+  margin-left: auto;
+}
+
 /* ── theme switch ───────────────────────────────────────
    Bottom right, discreetly, as in the reference build
    (ui_kits/dispatcher/index.html) — the top bar stays free of actions.
-   One difference from the reference: the anchor is the working column, not the
-   viewport. The reference's `position: fixed` would cover the bottom right of
-   the panel — the screen's only primary button — and swallow its clicks. */
+   Two differences from the reference: it rides the working column rather than
+   the viewport (the reference's `position: fixed` would cover the bottom right
+   of the panel — the screen's only primary button — and swallow its clicks),
+   and it sits IN the chart legend instead of floating over it. Floating was
+   fine while the strip below the chart was empty; the legend fills it. */
 .en-themeswitch {
-  position: absolute;
-  right: var(--en-space-5);
-  bottom: var(--en-space-5);
-  z-index: 9;
   background: var(--en-bg-app);
 }
 
 /* ── session bar (M9) ───────────────────────────────────
-   The opposite corner of the same column, and the same discretion: new game,
-   save to file, load from file. The bar borrows the segmented control's small
-   button — these are actions, not a choice, so none of them is pressed. */
+   New game, save to file, load from file, in the same utility strip and with
+   the same discretion as the theme switch next to it. The bar borrows the
+   segmented control's small button — these are actions, not a choice, so none
+   of them is ever pressed. The legend's own type carries the notice line. */
 .en-sessionbar {
-  position: absolute;
-  left: var(--en-space-5);
-  bottom: var(--en-space-5);
-  z-index: 9;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--en-space-2);
-  background: var(--en-bg-app);
-}
-
-.en-sessionbar__note {
-  font-family: var(--en-font-mono);
-  font-size: var(--en-fs-micro);
-  letter-spacing: 0.5px;
-  color: var(--en-text-3);
+  align-items: center;
+  gap: var(--en-space-5);
 }
 
 .en-sessionbar__note.is-ok {

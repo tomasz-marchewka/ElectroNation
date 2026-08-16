@@ -1,7 +1,7 @@
 // Session actions: start over, write the state to a file, read one back. They
-// sit in the bottom-left corner of the working column, opposite the theme
-// switch — the top bar carries no actions (TopBar.prompt.md) and the panel's
-// one button is the primary one (ZATWIERDŹ TURĘ).
+// join the theme switch at the end of the chart legend, which is the screen's
+// utility strip (M8) — the top bar carries no actions (TopBar.prompt.md) and
+// the panel's one button is the primary one (ZATWIERDŹ TURĘ).
 //
 // "ZAPISZ / WCZYTAJ Z PLIKU", not "EKSPORT / IMPORT": in this game export and
 // import are cross-border power flows (01 §5.7), and the words are taken.
@@ -32,13 +32,13 @@ export function SessionBar() {
   return (
     <div className="en-sessionbar">
       {notice && (
-        <div className={`en-sessionbar__note is-${notice.kind === "loaded" ? "ok" : "danger"}`}>
+        <span className={`en-sessionbar__note is-${notice.kind === "loaded" ? "ok" : "danger"}`}>
           {notice.kind === "loaded" ? "✓ ZAPIS WCZYTANY" : `✕ ${loadErrorText(notice.error)}`}
-        </div>
+        </span>
       )}
-      {confirming && <div className="en-sessionbar__note">NOWA GRA NADPISUJE AUTOZAPIS</div>}
+      {confirming && <span className="en-sessionbar__note">NOWA GRA NADPISUJE AUTOZAPIS</span>}
 
-      <div className="en-segmented">
+      <span className="en-segmented">
         {confirming ? (
           <>
             <button
@@ -68,7 +68,7 @@ export function SessionBar() {
             </button>
           </>
         )}
-      </div>
+      </span>
 
       <input
         ref={filePicker}

@@ -12,8 +12,8 @@ export type Migration = (state: unknown) => unknown;
 export type MigrationRegistry = Record<number, Migration>;
 
 /**
- * Empty on purpose. Schema 8 is the first version any save was ever written in
- * — nothing older exists to migrate. Every later bump of STATE_SCHEMA_VERSION
+ * Empty on purpose. Saving arrives with schema 9, so no save older than that
+ * can exist — nothing to migrate yet. Every later bump of STATE_SCHEMA_VERSION
  * adds its entry here; see the comment at the constant.
  */
 export const MIGRATIONS: MigrationRegistry = {};
@@ -68,6 +68,7 @@ const REQUIRED_FIELDS: Record<string, FieldKind> = {
   lines: "array",
   constructions: "array",
   borderSites: "array",
+  dayReports: "array",
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {

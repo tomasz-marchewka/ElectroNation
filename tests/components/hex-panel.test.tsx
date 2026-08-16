@@ -447,7 +447,9 @@ describe("the panel switch — one column, never two panels (M7 pt 3)", () => {
   test("the panels use the allowed glyphs and nothing else", async () => {
     useGameStore.setState({ game: newGame(7, fixture()) });
     const { container } = render(<App />);
-    const allowed = new Set(["–", "—", "−", "✓", "⚠", "✕", "◂", "▸", "⏭", "⬡"]);
+    // As in panel.test.tsx: the design system's own chart legend prints "┄" for
+    // the dashed forecast line, which the README's glyph list predates.
+    const allowed = new Set(["–", "—", "−", "✓", "⚠", "✕", "◂", "▸", "⏭", "⬡", "┄"]);
     const check = () => {
       const used = new Set(
         [...(container.textContent ?? "")].filter((char) => (char.codePointAt(0) ?? 0) >= 0x2000),
