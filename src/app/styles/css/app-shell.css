@@ -101,3 +101,40 @@ body,
   z-index: 9;
   background: var(--en-bg-app);
 }
+
+/* ── session bar (M9) ───────────────────────────────────
+   The opposite corner of the same column, and the same discretion: new game,
+   save to file, load from file. The bar borrows the segmented control's small
+   button — these are actions, not a choice, so none of them is pressed. */
+.en-sessionbar {
+  position: absolute;
+  left: var(--en-space-5);
+  bottom: var(--en-space-5);
+  z-index: 9;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--en-space-2);
+  background: var(--en-bg-app);
+}
+
+.en-sessionbar__note {
+  font-family: var(--en-font-mono);
+  font-size: var(--en-fs-micro);
+  letter-spacing: 0.5px;
+  color: var(--en-text-3);
+}
+
+.en-sessionbar__note.is-ok {
+  color: var(--en-ok);
+}
+
+.en-sessionbar__note.is-danger {
+  color: var(--en-danger);
+}
+
+/* The picker is driven by the WCZYTAJ Z PLIKU button; the browser's own file
+   widget carries none of the design system's values. */
+.en-sessionbar__file {
+  display: none;
+}

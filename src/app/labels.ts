@@ -2,10 +2,12 @@
 // layer; the engine only ever speaks in identifiers. Pure data and pure
 // functions — nothing here imports React, so selectors may lean on it.
 
+import { STATE_SCHEMA_VERSION } from "../engine";
 import type {
   FarmTech,
   ForecastLevel,
   LineType,
+  LoadError,
   PlantTech,
   RegimeId,
   StorageMode,
@@ -153,4 +155,24 @@ export const DAY_TURN_FULL_NAMES: Record<TurnPhase, string> = {
 /** Turn cell for the turn `index` of a day; out of range falls back to NOC. */
 export function dayTurnAt(index: number): DayTurn {
   return DAY_TURNS[index] ?? DAY_TURNS[0];
+}
+
+/**
+ * Why a save would not load, in the player's own wording. Each line names the
+ * number or field it failed on — a diagnosis, not an alarm (handoff README,
+ * Content & Copy Rules).
+ */
+export function loadErrorText(error: LoadError): string {
+  switch (error.code) {
+    case "notASave":
+      return "PLIK NIE JEST ZAPISEM ELECTRONATION";
+    case "futureSchema":
+      return `ZAPIS Z NOWSZEJ WERSJI GRY — SCHEMAT ${error.schema} > ${STATE_SCHEMA_VERSION}`;
+    case "missingMigration":
+      return `BRAK ŚCIEŻKI MIGRACJI ZE SCHEMATU ${error.schema} DO ${STATE_SCHEMA_VERSION}`;
+    case "brokenState":
+      return error.field
+        ? `ZAPIS USZKODZONY — POLE „${error.field}”`
+        : "ZAPIS USZKODZONY — NIEZNANY UKŁAD DANYCH";
+  }
 }

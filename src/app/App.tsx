@@ -6,6 +6,7 @@
 
 import { useMemo } from "react";
 import { ReportStrip } from "./components/ReportStrip";
+import { SessionBar } from "./components/SessionBar";
 import { ThemeSwitch } from "./components/ThemeSwitch";
 import { TopBar } from "./components/TopBar";
 import { TurnBar } from "./components/TurnBar";
@@ -53,6 +54,7 @@ export function App() {
           </div>
           <TurnBar current={game.calendar.turnIndex} />
           <div className="en-region--chart" data-region="chart" />
+          <SessionBar />
           <ThemeSwitch />
         </div>
 
