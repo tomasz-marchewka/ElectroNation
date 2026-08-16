@@ -85,7 +85,7 @@ function world(rows: readonly string[], from: HexCoord, to: HexCoord, lines: Lin
 
 /** A line that exists only to occupy a hex's corridor or an object's slot. */
 function occupying(id: string, type: LineType, hex: HexCoord): LineState {
-  return { id, type, path: [hex], builtHours: 0, totalHours: 0 };
+  return { id, type, path: [hex], builtHours: 0, totalHours: 0, upgrade: null };
 }
 
 function terrainsOn(state: GameState, path: readonly HexCoord[]): TerrainId[] {

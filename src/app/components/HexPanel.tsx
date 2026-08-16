@@ -200,7 +200,9 @@ export function HexPanel({
                     <span>{row.label}</span>
                     <span className={`is-${row.tone}`}>{row.value}</span>
                   </div>
-                  {row.action && <HexActionButton action={row.action} onRun={run} />}
+                  {row.actions.map((action) => (
+                    <HexActionButton key={action.key} action={action} onRun={run} />
+                  ))}
                 </div>
               ))}
             </div>

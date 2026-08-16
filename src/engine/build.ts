@@ -18,6 +18,7 @@ import {
   KM_PER_HEX,
   LINE_SLOTS_PER_OBJECT,
   LINE_TYPES,
+  LINE_TYPE_ORDER,
   MAX_LINES_PER_HEX_PER_TYPE,
   MAX_PLANT_BLOCKS_PER_HEX,
   PLANT_TECHS,
@@ -31,7 +32,15 @@ import {
 } from "./config";
 import { areNeighbors, hexNeighbors, isInsideMap } from "./map";
 import { hexKey, type HexCoord } from "./network";
-import { isLineBuilt, type GameState, type PendingObject } from "./state";
+import {
+  HOURS_PER_TURN,
+  isLineBuilt,
+  isLineUpgrading,
+  lineOccupiesType,
+  type GameState,
+  type LineState,
+  type PendingObject,
+} from "./state";
 
 function terrainAt(state: GameState, hex: HexCoord) {
   return TERRAIN[state.terrain[hexKey(hex)] ?? "plains"];
@@ -255,6 +264,38 @@ export function buildBorder(state: GameState, hex: HexCoord): GameState {
   }));
 }
 
+/**
+ * CAPEX of a route of this type. Charged from the SECOND hex on: the first is
+ * the object the line leaves, so a one-hex "route" costs nothing (01 §4.2).
+ */
+function routeCapexPln(state: GameState, path: readonly HexCoord[], lineType: LineType): number {
+  const spec = LINE_TYPES[lineType];
+  let cost = 0;
+  for (let i = 1; i < path.length; i++) {
+    const hex = path[i];
+    if (!hex) continue;
+    cost += KM_PER_HEX * spec.capexPlnPerKm * terrainAt(state, hex).line;
+  }
+  return Math.round(cost);
+}
+
+/**
+ * How many lines crossing this hex the corridor limit counts. Passing `type`
+ * narrows it to one counter — and a line mid-upgrade answers to both (01 §3.3).
+ */
+function linesThroughHex(state: GameState, key: string, type?: LineType): number {
+  return state.lines.filter(
+    (line) =>
+      (type === undefined || lineOccupiesType(line, type)) &&
+      line.path.some((h) => hexKey(h) === key),
+  ).length;
+}
+
+/** Line slots of the object on this hex — only junctions buy extra (01 §5.4). */
+function lineSlotsAt(state: GameState, key: string): number {
+  return state.junctions.find((j) => hexKey(j.hex) === key)?.lineSlots ?? LINE_SLOTS_PER_OBJECT;
+}
+
 export function buildLine(state: GameState, lineType: LineType, path: HexCoord[]): GameState {
   if (path.length < 2) return state;
   // The whole route lies on the map (01 §3.1) — a detour off the grid is not a
@@ -276,29 +317,16 @@ export function buildLine(state: GameState, lineType: LineType, path: HexCoord[]
   // Topology limits (01 §3.3): ≤9 lines of one type per hex; a line through an
   // object's hex consumes one of its line slots — 6 for every object except a
   // junction, which buys extra slots with capacity modules (01 §5.4).
-  const linesThroughHex = (key: string, type?: LineType) =>
-    state.lines.filter(
-      (line) =>
-        (type === undefined || line.type === type) && line.path.some((h) => hexKey(h) === key),
-    ).length;
-  const slotsAt = (key: string): number =>
-    state.junctions.find((j) => hexKey(j.hex) === key)?.lineSlots ?? LINE_SLOTS_PER_OBJECT;
   for (const hex of path) {
     const key = hexKey(hex);
-    if (linesThroughHex(key, lineType) + 1 > MAX_LINES_PER_HEX_PER_TYPE) return state;
-    if (objectHexes.has(key) && linesThroughHex(key) + 1 > slotsAt(key)) {
+    if (linesThroughHex(state, key, lineType) + 1 > MAX_LINES_PER_HEX_PER_TYPE) return state;
+    if (objectHexes.has(key) && linesThroughHex(state, key) + 1 > lineSlotsAt(state, key)) {
       return state;
     }
   }
 
   const spec = LINE_TYPES[lineType];
-  let cost = 0;
-  for (let i = 1; i < path.length; i++) {
-    const hex = path[i];
-    if (!hex) return state;
-    cost += KM_PER_HEX * spec.capexPlnPerKm * terrainAt(state, hex).line;
-  }
-  cost = Math.round(cost);
+  const cost = routeCapexPln(state, path, lineType);
   if (state.moneyPln < cost) return state;
 
   const id = `obj-${state.nextObjectId}`;
@@ -314,8 +342,70 @@ export function buildLine(state: GameState, lineType: LineType, path: HexCoord[]
         path,
         builtHours: 0,
         totalHours: (path.length - 1) * spec.buildHoursPerHex,
+        upgrade: null,
       },
     ],
+  };
+}
+
+/**
+ * What raising this line to `lineType` costs (01 §4.2, 0.17): 85% of a new line
+ * of the target type on the same route, terrain multipliers included. Exported
+ * so the interface can price the button off the engine's own arithmetic instead
+ * of a copy that drifts.
+ */
+export function lineUpgradeCostPln(state: GameState, line: LineState, lineType: LineType): number {
+  return Math.round(routeCapexPln(state, line.path, lineType) * EXPANSION.capexShare);
+}
+
+/** 70% of the target type's build time (01 §2.6, §4.2); at least one played block. */
+export function lineUpgradeHours(line: LineState, lineType: LineType): number {
+  const full = (line.path.length - 1) * LINE_TYPES[lineType].buildHoursPerHex;
+  return Math.max(HOURS_PER_TURN, Math.round(full * EXPANSION.timeShare));
+}
+
+/** Types this line may still be raised to — strictly above its own (01 §4.2). */
+export function lineUpgradeTargets(line: LineState): LineType[] {
+  const order = LINE_TYPE_ORDER as readonly LineType[];
+  return order.slice(order.indexOf(line.type) + 1);
+}
+
+/**
+ * Raises a finished line to a higher type on the same route (01 §4.2, 0.17).
+ * The line keeps carrying power on its OLD type for the whole job — the flow and
+ * the fixed cost read `line.type`, which flips only when the last hour is worked
+ * off in `resolveTurn`.
+ */
+export function upgradeLine(state: GameState, lineId: string, lineType: LineType): GameState {
+  const line = state.lines.find((l) => l.id === lineId);
+  if (!line) return state;
+  // A line still being strung up cannot be redesigned mid-build, and one raise
+  // at a time: two overlapping raises would both charge and both flip the type.
+  if (!isLineBuilt(line) || isLineUpgrading(line)) return state;
+  if (!lineUpgradeTargets(line).includes(lineType)) return state;
+
+  // The target type needs its own room in every corridor along the route. The
+  // line's slot in the OLD counter is NOT released yet — it is still strung up —
+  // so nothing frees early and nine parallel raises cannot overfill a corridor.
+  for (const hex of line.path) {
+    if (linesThroughHex(state, hexKey(hex), lineType) + 1 > MAX_LINES_PER_HEX_PER_TYPE) {
+      return state;
+    }
+  }
+
+  const cost = lineUpgradeCostPln(state, line, lineType);
+  if (state.moneyPln < cost) return state;
+  return {
+    ...state,
+    moneyPln: state.moneyPln - cost,
+    lines: state.lines.map((l) =>
+      l.id === lineId
+        ? {
+            ...l,
+            upgrade: { type: lineType, builtHours: 0, totalHours: lineUpgradeHours(l, lineType) },
+          }
+        : l,
+    ),
   };
 }
 
@@ -513,6 +603,20 @@ export function cancelLine(state: GameState, lineId: string): GameState {
   const line = state.lines.find((l) => l.id === lineId);
   if (!line || isLineBuilt(line)) return state;
   return { ...state, lines: state.lines.filter((l) => l.id !== lineId) };
+}
+
+/**
+ * Abandons a raise in progress (01 §2.6, §4.2): the line stays on its old type
+ * and keeps working, the money is gone. The corridor slot the target type held
+ * is released with it.
+ */
+export function cancelLineUpgrade(state: GameState, lineId: string): GameState {
+  const line = state.lines.find((l) => l.id === lineId);
+  if (!line || !isLineUpgrading(line)) return state;
+  return {
+    ...state,
+    lines: state.lines.map((l) => (l.id === lineId ? { ...l, upgrade: null } : l)),
+  };
 }
 
 // --- Forecast systems (01 §2.4, 06 §8.6.3) ----------------------------------

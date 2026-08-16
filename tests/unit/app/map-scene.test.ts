@@ -6,6 +6,7 @@ import { describe, expect, test } from "vitest";
 import {
   DAY_WEIGHTS,
   MAP_V1,
+  applyAction,
   finishedLine,
   newGame,
   offsetToAxial,
@@ -144,6 +145,7 @@ const FIXTURE: Scenario = {
       path: [at(3, 2), at(4, 2), at(4, 1)],
       builtHours: 12,
       totalHours: 24,
+      upgrade: null,
     },
   ],
 };
@@ -379,6 +381,21 @@ describe("scene of a resolved turn", () => {
     // An expansion has no site of its own — it annotates the object it grows.
     expect(labelOf(scene, "obj-8:build")).toBe("ROZBUDOWA · 4 DOBY");
     expect(labelOf(scene, "line-5:build")).toBe("BUDOWA · 1 DOBA");
+  });
+
+  test("01 §4.2: a line being raised is annotated, not redrawn as a site", () => {
+    // line-3 is a finished MV line of two steps: 2 × 12 h × 70% = 17 h ≈ 1 day.
+    const raising = applyAction(state, {
+      type: "upgradeLine",
+      lineId: "line-3",
+      lineType: "hv",
+    });
+    const raised = buildMapScene(raising, FIXTURE_REPORT, null);
+
+    expect(labelOf(raised, "line-3:upgrade")).toBe("ROZBUDOWA DO WN · 1 DOBA");
+    // It keeps carrying power, so it is drawn as a working line, not a plan.
+    expect(raised.lines.find((line) => line.id === "line-3")?.planned).toBe(false);
+    expect(labelOf(raised, "line-3:build")).toBeUndefined();
   });
 
   test("the labels of edge objects reach outside the board", () => {

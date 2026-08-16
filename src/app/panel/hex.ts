@@ -26,6 +26,8 @@ import {
   WIND_CLASSES,
   hexKey,
   isLineBuilt,
+  lineUpgradeCostPln,
+  lineUpgradeTargets,
   type Action,
   type BorderState,
   type CityState,
@@ -70,6 +72,7 @@ import {
   connectCityNote,
   limitNote,
   lineSlotsAt,
+  lineUpgradeNote,
   moneyNote,
   pumpedSiteNote,
   siteNote,
@@ -356,12 +359,33 @@ export function terrainRows(state: GameState, hex: HexCoord): InfoRow[] {
 
 export interface HexLineRow {
   key: string;
-  /** `SN · EC MODRZYCA ▸ MODRZYCA`. */
+  /** `SN · EC MODRZYCA ▸ MODRZYCA`, or `NN → SN · …` while it is being raised. */
   label: string;
   /** Load of the stretch crossing this hex, or the build countdown. */
   value: string;
   tone: StatusTone;
-  action: HexAction | null;
+  actions: HexAction[];
+}
+
+/**
+ * What raising this line to each higher type would cost here (01 §4.2, 0.17).
+ * A line still being strung up gets none — the engine refuses to redesign a
+ * route mid-build.
+ */
+function lineUpgradeActions(state: GameState, line: LineState): HexAction[] {
+  if (!isLineBuilt(line) || line.upgrade) return [];
+  return lineUpgradeTargets(line).map((target) => {
+    const spec = LINE_TYPES[target];
+    return {
+      key: `upgrade-line:${line.id}:${target}`,
+      label: `ROZBUDUJ DO ${LINE_TYPE_LABELS[target]} · ${formatMw(spec.capacityMw)} · ${formatNumber(spec.lossPctPer100km)}%/100 KM — ${formatMoneyPln(lineUpgradeCostPln(state, line, target))}`,
+      note: lineUpgradeNote(state, line, target),
+      intent: {
+        kind: "action" as const,
+        action: { type: "upgradeLine" as const, lineId: line.id, lineType: target },
+      },
+    };
+  });
 }
 
 /**
@@ -379,20 +403,27 @@ export function hexLineRows(
     const ends = [line.path[0], line.path[line.path.length - 1]]
       .map((end) => (end ? (objectNameAt(state, end) ?? "?") : "?"))
       .join(" ▸ ");
-    const label = `${LINE_TYPE_LABELS[line.type]} · ${ends}`;
+    const raise = line.upgrade;
+    // The design system allows no arrow glyph (handoff README: ✓ ⚠ ✕ ◂ ▸ ⏭ ⬡),
+    // and "▸" already means "from ▸ to" in this very label — hence the word.
+    const label = raise
+      ? `${LINE_TYPE_LABELS[line.type]} · ${ends} · ROZBUDOWA DO ${LINE_TYPE_LABELS[raise.type]}`
+      : `${LINE_TYPE_LABELS[line.type]} · ${ends}`;
     if (!isLineBuilt(line)) {
       return {
         key: line.id,
         label,
         value: `w budowie · ${formatNumber(line.totalHours - line.builtHours)} H`,
         tone: "idle",
-        action: {
-          key: `cancel-line:${line.id}`,
-          label: "ANULUJ BUDOWĘ LINII",
-          note: null,
-          intent: { kind: "action", action: { type: "cancelLine", lineId: line.id } },
-          confirm: "POTWIERDŹ — NAKŁADY PRZEPADAJĄ",
-        },
+        actions: [
+          {
+            key: `cancel-line:${line.id}`,
+            label: "ANULUJ BUDOWĘ LINII",
+            note: null,
+            intent: { kind: "action", action: { type: "cancelLine", lineId: line.id } },
+            confirm: "POTWIERDŹ — NAKŁADY PRZEPADAJĄ",
+          },
+        ],
       };
     }
     const index = line.path.findIndex((step) => hexKey(step) === key);
@@ -401,6 +432,8 @@ export function hexLineRows(
         candidate.lineId === line.id && index >= candidate.fromIndex && index <= candidate.toIndex,
     );
     const capacityMw = LINE_TYPES[line.type].capacityMw;
+    // A line being raised keeps carrying power on its old type (01 §4.2), so the
+    // load read-out is the normal one — only the countdown is added next to it.
     return {
       key: line.id,
       label,
@@ -408,7 +441,17 @@ export function hexLineRows(
         ? `${formatNumber(segment.usedMw)} / ${formatMw(segment.capacityMw)}`
         : `— / ${formatMw(capacityMw)}`,
       tone: segment ? LOAD_TONES[lineLoad(segment.usedMw, segment.capacityMw)] : "idle",
-      action: null,
+      actions: raise
+        ? [
+            {
+              key: `cancel-line-upgrade:${line.id}`,
+              label: `ANULUJ ROZBUDOWĘ · ${formatNumber(raise.totalHours - raise.builtHours)} H`,
+              note: null,
+              intent: { kind: "action", action: { type: "cancelLineUpgrade", lineId: line.id } },
+              confirm: "POTWIERDŹ — NAKŁADY PRZEPADAJĄ",
+            },
+          ]
+        : lineUpgradeActions(state, line),
     };
   });
 }

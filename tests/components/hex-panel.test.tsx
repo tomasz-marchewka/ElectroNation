@@ -16,6 +16,7 @@ import {
   MAX_PLANT_BLOCKS_PER_HEX,
   PLANT_TECHS,
   TERRAIN,
+  applyAction,
   finishedLine,
   hexKey,
   newGame,
@@ -330,6 +331,69 @@ describe("object — parameters and contextual actions (01 §8 pt 6)", () => {
       type: "cancelConstruction",
       constructionId: construction.id,
     });
+  });
+});
+
+describe("line raises — the corridor grows in place (01 §4.2, 0.17)", () => {
+  const ROUTE = [at(0, 1), at(1, 1), at(2, 1), at(3, 1), at(4, 1), at(5, 1)];
+
+  function wired(type: "lv" | "mv" | "hv" = "lv"): GameState {
+    return newGame(7, fixture({ lines: [finishedLine("line-1", type, ROUTE)] }));
+  }
+
+  /** What the engine charges: 85% of a new line of that type over the route. */
+  function raisePln(type: "mv" | "hv"): number {
+    const full = Math.round(5 * KM_PER_HEX * LINE_TYPES[type].capexPlnPerKm);
+    return Math.round(full * EXPANSION.capexShare);
+  }
+
+  test("every higher type is offered, priced off the engine's own arithmetic", async () => {
+    const { container, onAction } = renderPanel(wired(), at(2, 1));
+
+    expect(container.textContent).toContain("NN · EC MODRZYCA ▸ MODRZYCA");
+    expect(action(/^ROZBUDUJ DO SN/).textContent).toContain(formatMoneyPln(raisePln("mv")));
+    expect(action(/^ROZBUDUJ DO WN/).textContent).toContain(formatMoneyPln(raisePln("hv")));
+
+    await userEvent.click(action(/^ROZBUDUJ DO WN/));
+    expect(onAction).toHaveBeenCalledWith({
+      type: "upgradeLine",
+      lineId: "line-1",
+      lineType: "hv",
+    });
+  });
+
+  test("an HV line has nothing left to raise to — only a parallel track", () => {
+    const { container } = renderPanel(wired("hv"), at(2, 1));
+
+    expect(container.textContent).toContain("WN · EC MODRZYCA ▸ MODRZYCA");
+    expect(screen.queryByRole("button", { name: /^ROZBUDUJ DO/ })).toBeNull();
+  });
+
+  test("a raise the budget cannot carry is greyed out with the shortfall", () => {
+    const poor = newGame(
+      7,
+      fixture({ startingMoneyPln: 1_000_000, lines: [finishedLine("line-1", "lv", ROUTE)] }),
+    );
+    const { container } = renderPanel(poor, at(2, 1));
+
+    expect(action(/^ROZBUDUJ DO SN/).disabled).toBe(true);
+    expect(container.textContent).toContain("✕ brak środków");
+  });
+
+  test("while the work runs the row says so and the only action is the cancel", async () => {
+    const raising = applyAction(wired(), { type: "upgradeLine", lineId: "line-1", lineType: "mv" });
+    const { container, onAction } = renderPanel(raising, at(2, 1));
+
+    expect(container.textContent).toContain("NN · EC MODRZYCA ▸ MODRZYCA · ROZBUDOWA DO SN");
+    expect(screen.queryByRole("button", { name: /^ROZBUDUJ DO/ })).toBeNull();
+    // 5 steps × 6 h × 70% = 21 h of work still to play.
+    expect(action(/^ANULUJ ROZBUDOWĘ/).textContent).toContain("21 H");
+
+    // Forfeiting money asks twice (01 §2.6).
+    await userEvent.click(action(/^ANULUJ ROZBUDOWĘ/));
+    expect(onAction).not.toHaveBeenCalled();
+    await userEvent.click(action("POTWIERDŹ — NAKŁADY PRZEPADAJĄ"));
+    expect(onAction).toHaveBeenCalledWith({ type: "cancelLineUpgrade", lineId: "line-1" });
   });
 });
 

@@ -95,6 +95,14 @@ export const LINE_TYPES = {
 } as const;
 export type LineType = keyof typeof LINE_TYPES;
 
+/**
+ * The ladder a line upgrade climbs, cheapest first (01 §4.2, 0.17). Upgrades
+ * only ever move UP: a built line can be raised to any higher type, never
+ * lowered, and WN has nowhere left to go — there a parallel track is the only
+ * way to more capacity.
+ */
+export const LINE_TYPE_ORDER = ["lv", "mv", "hv"] as const;
+
 export const KM_PER_HEX = 25; // 01 §3.1
 
 /**
@@ -141,10 +149,11 @@ export const NODE_FIXED_CAPEX_SHARE_PER_YEAR = 0.02;
 
 /**
  * 01 §7, 02 §8.4: expanding an existing object costs 85% of a new site's CAPEX
- * and takes 70% of its build time. The rule applies to plants and farms; where
- * a doc prints a module price directly (junction, border module, storage
- * modules of 02 §8.2) that price is already modular and is used as printed.
- * Doc 03/04 may revisit this split.
+ * and takes 70% of its build time. The rule applies to plants, farms and — since
+ * 01 v0.17 — line upgrades, where the base is a new line of the TARGET type on
+ * the same route. Where a doc prints a module price directly (junction, border
+ * module, storage modules of 02 §8.2) that price is already modular and is used
+ * as printed. Doc 03/04 may revisit this split.
  */
 export const EXPANSION = { capexShare: 0.85, timeShare: 0.7 } as const;
 

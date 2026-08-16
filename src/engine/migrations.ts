@@ -12,11 +12,20 @@ export type Migration = (state: unknown) => unknown;
 export type MigrationRegistry = Record<number, Migration>;
 
 /**
- * Empty on purpose. Saving arrives with schema 9, so no save older than that
- * can exist — nothing to migrate yet. Every later bump of STATE_SCHEMA_VERSION
- * adds its entry here; see the comment at the constant.
+ * Saving arrived with schema 9, so no save older than that can exist. Every
+ * bump of STATE_SCHEMA_VERSION adds its entry here; see the comment at the
+ * constant.
  */
-export const MIGRATIONS: MigrationRegistry = {};
+export const MIGRATIONS: MigrationRegistry = {
+  /** 9 → 10: line upgrades (01 §4.2, 0.17). No save can have one in flight. */
+  9: (state) => {
+    if (!isRecord(state) || !Array.isArray(state.lines)) return state;
+    return {
+      ...state,
+      lines: state.lines.map((line) => (isRecord(line) ? { ...line, upgrade: null } : line)),
+    };
+  },
+};
 
 export type LoadErrorCode =
   /** Not an object, or no `schema`/`seed` — not one of our files at all. */

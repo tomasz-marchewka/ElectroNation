@@ -1,0 +1,41 @@
+{
+  "name": "line-upgrade",
+  "map": "minimal",
+  "description": "Three days on the raise mechanic (01 §4.2, 0.17). The starting MV line to Jasienica is raised to HV on turn 0: 382,5 mln zł (85% of a new HV line over the same 75 km) leaves the budget up front and 25 h of work follow, so the type flips at the end of turn 8. The corridor delivers the whole time on MV, and from turn 9 the recorded losses drop by half — the route's loss factor goes 2%/100 km → 1%/100 km. A second line is then built on the same route, its raise to MV ordered on turn 16 and cancelled on turn 18: the line stays LV and the money stays spent (§2.6).",
+  "seed": 20260816,
+  "days": 3,
+  "actions": [
+    {
+      "beforeTurn": 0,
+      "note": "Enough generation that the route carries a measurable flow.",
+      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 80 }
+    },
+    {
+      "beforeTurn": 0,
+      "action": { "type": "upgradeLine", "lineId": "line-start", "lineType": "hv" }
+    },
+    {
+      "beforeTurn": 12,
+      "note": "A second track on the same route — still a separate line (01 §7).",
+      "action": {
+        "type": "buildLine",
+        "lineType": "lv",
+        "path": [
+          { "q": 3, "r": 4 },
+          { "q": 4, "r": 4 },
+          { "q": 5, "r": 4 },
+          { "q": 6, "r": 4 }
+        ]
+      }
+    },
+    {
+      "beforeTurn": 16,
+      "action": { "type": "upgradeLine", "lineId": "obj-1", "lineType": "mv" }
+    },
+    {
+      "beforeTurn": 18,
+      "note": "Abandoned mid-work: the line stays LV, the money is gone.",
+      "action": { "type": "cancelLineUpgrade", "lineId": "obj-1" }
+    }
+  ]
+}

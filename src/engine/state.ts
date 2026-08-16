@@ -23,7 +23,7 @@ import type { MonthRegimes, RegimeId } from "./regimes";
  * by the build before it still loads. A bump without its migration turns every
  * existing save into a load error.
  */
-export const STATE_SCHEMA_VERSION = 9;
+export const STATE_SCHEMA_VERSION = 10;
 
 export const TURNS_PER_DAY = 8;
 export const HOURS_PER_TURN = 3;
@@ -133,6 +133,18 @@ export interface BorderState {
   exportSetpointMw: number;
 }
 
+/**
+ * A raise to a higher line type in progress (01 §4.2, 0.17). It runs on the
+ * same clock as construction, but the line keeps carrying power on its OLD type
+ * until the last hour is worked off — only then does `LineState.type` flip.
+ */
+export interface LineUpgrade {
+  /** Strictly higher than the line's current type; never a downgrade. */
+  type: LineType;
+  builtHours: number;
+  totalHours: number;
+}
+
 export interface LineState {
   id: string;
   type: LineType;
@@ -141,10 +153,30 @@ export interface LineState {
   /** Construction progress (01 §2.6): +3 h per resolved turn; done at total. */
   builtHours: number;
   totalHours: number;
+  /**
+   * Raise to a higher type in progress, or null. Never optional: an absent key
+   * would vanish through JSON.stringify and break the lossless round-trip the
+   * saves and golden hashes rely on.
+   */
+  upgrade: LineUpgrade | null;
 }
 
 export function isLineBuilt(line: LineState): boolean {
   return line.builtHours >= line.totalHours;
+}
+
+export function isLineUpgrading(line: LineState): boolean {
+  return line.upgrade !== null;
+}
+
+/**
+ * Types whose corridor limit this line occupies (01 §3.3, §4.2). A line being
+ * raised holds a slot in BOTH counters: the old type is still strung up, and
+ * the target type must be reserved or nine parallel raises onto a full corridor
+ * would all pass the check and land as eighteen lines of one type.
+ */
+export function lineOccupiesType(line: LineState, type: LineType): boolean {
+  return line.type === type || line.upgrade?.type === type;
 }
 
 /**
