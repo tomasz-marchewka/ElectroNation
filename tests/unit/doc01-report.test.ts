@@ -6,62 +6,16 @@ import {
   applyAction,
   farmPowerMwAtHour,
   farmProductionForecast,
-  finishedLine,
   newGame,
   projectBalance,
   resolveTurn,
   type GameState,
-  type Scenario,
   type TurnReport,
 } from "../../src/engine";
+import { makeScenario } from "../helpers/scenario";
 
 // Spec tests for the last-turn report — the RAPORT panel and the map's data
 // source (01 §2.3, §8) — and the balance projection (01 §8 pt 3, 06 §8.6.4).
-
-function makeScenario(overrides: Partial<Scenario> = {}): Scenario {
-  return {
-    startingMoneyPln: 10_000_000_000,
-    cities: [
-      {
-        id: "city-a",
-        name: "A",
-        hex: { q: 4, r: 0 },
-        connected: true,
-        households: 80_000,
-        firms: 6_900,
-        householdsStart: 80_000,
-        firmsStart: 6_900,
-        connectedSinceDay: 0,
-        monthDemandMwh: 0,
-        monthDeliveredMwh: 0,
-      },
-    ],
-    plants: [
-      {
-        id: "plant-1",
-        name: "P1",
-        hex: { q: 0, r: 0 },
-        tech: "ccgt",
-        capacityMw: 400,
-        setpointMw: 0,
-      },
-    ],
-    farms: [],
-    storages: [],
-    junctions: [],
-    borders: [],
-    lines: [
-      finishedLine("line-1", "mv", [
-        { q: 0, r: 0 },
-        { q: 1, r: 0 },
-        { q: 2, r: 0 },
-        { q: 3, r: 0 },
-        { q: 4, r: 0 },
-      ]),
-    ],
-    ...overrides,
-  };
-}
 
 function reportOf(state: GameState): TurnReport {
   const report = state.lastTurnReport;
@@ -229,17 +183,63 @@ describe("01 §2.3: the bet against the forecast", () => {
     const farm = base.farms[0];
     if (!farm) throw new Error("farm missing");
     let expectedForecast = 0;
+    let expectedBand = 0;
     let expectedActual = 0;
     for (let hour = 0; hour < 3; hour++) {
       expectedForecast += farmProductionForecast(base, "farm-1", hour)?.mw ?? 0;
+      expectedBand += farmProductionForecast(base, "farm-1", hour)?.bandMw ?? 0;
       expectedActual += farmPowerMwAtHour(farm, base.dayTruth.weather, hour);
     }
     const report = reportOf(resolveTurn(base));
     expect(report.forecastMiss.wind.forecastMw).toBeCloseTo(expectedForecast / 3, 2);
+    expect(report.forecastMiss.wind.bandMw).toBeCloseTo(expectedBand / 3, 2);
     expect(report.forecastMiss.wind.actualMw).toBeCloseTo(expectedActual / 3, 2);
     // An island farm dumps everything — free RES curtailment (01 §4.1).
     expect(report.totals.resCurtailedMw).toBeCloseTo(expectedActual / 3, 2);
     expect(report.finance.dumpPenaltyPln).toBe(0);
+  });
+
+  test("06 §8.6.4: the band is recorded because the reveal destroys it", () => {
+    const scenario = makeScenario({
+      farms: [
+        {
+          id: "farm-1",
+          name: "F1",
+          hex: { q: 0, r: 0 },
+          tech: "wind",
+          capacityMw: 200,
+          enabled: true,
+          windClass: "open",
+          solarMultiplier: 1,
+        },
+      ],
+    });
+    const next = resolveTurn(newGame(7, scenario));
+    const report = reportOf(next);
+    expect(report.forecastMiss.wind.bandMw).toBeGreaterThan(0);
+    expect(report.forecastMiss.demand.bandMw).toBeGreaterThan(0);
+    // Asking the forecast again after the resolution gives a band of 0: those
+    // hours are truth now, so the panel could not rebuild the note itself.
+    expect(farmProductionForecast(next, "farm-1", 0)?.bandMw).toBe(0);
+  });
+
+  test("a farm switched off leaves no band of its own (01 §4.1)", () => {
+    const scenario = makeScenario({
+      farms: [
+        {
+          id: "farm-1",
+          name: "F1",
+          hex: { q: 0, r: 0 },
+          tech: "pv",
+          capacityMw: 200,
+          enabled: false,
+          windClass: "open",
+          solarMultiplier: 1,
+        },
+      ],
+    });
+    const report = reportOf(resolveTurn(newGame(7, scenario)));
+    expect(report.forecastMiss.pv).toStrictEqual({ forecastMw: 0, bandMw: 0, actualMw: 0 });
   });
 });
 

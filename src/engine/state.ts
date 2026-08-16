@@ -17,7 +17,7 @@ import type { MonthRegimes, RegimeId } from "./regimes";
 // functions. Serializability is load-bearing: saves, replay, golden tests and
 // (later) a server all rely on JSON.parse(JSON.stringify(s)) being lossless.
 
-export const STATE_SCHEMA_VERSION = 7;
+export const STATE_SCHEMA_VERSION = 8;
 
 export const TURNS_PER_DAY = 8;
 export const HOURS_PER_TURN = 3;
@@ -258,6 +258,12 @@ export interface TurnNodeReport {
 /** Block-average forecast shown before the reveal vs the revealed truth. */
 export interface ForecastComparison {
   forecastMw: number;
+  /**
+   * ±1σ half-width the forecast carried when the bet was made (06 §8.6.4).
+   * Recorded here because it cannot be recovered afterwards: once the turn is
+   * resolved its hours are revealed truth and their band is 0.
+   */
+  bandMw: number;
   actualMw: number;
 }
 

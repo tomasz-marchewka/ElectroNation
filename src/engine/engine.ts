@@ -461,30 +461,48 @@ export function resolveTurn(state: GameState): GameState {
   const moneyPln = state.moneyPln + Math.round((revenuePln - costsPln) * weight) - fixedCostPln;
 
   // The turn's bet against the forecast (01 §2.3): block averages of what the
-  // pre-reveal forecast promised vs the revealed truth. Disabled farms are the
-  // player's own lever, not a forecast miss — left out on both sides.
-  const forecastBlockAvg = (atHour: (hour: number) => number): number => {
-    let sum = 0;
-    for (let h = 0; h < HOURS_PER_TURN; h++) sum += atHour(startHour + h);
-    return sum / HOURS_PER_TURN;
-  };
-  const demandForecastMw = forecastBlockAvg((hour) => {
-    let sum = 0;
-    for (const city of state.cities) {
-      if (city.connected) sum += cityDemandForecast(state, city.id, hour)?.mw ?? 0;
+  // pre-reveal forecast promised — value AND band, since the band is gone the
+  // moment the block becomes revealed truth — vs the truth itself. Disabled
+  // farms are the player's own lever, not a forecast miss: out on both sides.
+  interface ForecastAggregate {
+    mw: number;
+    bandMw: number;
+  }
+  const forecastBlockAvg = (atHour: (hour: number) => ForecastAggregate): ForecastAggregate => {
+    const sum = { mw: 0, bandMw: 0 };
+    for (let h = 0; h < HOURS_PER_TURN; h++) {
+      const point = atHour(startHour + h);
+      sum.mw += point.mw;
+      sum.bandMw += point.bandMw;
     }
-    return sum;
+    return { mw: sum.mw / HOURS_PER_TURN, bandMw: sum.bandMw / HOURS_PER_TURN };
+  };
+  const demandForecast = forecastBlockAvg((hour) => {
+    const total = { mw: 0, bandMw: 0 };
+    for (const city of state.cities) {
+      if (!city.connected) continue;
+      const point = cityDemandForecast(state, city.id, hour);
+      if (!point) continue;
+      total.mw += point.mw;
+      // Bands of one quantity share the day's error factor, so they sum exactly.
+      total.bandMw += point.bandMw;
+    }
+    return total;
   });
-  const farmForecastMw = (tech: FarmTech): number =>
+  const farmForecast = (tech: FarmTech): ForecastAggregate =>
     forecastBlockAvg((hour) => {
-      let sum = 0;
+      const total = { mw: 0, bandMw: 0 };
       for (const farm of state.farms) {
-        if (farm.enabled && farm.tech === tech) {
-          sum += farmProductionForecast(state, farm.id, hour)?.mw ?? 0;
-        }
+        if (!farm.enabled || farm.tech !== tech) continue;
+        const point = farmProductionForecast(state, farm.id, hour);
+        if (!point) continue;
+        total.mw += point.mw;
+        total.bandMw += point.bandMw;
       }
-      return sum;
+      return total;
     });
+  const windForecast = farmForecast("wind");
+  const pvForecast = farmForecast("pv");
   const farmActualMw = (tech: FarmTech): number => {
     let sum = 0;
     for (const farm of state.farms) {
@@ -524,15 +542,18 @@ export function resolveTurn(state: GameState): GameState {
     },
     forecastMiss: {
       demand: {
-        forecastMw: quantize001(demandForecastMw),
+        forecastMw: quantize001(demandForecast.mw),
+        bandMw: quantize001(demandForecast.bandMw),
         actualMw: quantize001(demandActualMw),
       },
       wind: {
-        forecastMw: quantize001(farmForecastMw("wind")),
+        forecastMw: quantize001(windForecast.mw),
+        bandMw: quantize001(windForecast.bandMw),
         actualMw: quantize001(farmActualMw("wind")),
       },
       pv: {
-        forecastMw: quantize001(farmForecastMw("pv")),
+        forecastMw: quantize001(pvForecast.mw),
+        bandMw: quantize001(pvForecast.bandMw),
         actualMw: quantize001(farmActualMw("pv")),
       },
     },
