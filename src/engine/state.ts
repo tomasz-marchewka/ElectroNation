@@ -17,7 +17,7 @@ import type { MonthRegimes, RegimeId } from "./regimes";
 // functions. Serializability is load-bearing: saves, replay, golden tests and
 // (later) a server all rely on JSON.parse(JSON.stringify(s)) being lossless.
 
-export const STATE_SCHEMA_VERSION = 8;
+export const STATE_SCHEMA_VERSION = 9;
 
 export const TURNS_PER_DAY = 8;
 export const HOURS_PER_TURN = 3;
@@ -363,4 +363,11 @@ export interface GameState {
   dayTruth: DayTruth;
   /** Report of the last resolved turn; null until the first resolution. */
   lastTurnReport: TurnReport | null;
+  /**
+   * Reports of the day being played, oldest first — what the day chart draws
+   * behind the TERAZ line and what `WYNIK DOBY` sums up (01 §8 pt 2, pt 5).
+   * The history restarts with the FIRST resolution of a day, not at the day
+   * roll-over: a finished day stays readable until the new one is played.
+   */
+  dayReports: TurnReport[];
 }

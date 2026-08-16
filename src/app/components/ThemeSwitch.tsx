@@ -1,6 +1,7 @@
 // Theme switch of the reference build (ui_kits/dispatcher/index.html): two
-// segments in the bottom-right corner. It sits outside the top bar on purpose
-// — the top bar carries no actions (TopBar.prompt.md).
+// segments in the bottom-right corner — since M8 the far end of the chart
+// legend, which is what that corner holds now. It sits outside the top bar on
+// purpose — the top bar carries no actions (TopBar.prompt.md).
 
 import { useEffect } from "react";
 import { useThemeStore, type Theme } from "../store/themeStore";

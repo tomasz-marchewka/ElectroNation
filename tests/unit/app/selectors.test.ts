@@ -1,13 +1,16 @@
 // Derived views of GameState feeding the shell (01 §2.1, §2.4, §8).
 
 import { describe, expect, test } from "vitest";
-import { CONFIG, newGame, type GameState } from "../../../src/engine";
+import { CONFIG, applyAction, newGame, resolveTurn, type GameState } from "../../../src/engine";
+import { formatSignedMoneyPln } from "../../../src/app/format";
 import { REGIME_LABELS } from "../../../src/app/labels";
 import {
   budgetKpi,
   calendarContext,
   currentDayTurn,
   currentTurnTitle,
+  dayResultKpi,
+  dayResultPln,
   forecastSystemKpi,
   regimeForecastLabel,
   topBarContext,
@@ -58,6 +61,19 @@ describe("top bar", () => {
   test("budget KPI formats the starting endowment as billions", () => {
     expect(budgetKpi(BASE)).toBe("10,00 mld zł");
     expect(CONFIG.startingMoneyPln).toBe(10_000_000_000);
+  });
+
+  test("WYNIK DOBY sums the day's turn results (01 §8 pt 5)", () => {
+    // Nothing resolved yet: a zero without a tone, because it is not a success.
+    expect(dayResultKpi(BASE)).toStrictEqual({ value: "0 zł" });
+
+    let state = applyAction(newGame(1), { type: "setPlantSetpoint", plantId: "plant-1", mw: 400 });
+    for (let turn = 0; turn < 3; turn++) state = resolveTurn(state);
+    expect(dayResultPln(state)).toBe(
+      state.dayReports.reduce((sum, report) => sum + report.finance.netPln, 0),
+    );
+    expect(dayResultKpi(state).value).toBe(formatSignedMoneyPln(dayResultPln(state)));
+    expect(dayResultKpi(state).tone).toBe(dayResultPln(state) >= 0 ? "ok" : "danger");
   });
 
   test("forecast KPI names the system and its horizon (01 §2.4)", () => {

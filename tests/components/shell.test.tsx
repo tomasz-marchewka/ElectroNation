@@ -98,11 +98,20 @@ describe("TurnBar", () => {
     expect(cells[6]?.textContent).toContain("◂ TURA 7");
   });
 
-  test("onSelect reports the clicked turn index", async () => {
+  test("onSelect reports the clicked turn index — future cells only (01 §2.5)", async () => {
     const onSelect = vi.fn();
-    render(<TurnBar current={0} onSelect={onSelect} />);
-    await userEvent.click(screen.getAllByRole("button")[3] as HTMLElement);
-    expect(onSelect).toHaveBeenCalledWith(3);
+    const { container } = render(<TurnBar current={2} onSelect={onSelect} />);
+    const cells = [...container.querySelectorAll<HTMLButtonElement>(".en-turn")];
+
+    await userEvent.click(cells[5] as HTMLElement);
+    expect(onSelect).toHaveBeenCalledWith(5);
+
+    // A resolved turn is never replayable and the current one is where time
+    // already stands — neither cell is a scrub target.
+    expect(cells.slice(0, 3).every((cell) => cell.disabled)).toBe(true);
+    await userEvent.click(cells[0] as HTMLElement);
+    await userEvent.click(cells[2] as HTMLElement);
+    expect(onSelect).toHaveBeenCalledTimes(1);
   });
 });
 

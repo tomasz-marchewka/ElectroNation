@@ -1,6 +1,5 @@
 // The dispatcher screen (01 §8, handoff README "Layout"): top bar → map +
 // docked 400 px panel → day axis → chart strip → full-width report strip.
-// The chart is still a placeholder here; M8 fills it.
 //
 // The 400 px column has three mutually exclusive states and never shows two of
 // them at once: the dispatcher panel by default, the hex panel while a hex is
@@ -11,6 +10,8 @@
 
 import { useEffect, useMemo } from "react";
 import { hexKey } from "../engine";
+import { DayChartView } from "./chart/DayChartView";
+import { buildDayChart } from "./chart/dayChart";
 import { HexPanel } from "./components/HexPanel";
 import { ReportStrip } from "./components/ReportStrip";
 import { RoutingPanel } from "./components/RoutingPanel";
@@ -27,6 +28,7 @@ import { planRoute } from "./routing/session";
 import { useGameStore } from "./store/gameStore";
 import {
   budgetKpi,
+  dayResultKpi,
   forecastSystemKpi,
   regimeForecastLabel,
   topBarContext,
@@ -36,6 +38,9 @@ export function App() {
   const game = useGameStore((store) => store.game);
   const dispatch = useGameStore((store) => store.dispatch);
   const resolve = useGameStore((store) => store.resolve);
+  const resolveUntilTurn = useGameStore((store) => store.resolveUntilTurn);
+  const skip = useGameStore((store) => store.skip);
+  const skipStop = useGameStore((store) => store.skipStop);
   const selectedHex = useGameStore((store) => store.selectedHex);
   const selectHex = useGameStore((store) => store.selectHex);
   const routing = useGameStore((store) => store.routing);
@@ -47,8 +52,8 @@ export function App() {
   const cancelRouting = useGameStore((store) => store.cancelRouting);
   const confirmRouting = useGameStore((store) => store.confirmRouting);
   const showBottleneck = useGameStore((store) => store.showBottleneck);
-  // The map paints the last resolved turn (01 §2.3); M8 will hand it an older
-  // report when the player scrubs back through the day.
+  // The map paints the last resolved turn (01 §2.3) — after a scrub, the turn
+  // it stopped on, which is the one the report strip names too.
   const report = game.lastTurnReport;
 
   // Live preview of the route under the cursor (01 §3.3): the price on the map
@@ -70,6 +75,7 @@ export function App() {
     () => buildMapScene(game, report, selectedHex, { route: preview, bottleneck }),
     [game, report, selectedHex, preview, bottleneck],
   );
+  const chart = useMemo(() => buildDayChart(game), [game]);
 
   // ESC steps back one level: out of routing first, out of the hex panel next.
   useEffect(() => {
@@ -89,6 +95,7 @@ export function App() {
         regime={regimeForecastLabel(game)}
         kpis={[
           { label: "BUDŻET", value: budgetKpi(game) },
+          { label: "WYNIK DOBY", ...dayResultKpi(game) },
           { label: "PROGNOZY", value: forecastSystemKpi(game) },
         ]}
       />
@@ -102,9 +109,10 @@ export function App() {
               onHexHover={routing ? hoverRouting : undefined}
             />
           </div>
-          <TurnBar current={game.calendar.turnIndex} />
-          <div className="en-region--chart" data-region="chart" />
-          <ThemeSwitch />
+          <TurnBar current={game.calendar.turnIndex} onSelect={resolveUntilTurn} />
+          <DayChartView model={chart}>
+            <ThemeSwitch />
+          </DayChartView>
         </div>
 
         {routing ? (
@@ -129,7 +137,13 @@ export function App() {
             onClose={() => selectHex(null)}
           />
         ) : (
-          <DispatcherPanel game={game} onAction={dispatch} onCommit={resolve} />
+          <DispatcherPanel
+            game={game}
+            onAction={dispatch}
+            onCommit={resolve}
+            onSkip={skip}
+            stopNote={skipStop?.text}
+          />
         )}
       </div>
 

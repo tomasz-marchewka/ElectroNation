@@ -13,7 +13,7 @@ import {
   type DayType,
   type GameState,
 } from "../../engine";
-import { formatMoneyPln, formatMultiplier, formatNumber } from "../format";
+import { formatMoneyPln, formatMultiplier, formatNumber, formatSignedMoneyPln } from "../format";
 import {
   DAY_TURN_FULL_NAMES,
   FORECAST_LEVEL_LABELS,
@@ -79,6 +79,29 @@ export function regimeForecastLabel(state: GameState): string {
 /** Budget KPI — `10,00 mld zł`. */
 export function budgetKpi(state: GameState): string {
   return formatMoneyPln(state.moneyPln);
+}
+
+/** Sum of the turn results of the day being played (01 §8 pt 5). */
+export function dayResultPln(state: GameState): number {
+  return state.dayReports.reduce((sum, report) => sum + report.finance.netPln, 0);
+}
+
+export interface DayResultKpi {
+  /** `+46,9 mln zł`. */
+  value: string;
+  tone?: "ok" | "danger";
+}
+
+/**
+ * `WYNIK DOBY` KPI. Before the day's first turn is resolved the history still
+ * describes the finished day (state.ts), which is exactly what the player wants
+ * to read right after committing its last turn; a session that has resolved
+ * nothing at all shows a toneless zero rather than a green success.
+ */
+export function dayResultKpi(state: GameState): DayResultKpi {
+  const pln = dayResultPln(state);
+  if (state.dayReports.length === 0) return { value: formatSignedMoneyPln(pln) };
+  return { value: formatSignedMoneyPln(pln), tone: pln >= 0 ? "ok" : "danger" };
 }
 
 /**
