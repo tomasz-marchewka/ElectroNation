@@ -2,10 +2,10 @@
 // out. Same contract as the map's scene model — no JSX, no DOM — so the tests
 // snapshot the model instead of markup and swapping the renderer stays local.
 //
-// The axis is the whole day: 8 blocks of 3 h (01 §2.2). Left of TERAZ the
-// resolved turns are drawn as hard block steps of coverage by technology; right
-// of it the demand forecast keeps its band, because a forecast without one is a
-// design error in this game (06 §8.6.4).
+// The axis is the whole day: 8 blocks of 3 h (01 §2.2). Left of TERAZ lie the
+// resolved turns — coverage by technology and the demand it had to cover, block
+// by block; right of it the demand forecast keeps its band, because a forecast
+// without one is a design error in this game (06 §8.6.4).
 
 import {
   HOURS_PER_TURN,
@@ -27,6 +27,20 @@ const HOURS_PER_DAY = TURNS_PER_DAY * HOURS_PER_TURN;
 
 /** The scale is rounded up to a whole multiple of this [MW] — as in the panel. */
 const SCALE_STEP_MW = 100;
+
+/**
+ * How much of a block, at each of its inner ends, is given up to the rounding
+ * window the renderer curves through (a fraction of the block's width).
+ *
+ * A turn IS a flat 3 h average (01 §2.2), so the level has to be readable
+ * straight off the middle of its block — but the instant vertical wall between
+ * two turns was never a claim about what happened at the boundary either, and
+ * next to the hourly forecast curve it read as the odd one out. At 0,40 the
+ * middle fifth of every block still sits level at the turn's own value, and
+ * the two fifths at each end lean toward the neighbouring turn. Half would be
+ * the limit: past it the level run vanishes and the block loses its value.
+ */
+const BLOCK_ROUNDING = 0.4;
 
 /**
  * Left of this the caption still occupies the top line, so the TERAZ label
@@ -92,7 +106,7 @@ export interface DayChartBlock {
 export interface DayChartArea {
   key: DayChartLayerKey;
   color: string;
-  /** Closed polygon: the layer's top step line, then its bottom one reversed. */
+  /** Closed outline: the layer's top block line, then its bottom one reversed. */
   points: ChartPoint[];
 }
 
@@ -123,7 +137,7 @@ export interface DayChartModel {
   blocks: DayChartBlock[];
   /** Stacked coverage, bottom layer first; layers with no energy are dropped. */
   areas: DayChartArea[];
-  /** Revealed demand as block steps. */
+  /** Revealed demand, one level per block. */
   demandLine: ChartPoint[];
   /** Demand forecast for the rest of the day; null when there is none. */
   forecast: DayChartForecast | null;
@@ -136,7 +150,7 @@ export interface DayChartModel {
 }
 
 /** Sub-pixel precision of the handoff's own chart geometry. */
-function round01(value: number): number {
+export function round01(value: number): number {
   return Math.round(value * 10) / 10;
 }
 
@@ -245,13 +259,22 @@ export function buildDayChart(state: GameState): DayChartModel {
   const hourX = (hour: number): number => round01((hour / HOURS_PER_DAY) * CHART_WIDTH);
   const y = (mw: number): number => round01(CHART_HEIGHT - (mw / scaleMw) * CHART_HEIGHT);
 
-  /** Hard block steps — a resolved turn is a flat 3 h average, never a slope. */
-  const stepLine = (valueOf: (block: DayChartBlock) => number): ChartPoint[] =>
-    blocks.flatMap((block) => {
+  const roundX = round01(BLOCK_ROUNDING * (CHART_WIDTH / TURNS_PER_DAY));
+  /**
+   * Two points per block, both at the turn's own level: the run the value holds
+   * flat. What is left between two blocks is the rounding window the renderer
+   * curves through — and the run's own ends stay square, because there is
+   * nothing before the first turn of the day to lean toward and past TERAZ
+   * there is no truth yet, only the forecast.
+   */
+  const blockLine = (valueOf: (block: DayChartBlock) => number): ChartPoint[] =>
+    blocks.flatMap((block, index) => {
       const level = y(valueOf(block));
+      const from = blockX(block.turnIndex);
+      const to = blockX(block.turnIndex + 1);
       return [
-        { x: blockX(block.turnIndex), y: level },
-        { x: blockX(block.turnIndex + 1), y: level },
+        { x: index === 0 ? from : round01(from + roundX), y: level },
+        { x: index === blocks.length - 1 ? to : round01(to - roundX), y: level },
       ];
     });
   const stackedMw = (block: DayChartBlock, upTo: number): number =>
@@ -261,8 +284,8 @@ export function buildDayChart(state: GameState): DayChartModel {
   DAY_CHART_LAYERS.forEach((layer, index) => {
     const energy = blocks.reduce((sum, block) => sum + (block.layersMw[index] ?? 0), 0);
     if (energy <= 0) return;
-    const top = stepLine((block) => stackedMw(block, index + 1));
-    const bottom = stepLine((block) => stackedMw(block, index)).reverse();
+    const top = blockLine((block) => stackedMw(block, index + 1));
+    const bottom = blockLine((block) => stackedMw(block, index)).reverse();
     areas.push({ key: layer.key, color: layer.color, points: [...top, ...bottom] });
   });
 
@@ -293,7 +316,7 @@ export function buildDayChart(state: GameState): DayChartModel {
     currentBlock: { x: nowX, width: round01(CHART_WIDTH / TURNS_PER_DAY) },
     blocks,
     areas,
-    demandLine: stepLine((block) => block.demandMw),
+    demandLine: blockLine((block) => block.demandMw),
     forecast,
     caption: { x: 8, y: 14, text: "DOBA · POPYT vs POKRYCIE [MW]" },
     // The chart has no vertical axis (handoff), so the scale is printed: without

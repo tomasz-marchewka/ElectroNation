@@ -725,7 +725,11 @@ starzenie majątku i remonty, kolejka przyłączeniowa — 90 §3, §7, §10.)*
 1. **Mapa** — heksy, obiekty, linie w kolorach obciążenia (zielony → żółty → czerwony);
    miasto w niedoborze gaśnie/miga.
 2. **Wykres doby** — zapotrzebowanie (prawda za nami, prognoza z pasmem przed nami) vs
-   pokrycie warstwami (jądrowa/węgiel/gaz/wiatr/PV/magazyn/import).
+   pokrycie warstwami (jądrowa/węgiel/gaz/wiatr/PV/magazyn/import). Prawda za nami jest
+   rysowana blokami tur: wartość tury trzyma poziom przez środek swojego bloku, a łagodnie
+   przechodzi w sąsiednią dopiero przy granicy bloku. To wyłącznie zabieg wizualny —
+   tura nadal jest **płaską średnią 3 h** (§2.2), silnik niczego wewnątrz bloku nie
+   interpoluje, a odczyt wartości bierze się ze środka bloku.
 3. **Panel prognozy** — pasma popytu i OZE na kolejne godziny + kolumna **„bilans przy
    obecnych nastawach"** (czy plan przeżyje najbliższe 6 h — 06 §8.6.4).
 4. **Panel nastaw** — jednostki z suwakami, magazyny (ładuj/oddawaj), import/eksport,

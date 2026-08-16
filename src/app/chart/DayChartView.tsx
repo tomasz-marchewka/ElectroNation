@@ -1,6 +1,6 @@
 // Adapted from design-system/components/chart/DayChart.{jsx,d.ts}: same box,
-// same block highlight, same dashed TERAZ line. Markup only — every number and
-// every coordinate comes from the model built by ./dayChart.
+// same block highlight, same dashed TERAZ line. Markup and the curve that joins
+// the points — every coordinate itself comes from the model built by ./dayChart.
 //
 // Two divergences from the handoff, both from the docs (01 §8 pt 2, 06 §8.6.4):
 // the coverage is seven separately coloured layers instead of one four-stop
@@ -9,10 +9,35 @@
 // differs only in being dashed, exactly as the legend note says.
 
 import type { ReactNode } from "react";
-import type { ChartPoint, DayChartModel } from "./dayChart";
+import { round01, type ChartPoint, type DayChartModel } from "./dayChart";
 
 function join(points: readonly ChartPoint[]): string {
   return points.map((point) => `${point.x},${point.y}`).join(" ");
+}
+
+/**
+ * The block lines of the model, joined by cubics whose tangents are horizontal
+ * at both ends — controls sit at the span's own midpoint, which makes each one
+ * the exact smoothstep between its two levels.
+ *
+ * One rule covers the whole outline, because that rule leaves everything but a
+ * turn boundary alone: a span at one level stays perfectly level (the block's
+ * flat 3 h average — 01 §2.2), a span at one x stays perfectly vertical (an
+ * area closing on the TERAZ line), and only the window the model left open
+ * between two blocks actually curves. Reversed, a cubic traces the same curve,
+ * so a layer's top edge still meets the next layer's bottom edge exactly.
+ */
+function smoothPath(points: readonly ChartPoint[], close = false): string {
+  const [first, ...rest] = points;
+  if (!first) return "";
+  let d = `M${first.x} ${first.y}`;
+  let from = first;
+  for (const to of rest) {
+    const mid = round01((from.x + to.x) / 2);
+    d += ` C${mid} ${from.y} ${mid} ${to.y} ${to.x} ${to.y}`;
+    from = to;
+  }
+  return close ? `${d} Z` : d;
 }
 
 export interface DayChartViewProps {
@@ -54,13 +79,18 @@ export function DayChartView({ model, children }: DayChartViewProps) {
               bottom, then the demand it had to cover. */}
           <g opacity="0.65">
             {model.areas.map((area) => (
-              <polygon key={area.key} points={join(area.points)} fill={area.color} />
+              <path
+                key={area.key}
+                className="en-chart__area"
+                d={smoothPath(area.points, true)}
+                fill={area.color}
+              />
             ))}
           </g>
           {model.demandLine.length > 0 && (
-            <polyline
+            <path
               className="en-chart__demand"
-              points={join(model.demandLine)}
+              d={smoothPath(model.demandLine)}
               fill="none"
               stroke="var(--en-text)"
               strokeWidth="2"
