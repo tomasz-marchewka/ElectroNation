@@ -91,23 +91,80 @@ describe("setpoints — every unit set by hand (01 §8 pt 4)", () => {
     });
   });
 
-  test("the storage control switches mode and keeps the power setpoint", async () => {
-    const game = applyAction(newGame(7, DISPATCH_SCENARIO), {
-      type: "setStorage",
-      storageId: "storage-1",
-      mode: "idle",
-      mw: 100,
-    });
-    const { onAction } = renderPanel(game);
+  test("one bipolar slider dispatches the storage: zero in the middle (01 §5.3)", () => {
+    const { onAction } = renderPanel(newGame(7, DISPATCH_SCENARIO));
+    const input = slider("BESS POLANA");
 
     expect(screen.getByText("SOC 62%")).toBeDefined();
-    await userEvent.click(screen.getByText("ODDAWAJ"));
+    expect(input.min).toBe("-150");
+    expect(input.max).toBe("150");
+    expect(input.step).toBe("10");
+
+    fireEvent.change(input, { target: { value: "-100" } });
+    expect(onAction).toHaveBeenCalledWith({
+      type: "setStorage",
+      storageId: "storage-1",
+      mode: "charge",
+      mw: 100,
+    });
+
+    fireEvent.change(input, { target: { value: "100" } });
     expect(onAction).toHaveBeenCalledWith({
       type: "setStorage",
       storageId: "storage-1",
       mode: "discharge",
       mw: 100,
     });
+  });
+
+  test("sliding back to the centre rests the storage", () => {
+    const game = applyAction(newGame(7, DISPATCH_SCENARIO), {
+      type: "setStorage",
+      storageId: "storage-1",
+      mode: "charge",
+      mw: 100,
+    });
+    const { onAction } = renderPanel(game);
+
+    fireEvent.change(slider("BESS POLANA"), { target: { value: "0" } });
+    expect(onAction).toHaveBeenCalledWith({
+      type: "setStorage",
+      storageId: "storage-1",
+      mode: "idle",
+      mw: 0,
+    });
+  });
+
+  test("the mode badges are a readout of the slider, not a control", () => {
+    const game = applyAction(newGame(7, DISPATCH_SCENARIO), {
+      type: "setStorage",
+      storageId: "storage-1",
+      mode: "charge",
+      mw: 100,
+    });
+    renderPanel(game);
+
+    expect(screen.queryByRole("button", { name: "ODDAWAJ" })).toBeNull();
+    expect(screen.getByText("ŁADUJ").className).toContain("is-active");
+    expect(screen.getByText("ODDAWAJ").className).not.toContain("is-active");
+    // The direction is spelled out where the number is, so the slider does not
+    // announce a bare "−100" to a screen reader.
+    expect(slider("BESS POLANA").getAttribute("aria-valuetext")).toBe("ŁADUJ 100 / 150 MW");
+    expect(screen.getByText("ŁADUJ 100 / 150 MW")).toBeDefined();
+  });
+
+  test("a storage at rest keeps no direction, whatever the state carries", () => {
+    const game = applyAction(newGame(7, DISPATCH_SCENARIO), {
+      type: "setStorage",
+      storageId: "storage-1",
+      mode: "discharge",
+      mw: 0,
+    });
+    renderPanel(game);
+
+    expect(screen.getByText("STOP").className).toContain("is-active");
+    expect(screen.getByText("ODDAWAJ").className).not.toContain("is-active");
+    expect(slider("BESS POLANA").value).toBe("0");
   });
 
   test("import and export get a slider each (01 §5.7)", () => {

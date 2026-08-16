@@ -57,7 +57,12 @@
 .en-setpoint__head { display: flex; justify-content: space-between; font-size: var(--en-fs-base); color: var(--en-text); }
 .en-setpoint__head small { color: var(--en-text-3); font-size: inherit; }
 .en-setpoint__track { height: var(--en-track-h-sm); background: var(--en-bg-track); margin-top: var(--en-space-2); position: relative; }
-.en-setpoint__fill { height: 100%; }
+/* Wypełnienie rośnie od zera, nie od lewej krawędzi — przy suwaku
+   dwubiegunowym (magazyn) zero leży na środku toru. */
+.en-setpoint__fill { position: absolute; top: 0; height: 100%; }
+/* Ładowanie: ten sam kolor technologii, przygaszony — pobór, nie produkcja. */
+.en-setpoint__fill.is-below { opacity: 0.55; }
+.en-setpoint__zero { position: absolute; top: -2px; width: 1px; height: calc(100% + 4px); background: var(--en-border-strong); }
 .en-setpoint__thumb { position: absolute; top: -3px; width: var(--en-thumb-w); height: var(--en-thumb-h); background: var(--en-text); }
 .en-setpoint__note { font-size: var(--en-fs-caption); color: var(--en-text-4); margin-top: 2px; }
 .en-setpoint.is-off .en-setpoint__head { color: var(--en-text-4); }
@@ -66,11 +71,15 @@
 /* ── segmentowany wybór trybu (magazyn) ────────────────── */
 .en-segmented { display: flex; gap: var(--en-space-2); font-family: var(--en-font-mono); font-size: var(--en-fs-micro); }
 .en-seg {
+  display: inline-flex; align-items: center;
   padding: var(--en-space-1) var(--en-space-4); border: var(--en-border-w) solid var(--en-border);
-  color: var(--en-text-4); background: transparent; cursor: pointer;
+  color: var(--en-text-4); background: transparent;
   font: inherit; letter-spacing: 0.5px; transition: color var(--en-dur-ui) var(--en-ease-ui), border-color var(--en-dur-ui) var(--en-ease-ui);
 }
-.en-seg:hover { color: var(--en-text-2); border-color: var(--en-border-strong); }
+/* Plakietki trybu magazynu są tylko odczytem — wskaźnik i hover ma wyłącznie
+   segment, który da się kliknąć. */
+button.en-seg { cursor: pointer; }
+button.en-seg:hover { color: var(--en-text-2); border-color: var(--en-border-strong); }
 .en-seg[aria-pressed="true"], .en-seg.is-active { background: var(--en-bg-tint-info); border-color: var(--en-ok); color: var(--en-ok); }
 
 /* ── pastylka włącz/wyłącz (farma OZE) ─────────────────── */

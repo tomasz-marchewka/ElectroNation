@@ -22,12 +22,26 @@ import { buildQueue } from "./constructions";
 import { panelForecast } from "./forecast";
 import { setpointRowKey, setpointRows, type SetpointRow } from "./setpoints";
 
-/** Three modes, never a slider: the storage either charges, rests or gives back. */
+/**
+ * The three modes as badges, in the order the slider runs: charging left of
+ * zero, giving back right of it. Nothing is clickable here — the slider decides
+ * which badge lights up (see SetpointSlider on the divergence from the handoff,
+ * whose own control was a three-state switch).
+ */
 const STORAGE_MODES: readonly SegmentedOption<StorageMode>[] = [
   { value: "charge", label: STORAGE_MODE_LABELS.charge },
   { value: "idle", label: STORAGE_MODE_LABELS.idle },
   { value: "discharge", label: STORAGE_MODE_LABELS.discharge },
 ];
+
+/**
+ * Signed setpoint → the engine's `{ mode, mw }` pair. The centre of the track
+ * is the only zero there is, so a rested storage carries no direction at all.
+ */
+function storageAction(storageId: string, signedMw: number): Action {
+  const mode: StorageMode = signedMw === 0 ? "idle" : signedMw < 0 ? "charge" : "discharge";
+  return { type: "setStorage", storageId, mode, mw: Math.abs(signedMw) };
+}
 
 interface RowProps {
   row: SetpointRow;
@@ -55,21 +69,14 @@ function SetpointRowView({ row, onAction }: RowProps) {
             name={row.name}
             tech={row.tech}
             value={row.valueMw}
+            min={-row.maxMw}
             max={row.maxMw}
             color={row.color}
-            onChange={(mw) =>
-              onAction({ type: "setStorage", storageId: row.id, mode: row.mode, mw })
-            }
+            valueText={row.valueLabel}
+            onChange={(mw) => onAction(storageAction(row.id, mw))}
           />
           <div className="en-unit__controls">
-            <SegmentedControl
-              options={STORAGE_MODES}
-              value={row.mode}
-              ariaLabel={`Tryb pracy — ${row.name}`}
-              onChange={(mode) =>
-                onAction({ type: "setStorage", storageId: row.id, mode, mw: row.valueMw })
-              }
-            />
+            <SegmentedControl options={STORAGE_MODES} value={row.mode} readOnly />
             <span className="en-soc">
               <span className="en-soc__track">
                 <span className="en-soc__fill" style={{ width: `${row.socPercent}%` }} />
