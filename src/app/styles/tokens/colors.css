@@ -43,6 +43,12 @@
   --en-action-fg: #0b0f15;
 
   /* — technologie wytwarzania (wykres doby, ikony, suwaki) — */
+  /* OUR EXTENSION, pending designer review: the handoff palette has no colour
+     for nuclear, yet 01 §8 pt 2 makes it the bottom layer of the day chart.
+     Hue picked in the gap left by the five technology colours (magenta, far
+     from --en-storage violet), muted to the palette's own saturation. The map
+     icon still runs on --en-text: --en-nuclear-ico stays an open question. */
+  --en-nuclear: #b3719c;
   --en-coal: #7a6248;
   --en-coal-ico: #e08c3c;
   --en-gas: #d99a3d;
@@ -110,6 +116,7 @@
   --en-action: #c07c14;
   --en-action-fg: #ffffff;
 
+  --en-nuclear: #8c4f78;
   --en-coal: #8a6d4e;
   --en-coal-ico: #b06a28;
   --en-gas: #c8892a;

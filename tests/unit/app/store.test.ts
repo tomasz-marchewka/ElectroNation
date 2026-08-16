@@ -64,15 +64,40 @@ describe("gameStore", () => {
     expect(before.plants[0]?.setpointMw).not.toBe(123);
   });
 
+  test("skip() scrubs and remembers why it stopped (01 §2.5)", () => {
+    // The starting endowment sits at 0 MW, so the first turn is a shortfall.
+    useGameStore.getState().skip();
+    const { game, skipStop } = useGameStore.getState();
+
+    expect(game.calendar.turnIndex).toBe(1);
+    expect(skipStop?.kind).toBe("shortfall");
+    expect(skipStop?.turnIndex).toBe(0);
+    // A hand-committed turn is not a scrub: the diagnosis goes with it.
+    useGameStore.getState().resolve();
+    expect(useGameStore.getState().skipStop).toBeNull();
+  });
+
+  test("resolveUntilTurn() runs the turns in between and clears the diagnosis", () => {
+    useGameStore.getState().skip();
+    useGameStore.getState().resolveUntilTurn(6);
+
+    const { game, skipStop } = useGameStore.getState();
+    expect(game.calendar).toEqual({ dayIndex: 0, turnIndex: 6 });
+    expect(game.dayReports).toHaveLength(6);
+    expect(skipStop).toBeNull();
+  });
+
   test("restart(seed) starts a new session and clears the selection", () => {
     useGameStore.getState().selectHex({ q: 3, r: 4 });
-    useGameStore.getState().resolve();
+    useGameStore.getState().skip();
     useGameStore.getState().restart(99);
 
-    const { game, selectedHex } = useGameStore.getState();
+    const { game, selectedHex, skipStop } = useGameStore.getState();
     expect(game.seed).toBe(99);
     expect(game.calendar).toEqual({ dayIndex: 0, turnIndex: 0 });
+    expect(game.dayReports).toStrictEqual([]);
     expect(selectedHex).toBeNull();
+    expect(skipStop).toBeNull();
   });
 });
 

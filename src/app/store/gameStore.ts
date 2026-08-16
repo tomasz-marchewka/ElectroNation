@@ -12,6 +12,7 @@ import {
   type GameState,
   type HexCoord,
 } from "../../engine";
+import { scrubToTurn, skipTurns, type SkipStop } from "./skip";
 
 /** Seed of the default session; `?seed=` in the URL overrides it. */
 export const DEFAULT_SEED = 1;
@@ -36,10 +37,19 @@ export interface GameStore {
   game: GameState;
   /** Hex selected on the map; drives the hex panel from M5/M7 on. */
   selectedHex: HexCoord | null;
+  /**
+   * Why the last scrub stopped (01 §2.5) — null whenever time moved one turn
+   * at a time, so the diagnosis never outlives the run that produced it.
+   */
+  skipStop: SkipStop | null;
   /** Applies a player action (a JSON object — the future replay protocol). */
   dispatch: (action: Action) => void;
   /** Resolves the current turn: reveals the truth and advances the calendar. */
   resolve: () => void;
+  /** Scrubs to a future turn of the day, resolving every turn on the way. */
+  resolveUntilTurn: (turnIndex: number) => void;
+  /** Scrubs until a stop rule fires or the day ends (01 §2.5). */
+  skip: () => void;
   selectHex: (hex: HexCoord | null) => void;
   /** Starts a fresh session on `seed`; clears the selection. */
   restart: (seed: number) => void;
@@ -48,8 +58,16 @@ export interface GameStore {
 export const useGameStore = create<GameStore>()((set) => ({
   game: newGame(initialSeed()),
   selectedHex: null,
+  skipStop: null,
   dispatch: (action) => set((store) => ({ game: applyAction(store.game, action) })),
-  resolve: () => set((store) => ({ game: resolveTurn(store.game) })),
+  resolve: () => set((store) => ({ game: resolveTurn(store.game), skipStop: null })),
+  resolveUntilTurn: (turnIndex) =>
+    set((store) => ({ game: scrubToTurn(store.game, turnIndex), skipStop: null })),
+  skip: () =>
+    set((store) => {
+      const { game, stop } = skipTurns(store.game);
+      return { game, skipStop: stop };
+    }),
   selectHex: (hex) => set({ selectedHex: hex }),
-  restart: (seed) => set({ game: newGame(seed), selectedHex: null }),
+  restart: (seed) => set({ game: newGame(seed), selectedHex: null, skipStop: null }),
 }));
