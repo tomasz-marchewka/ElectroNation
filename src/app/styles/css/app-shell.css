@@ -42,13 +42,41 @@ body,
   overflow-y: auto;
 }
 
-/* ── regiony wypełniane w M5–M8 ─────────────────────────
+/* ── regiony wypełniane w M6–M8 ─────────────────────────
    Placeholder = samo tokenowe tło. Żadnej treści, która mogłaby zostać
    wzięta za dane. */
 .en-region--map {
   flex: 1;
   min-height: 0;
   background: var(--en-bg-map);
+}
+
+/* ── map (M5) ───────────────────────────────────────────
+   The map region is the SVG viewport itself: the renderer measures it and sets
+   a 1:1 pixel viewBox, so hexes are never stretched and the overlays keep the
+   design's geometry. Dragging pans the board and the cursor is the only
+   feedback there is — the interface does not animate (brand-motion). */
+.en-map {
+  width: 100%;
+  height: 100%;
+  background: var(--en-bg-map);
+}
+
+.en-map__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* The renderer owns the gesture; the browser has nothing to scroll here. */
+  touch-action: none;
+  cursor: grab;
+}
+
+.en-map__canvas.is-panning {
+  cursor: grabbing;
+}
+
+.en-map__canvas path[data-hex] {
+  cursor: pointer;
 }
 
 .en-region--chart {
