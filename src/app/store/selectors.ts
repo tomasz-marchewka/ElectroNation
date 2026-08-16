@@ -5,16 +5,23 @@ import {
   DAYS_PER_MONTH,
   DAYS_PER_YEAR,
   DAY_WEIGHTS,
-  FORECAST_LEVELS,
+  HOURS_PER_TURN,
   TURNS_PER_DAY,
   dayTypeForGameDay,
+  forecastHorizonDays,
   monthForGameDay,
   type DayType,
   type GameState,
 } from "../../engine";
-import { DAY_TURN_FULL_NAMES, dayTurnAt, type DayTurn } from "../components/TurnBar";
 import { formatMoneyPln, formatMultiplier, formatNumber } from "../format";
-import { FORECAST_LEVEL_LABELS, MONTH_NAMES, REGIME_LABELS } from "../labels";
+import {
+  DAY_TURN_FULL_NAMES,
+  FORECAST_LEVEL_LABELS,
+  MONTH_NAMES,
+  REGIME_LABELS,
+  dayTurnAt,
+  type DayTurn,
+} from "../labels";
 
 export interface CalendarContext {
   /** 1-based game year; a game year is 36 days (01 §2.1). */
@@ -74,11 +81,14 @@ export function budgetKpi(state: GameState): string {
   return formatMoneyPln(state.moneyPln);
 }
 
-/** Forecast-system KPI — `PODSTAWOWY · 24 H` (01 §2.4). */
+/**
+ * Forecast-system KPI — `PODSTAWOWY · 24 H` (01 §2.4). The horizon comes from
+ * the engine, not from the level table: the bar must name exactly the horizon
+ * the forecast actually reaches.
+ */
 export function forecastSystemKpi(state: GameState): string {
-  const level = state.forecastLevel;
-  const horizonHours = FORECAST_LEVELS[level].horizonDays * 24;
-  return `${FORECAST_LEVEL_LABELS[level]} · ${formatNumber(horizonHours)} H`;
+  const horizonHours = forecastHorizonDays(state) * TURNS_PER_DAY * HOURS_PER_TURN;
+  return `${FORECAST_LEVEL_LABELS[state.forecastLevel]} · ${formatNumber(horizonHours)} H`;
 }
 
 /** Panel meta line — `TURA 1/8 · STYCZEŃ · ×10,9 DNIA`. */

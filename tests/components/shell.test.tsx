@@ -10,7 +10,8 @@ import { Panel } from "../../src/app/components/Panel";
 import { PanelSection } from "../../src/app/components/PanelSection";
 import { StatusDot } from "../../src/app/components/StatusDot";
 import { TopBar } from "../../src/app/components/TopBar";
-import { DAY_TURNS, TurnBar, dayTurnAt } from "../../src/app/components/TurnBar";
+import { TurnBar } from "../../src/app/components/TurnBar";
+import { DAY_TURNS, dayTurnAt } from "../../src/app/labels";
 
 describe("TopBar", () => {
   test("renders the wordmark, the context and the KPIs", () => {

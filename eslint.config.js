@@ -10,7 +10,8 @@ export default tseslint.config(
       "playwright-report/",
       "test-results/",
       "prototyp/",
-      "design_handoff_electronation_turn_ui/",
+      // Delivered handoff — an external artifact, kept byte for byte.
+      "design_handoff_electronation_design_system/",
     ],
   },
   js.configs.recommended,
