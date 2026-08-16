@@ -182,11 +182,6 @@ function objectLabel(name: string, tech: string | null, ...parts: (string | null
   return [head, ...parts.filter((part): part is string => part !== null)].join(" · ");
 }
 
-/** `+100` / `−100` / `0` — a signed power flow, zero without a sign. */
-function signedMw(mw: number): string {
-  return mw === 0 ? "0" : formatSignedNumber(mw);
-}
-
 function ratioLabel(value: number, max: number): string {
   return `${formatNumber(value)}/${formatNumber(max)}`;
 }
@@ -427,7 +422,7 @@ export function buildMapScene(
       objectLabel(
         storage.name,
         STORAGE_TECH_LABELS[storage.tech],
-        signedMw(flowMw),
+        formatSignedNumber(flowMw),
         `SOC ${formatPercent(soc)}`,
       ),
     );
@@ -450,7 +445,11 @@ export function buildMapScene(
       border.hex,
       "border",
       "object",
-      objectLabel(border.name, null, signedMw(border.importSetpointMw - border.exportSetpointMw)),
+      objectLabel(
+        border.name,
+        null,
+        formatSignedNumber(border.importSetpointMw - border.exportSetpointMw),
+      ),
     );
   }
 

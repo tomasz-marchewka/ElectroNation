@@ -44,6 +44,13 @@ describe("formatNumber", () => {
     expect(formatSignedNumber(46.9, 1)).toBe("+46,9");
     expect(formatSignedNumber(-46.9, 1)).toBe(`${MINUS}46,9`);
   });
+
+  test("a rounded zero drops the sign — `+0` would read as a gain", () => {
+    expect(formatSignedNumber(0)).toBe("0");
+    expect(formatSignedNumber(-0.3)).toBe("0");
+    expect(formatSignedNumber(0.3)).toBe("0");
+    expect(formatSignedNumber(-0.04, 1)).toBe("0,0");
+  });
 });
 
 describe("formatMoneyPln", () => {
@@ -70,6 +77,8 @@ describe("formatMoneyPln", () => {
     expect(formatMoneyPln(-1_200_000_000)).toBe(`${MINUS}1,20 mld zł`);
     expect(formatSignedMoneyPln(46_900_000)).toBe("+46,9 mln zł");
     expect(formatSignedMoneyPln(-46_900_000)).toBe(`${MINUS}46,9 mln zł`);
+    // A turn that moved no money is not a profit.
+    expect(formatSignedMoneyPln(0)).toBe("0 zł");
   });
 });
 

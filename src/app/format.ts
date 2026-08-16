@@ -30,10 +30,16 @@ export function formatNumber(value: number, fractionDigits = 0): string {
   return fractionPart ? `${sign}${grouped},${fractionPart}` : `${sign}${grouped}`;
 }
 
-/** Same as `formatNumber`, but a non-negative value keeps an explicit `+`. */
+/**
+ * Same as `formatNumber`, but a positive value keeps an explicit `+`. A value
+ * that ROUNDS to zero carries no sign at all: `+0` would read as a gain where
+ * the number behind it may just as well be a rounding-sized loss — and the tone
+ * next to it (danger, warn) would then contradict the digits.
+ */
 export function formatSignedNumber(value: number, fractionDigits = 0): string {
   const text = formatNumber(value, fractionDigits);
-  return text.startsWith(MINUS) || text === "—" ? text : `+${text}`;
+  if (text.startsWith(MINUS) || text === "—") return text;
+  return Number(Math.abs(value).toFixed(fractionDigits)) === 0 ? text : `+${text}`;
 }
 
 /**
@@ -52,7 +58,9 @@ export function formatMoneyPln(pln: number): string {
 /** Money with an explicit sign — turn and day results (`+46,9 mln zł`). */
 export function formatSignedMoneyPln(pln: number): string {
   const text = formatMoneyPln(pln);
-  return text.startsWith(MINUS) ? text : `+${text}`;
+  if (text.startsWith(MINUS)) return text;
+  // As above: nothing that rounds to zero złoty is a gain.
+  return Math.round(pln) === 0 ? text : `+${text}`;
 }
 
 export function formatMw(mw: number, fractionDigits = 0): string {

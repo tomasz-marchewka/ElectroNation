@@ -159,9 +159,9 @@ function emptyReport(overrides: Partial<TurnReport>): TurnReport {
     dayWeight: DAY_WEIGHTS.working,
     totals: { demandMw: 0, deliveredMw: 0, ensMw: 0, lossesMw: 0, dumpMw: 0, resCurtailedMw: 0 },
     forecastMiss: {
-      demand: { forecastMw: 0, actualMw: 0 },
-      wind: { forecastMw: 0, actualMw: 0 },
-      pv: { forecastMw: 0, actualMw: 0 },
+      demand: { forecastMw: 0, bandMw: 0, actualMw: 0 },
+      wind: { forecastMw: 0, bandMw: 0, actualMw: 0 },
+      pv: { forecastMw: 0, bandMw: 0, actualMw: 0 },
     },
     cities: [],
     sources: [],

@@ -9,7 +9,11 @@ export interface TurnBarProps {
   turns?: readonly DayTurn[];
   /** Index of the current turn (0–7). */
   current?: number;
-  /** Click on a turn — turn scrubbing (01 §2.5), wired in M8. */
+  /**
+   * Click on a turn — turn scrubbing (01 §2.5), wired in M8. Without it the
+   * axis is a read-out and every cell is inert: a resolved turn is never
+   * replayable, and jumping forward is a mechanic that does not exist yet.
+   */
   onSelect?: (index: number) => void;
 }
 
@@ -29,6 +33,7 @@ export function TurnBar({ turns = DAY_TURNS, current = 0, onSelect }: TurnBarPro
             type="button"
             className={className}
             key={turn.phase}
+            disabled={onSelect === undefined}
             onClick={onSelect ? () => onSelect(index) : undefined}
           >
             {turn.name}
