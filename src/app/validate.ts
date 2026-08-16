@@ -19,9 +19,11 @@ import {
   hexNeighbors,
   isInsideMap,
   isLineBuilt,
+  lineUpgradeCostPln,
   type CityState,
   type GameState,
   type HexCoord,
+  type LineState,
   type LineType,
   type PendingObject,
   type TerrainId,
@@ -91,7 +93,10 @@ export interface HexLineCount {
 /**
  * How many lines cross every hex of the map. Counted over ALL lines, finished
  * or not: a line under construction already holds its corridor and its slots
- * in the engine, so an unfinished route may not be double-booked.
+ * in the engine, so an unfinished route may not be double-booked. A line being
+ * raised counts in BOTH type buckets — the old one is still strung up and the
+ * target one is reserved (01 §4.2) — but only once in `total`, because the
+ * number of lines tapping the object does not change.
  */
 export function lineCensus(state: GameState): Map<string, HexLineCount> {
   const census = new Map<string, HexLineCount>();
@@ -101,6 +106,7 @@ export function lineCensus(state: GameState): Map<string, HexLineCount> {
       const entry = census.get(key) ?? { total: 0, byType: { lv: 0, mv: 0, hv: 0 } };
       entry.total += 1;
       entry.byType[line.type] += 1;
+      if (line.upgrade) entry.byType[line.upgrade.type] += 1;
       census.set(key, entry);
     }
   }
@@ -204,6 +210,26 @@ export function hexRouteNote(
     }
   }
   return null;
+}
+
+/**
+ * Why this line may not be raised to `lineType` (01 §4.2), or null. Mirrors
+ * `upgradeLine`: the target type needs room in every corridor on the route, and
+ * the raise is paid up front. The line's own slot stays in its OLD counter, so
+ * the check is the same "+1" a fresh line would face.
+ */
+export function lineUpgradeNote(
+  state: GameState,
+  line: LineState,
+  lineType: LineType,
+): Diagnosis {
+  const census = lineCensus(state);
+  for (const key of new Set(line.path.map(hexKey))) {
+    if (linesAt(census, key).byType[lineType] + 1 > MAX_LINES_PER_HEX_PER_TYPE) {
+      return `${NO} korytarz pełny — ${formatNumber(MAX_LINES_PER_HEX_PER_TYPE)} linii ${LINE_TYPE_LABELS[lineType]} przez heks`;
+    }
+  }
+  return moneyNote(state, lineUpgradeCostPln(state, line, lineType));
 }
 
 /** Cost of a whole route, exactly as the engine charges it (01 §4.2, 02 §8.1). */

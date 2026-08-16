@@ -431,6 +431,21 @@ export function buildMapScene(
           tone: "default",
         });
       }
+    } else if (line.upgrade) {
+      // The corridor is being raised but keeps carrying power on its old type
+      // (01 §4.2), so it draws as a normal working line — only the label says so.
+      const at = midpoint(points);
+      if (at) {
+        labels.push({
+          key: `${line.id}:upgrade`,
+          x: at.x,
+          y: at.y + LINE_LABEL_DY,
+          text: `ROZBUDOWA DO ${LINE_TYPE_LABELS[line.upgrade.type]} · ${daysLabel(
+            lineRemainingDays(line.upgrade.builtHours, line.upgrade.totalHours),
+          )}`,
+          tone: "default",
+        });
+      }
     }
 
     const segments: MapSceneSegment[] = reported.map((segment) => {

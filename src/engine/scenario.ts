@@ -77,7 +77,7 @@ export function finishedLine(
   path: LineState["path"],
 ): LineState {
   const totalHours = (path.length - 1) * LINE_TYPES[type].buildHoursPerHex;
-  return { id, type, path, builtHours: totalHours, totalHours };
+  return { id, type, path, builtHours: totalHours, totalHours, upgrade: null };
 }
 
 /**

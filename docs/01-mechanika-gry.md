@@ -1,8 +1,24 @@
 # ElectroNation — Dokument bazowy mechaniki gry
 
-**Wersja:** 0.16 (dokument koncepcyjny)
-**Data:** 2026-08-13
+**Wersja:** 0.17 (dokument koncepcyjny)
+**Data:** 2026-08-16
 **Status:** obowiązuje **wersja uproszczona** gry; mechaniki odłożone czekają w [90-pomysly-na-przyszlosc.md](90-pomysly-na-przyszlosc.md)
+
+**Zmiany 0.16 → 0.17 (rozbudowa linii przesyłowych):**
+
+1. **Gotową linię można rozbudować do wyższego typu** (§4.2, §7): NN→SN, NN→WN, SN→WN —
+   nigdy w dół, nigdy dla linii w budowie, jedna rozbudowa na linię naraz. Cena i czas wg
+   ogólnej reguły rozbudowy: **85% CAPEX-u i 70% czasu** nowej linii docelowego typu na tej
+   samej trasie (z mnożnikami terenu). Płatność z góry, anulowanie = utrata nakładów (§2.6).
+2. **Linia pracuje przez całe roboty na starym typie** — stara przepustowość, stare straty
+   i stary koszt stały obowiązują do chwili ukończenia, wtedy linia przeskakuje na nowy typ.
+   Rozbudowa nie wyłącza korytarza, tak jak rozbudowa elektrowni nie zatrzymuje stojących
+   bloków (§7).
+3. **Limit korytarza ⩽9 linii jednego typu na heks zostaje bez zmian** (§3.3), ale linia
+   w trakcie rozbudowy liczy się do **obu** liczników — starego i docelowego typu. Bez tego
+   dziewięć równoległych rozbudów NN→SN na heksie z dziewięcioma liniami SN dałoby po
+   ukończeniu 18 linii SN. Liczba przyłączy obiektu się nie zmienia: rozbudowa podmienia typ
+   linii, nie dokłada nowej.
 
 **Zmiany 0.15 → 0.16 (zatwierdzenie dokumentu 02 — model symulacji):**
 
@@ -318,8 +334,13 @@ heks na turę, a magistrala WN wymaga 4 tur na heks. Świadomy kompromis: zakła
 wzrost popytu" słabnie dalej (3 miesiące budowy ≈ +2,5% popytu), ale tempo gry wygrywa;
 ponowne strojenie napięcia strategicznego — dokument 03/04.
 
+**Rozbudowa linii chodzi tym samym zegarem** (0.17, §4.2): 70% czasu nowej linii docelowego
+typu, więc NN→SN to 4,2 h, a NN→WN 8,4 h na heks trasy — z tą różnicą, że korytarz przez
+cały ten czas przesyła na starym typie i nie ma przerwy w dostawie.
+
 Czasy budowy obiektów — w §5 przy katalogach. Rozpoczętej budowy nie da się bezkosztowo
-porzucić (anulowanie = utrata poniesionych nakładów).
+porzucić (anulowanie = utrata poniesionych nakładów) — dotyczy to również rozpoczętej
+rozbudowy linii: po anulowaniu linia zostaje na starym typie, a wpłacone pieniądze przepadają.
 
 ### 2.7 Kampania bez końca
 
@@ -488,6 +509,29 @@ umowne poziomy napięć (realne odpowiedniki ~110/220/400 kV):
 Wszystkie typy wpinają się w te same przyłącza obiektów — transformacji NN/SN/WN nie
 modelujemy (90 §4). Przez jeden heks biegnie ⩽9 linii jednego typu (§3.3). Drugi tor
 = osobna linia na tej samej trasie.
+
+**DECYZJA (0.17): gotową linię można rozbudować do wyższego typu** — NN→SN, NN→WN, SN→WN.
+Nigdy w dół; linii w budowie nie da się rozbudować (najpierw dokończ albo anuluj) i jedna
+linia prowadzi naraz jedną rozbudowę. Cena i czas wg reguły rozbudowy z §7 (02 §8.4):
+**85% CAPEX-u i 70% czasu** nowej linii docelowego typu na tej samej trasie, z mnożnikami
+terenu. Postęp nalicza się jak przy budowie — długością rozegranego bloku (§2.6). Przez całe
+roboty **linia pracuje na starym typie** (stara przepustowość, stare straty, stary koszt
+stały). Przeskok na nowy typ księguje się na koniec tury, w której wypracowano ostatnią
+godzinę, więc pierwszą turą przesyłu na nowej przepustowości jest tura następna — dokładnie
+jak przy nowej linii, która zaczyna przesyłać w turze po zakończeniu budowy (§2.6). Linia
+w trakcie rozbudowy zajmuje miejsce w korytarzu **dla obu typów** — starego i docelowego (§3.3).
+
+Co rozbudowa daje ponad dołożenie równoległego toru: **straty spadają na całym korytarzu**
+(4% → 2% → 1%/100 km — dokładanie torów nie poprawia strat ani o promil), maleje koszt stały
+i zwalnia się przyłącze obiektu. Czego nie daje: przepustowości powyżej 1500 MW i sumowania
+mocy — tor NN obok toru SN to 650 MW, podczas gdy rozbudowa NN→SN daje 500 MW.
+
+*Świadoma konsekwencja dla zakładu opisanego niżej:* ścieżka „NN teraz, WN później" kosztuje
+1,2 + 0,85 × 6,0 = **6,3 mln zł/km wobec 6,0 mln zł/km za WN od razu** — kara zaledwie 5%
+(przy pełnym CAPEX-ie rozbudowy byłoby 20%), a prąd płynie cztery razy wcześniej. Budowanie
+najtańszego typu i rozbudowa w miarę wzrostu jest więc strategią wyraźnie opłacalną i zakład
+o przyszłość korytarza słabnie. Przyjęte świadomie, na rzecz jednej reguły rozbudowy w całej
+grze; strojenie udziału (85% vs 100% CAPEX-u) — dokument 04.
 
 Wynikające z tego decyzje gracza:
 
@@ -713,7 +757,13 @@ LCOE — 90 §5.)*
   02 §8.2), stacja wg §5.4, przyłącze graniczne o kolejne moduły zdolności. Rozbudowa =
   **70% czasu i 85% CAPEX-u** nowej lokalizacji (0.16, przygważdża widełki z 0.13).
   Po osiągnięciu limitu jedyną drogą jest nowa lokalizacja.
-- Nowy blok ma własny licznik budowy; linie można dobudowywać równolegle na tej samej trasie.
+- **Linia rozbudowuje się przez podmianę typu (0.17):** gotową linię podnosi się do wyższego
+  typu na tej samej trasie za **85% CAPEX-u i 70% czasu** nowej linii tego typu (§4.2); przez
+  całe roboty przesyła dalej na starym typie. Trasy ani długości rozbudowa nie zmienia — to
+  ta sama „rozbudowa w miejscu" co blok na heksie elektrowni. Powyżej WN nie ma dokąd
+  rozbudowywać: zostaje równoległy tor.
+- Nowy blok ma własny licznik budowy; linie można dobudowywać równolegle na tej samej trasie
+  — drugi tor zawsze pozostaje osobną linią, także po rozbudowie pierwszego.
 
 *(Malejące przychody krańcowe na farmach — wake effect, ryzyko koncentracji, opór społeczny,
 starzenie majątku i remonty, kolejka przyłączeniowa — 90 §3, §7, §10.)*
@@ -826,6 +876,7 @@ indeksem ceny.
 | ✅ | Czasy budowy K ≈ 40 (0.12; wcześniej K ≈ 5 → 20), linie 3/6/12 h/heks wg typu (0.13) | 2.6 |
 | ✅ | **Model zapotrzebowania i wzrost miast wg dokumentu 05** (0.14; uchyla formułę tymczasową z 0.13): miasto = gospodarstwa + firmy; wzrost 0–4%/mies. przy `U > 99%`, wysycanie pojemnością 16×, kurczenie o połowę niedoboru przy `U < 90%`, podłoga 100/10; miasta niepodłączone zamrożone | 2.7, 5.6, doc 05 |
 | ✅ | Rozbudowa istniejących obiektów z twardymi limitami; obiekt zawsze zajmuje 1 heks (0.13) | 7 |
+| ✅ | **Rozbudowa linii do wyższego typu (0.17)**: NN→SN→WN na tej samej trasie, 85% CAPEX-u / 70% czasu, tylko w górę i tylko dla linii gotowej; linia przesyła na starym typie do końca robót i zajmuje korytarz dla obu typów. Kara 5% za ścieżkę „tanio teraz, grubo później" przyjęta świadomie — strojenie w doc 04 | 4.2, 7 |
 | ✅ | Handoff UI = wskazówka wyłącznie wizualna; wymagania z dokumentów | 8 |
 | ✅ | Algorytm rozpływu: **min-cost flow** w przybliżeniu kolejnych najtańszych ścieżek; priorytet **miasta → magazyny → eksport**; niedobór emergentnie u najdalszych (0.16) | 4.4, 4.5, doc 02 |
 | ✅ | **Kara bilansowa za zrzut sterowalnych 400 zł/MWh** (0.16): paliwo od wykorzystania, import take-or-pay, zrzut OZE darmowy | 4.1, 02 §5 |

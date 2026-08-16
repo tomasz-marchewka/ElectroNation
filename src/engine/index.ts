@@ -11,6 +11,7 @@ export {
   sunsetHour,
   sunsetHourAngleDeg,
 } from "./astronomy";
+export { lineUpgradeCostPln, lineUpgradeHours, lineUpgradeTargets } from "./build";
 export {
   BATTERY,
   BORDER_SPEC,
@@ -28,6 +29,7 @@ export {
   KM_PER_HEX,
   LINE_SLOTS_PER_OBJECT,
   LINE_TYPES,
+  LINE_TYPE_ORDER,
   MAX_LINES_PER_HEX_PER_TYPE,
   MAX_PLANT_BLOCKS_PER_HEX,
   NODE_FIXED_CAPEX_SHARE_PER_YEAR,
@@ -135,6 +137,8 @@ export {
   TURNS_PER_DAY,
   TURN_PHASES,
   isLineBuilt,
+  isLineUpgrading,
+  lineOccupiesType,
   type BorderState,
   type Calendar,
   type CityState,
@@ -145,6 +149,7 @@ export {
   type GameState,
   type JunctionState,
   type LineState,
+  type LineUpgrade,
   type PendingObject,
   type PlantState,
   type SourceKind,

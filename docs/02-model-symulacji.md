@@ -1,10 +1,14 @@
 # ElectroNation — Model symulacji uproszczonej (silnik tury)
 
-**Wersja:** 0.2
-**Data:** 2026-08-13
+**Wersja:** 0.3
+**Data:** 2026-08-16
 **Status:** **obowiązuje** — formalizuje rdzeń mechaniki z dokumentu 01 §4 (graf sieci,
 rozpływ, straty, niedobory) oraz krok rozstrzygnięcia tury. Wprowadzona tu zmiana 01 §4.1
 (nadwyżka sterowalna karana) obowiązuje od 01 v0.16.
+
+**Zmiany 0.2 → 0.3:** reguła rozbudowy §8.4 rozszerzona na **linie** (01 §4.2 w 0.17):
+85% CAPEX-u / 70% czasu typu docelowego, praca na starym typie do końca robót, miejsce
+w korytarzu zajęte w obu typach; nowy test akceptacyjny §9.11.
 
 **Zmiany 0.1 → 0.2:** szkic zatwierdzony przez projektanta — dokument obowiązuje;
 dokument 01 podbity do 0.16 (kara za zrzut w §4.1, sformalizowany rozpływ w §4.4,
@@ -254,6 +258,14 @@ Naliczanie dobowe: roczne / 365 × liczba reprezentowanych dni doby (01 §6).
 na heks**; farmy OZE do limitu mocy heksa: **wiatr 300 MW, PV 200 MW**; magazyny
 i stacje wg tabel (§8.2, 01 §5.4).
 
+**Rozszerzenie (01 §4.2 w 0.17): reguła obejmuje też linie.** Rozbudowa gotowej linii do
+wyższego typu (NN→SN→WN, tylko w górę) kosztuje **85% CAPEX-u** i trwa **70% czasu** nowej
+linii docelowego typu na tej samej trasie, licząc z mnożnikami terenu §8.1. Do chwili
+ukończenia linia wchodzi do grafu ze **starym** typem: stara przepustowość i stary
+współczynnik strat (§3), a koszt stały §8.3 również nalicza się od starego typu. Dla limitu
+korytarza (01 §3.3) linia w rozbudowie zajmuje miejsce w obu licznikach — starego
+i docelowego typu.
+
 ### 8.5 Kara bilansowa
 
 Zrzut energii sterowalnej: **400 zł/MWh** (§5.2; parametr, strojenie w doc 03).
@@ -293,6 +305,11 @@ Testy specyfikacyjne cytują sekcje tego dokumentu:
    od strategii celującej w ~90. percentyl pasma (kara działa).
 10. **§6** — suma energii niedostarczonej per miasto × wagi dób = `1 − U` z 05 §6.1
     (spójność z modelem wzrostu miast).
+11. **§8.4** — rozbudowa linii (01 §4.2): koszt = 85% CAPEX-u typu docelowego na tej
+    trasie, czas = 70% jego czasu budowy; do ostatniej tury robót rozpływ i koszt stały
+    liczą się od **starego** typu, po ukończeniu od nowego; rozbudowa w dół, rozbudowa
+    linii w budowie i druga rozbudowa tej samej linii są odrzucane; linia w rozbudowie
+    zajmuje korytarz (⩽9/heks) w obu typach.
 
 ## 10. Pytania otwarte
 

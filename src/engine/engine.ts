@@ -15,6 +15,7 @@ import {
   buyForecastSystem,
   cancelConstruction,
   cancelLine,
+  cancelLineUpgrade,
   connectCity,
   expandBattery,
   expandBorder,
@@ -22,6 +23,7 @@ import {
   expandJunction,
   expandPlant,
   expandPumpedStorage,
+  upgradeLine,
 } from "./build";
 import {
   BORDER_SPEC,
@@ -106,6 +108,7 @@ export type Action =
   | { type: "buildJunction"; hex: HexCoord }
   | { type: "buildBorder"; hex: HexCoord }
   | { type: "buildLine"; lineType: LineType; path: HexCoord[] }
+  | { type: "upgradeLine"; lineId: string; lineType: LineType }
   | { type: "expandPlant"; plantId: string; capacityMw: number }
   | { type: "expandFarm"; farmId: string; capacityMw: number }
   | { type: "expandBattery"; storageId: string; powerMw: number; capacityMwh: number }
@@ -114,6 +117,7 @@ export type Action =
   | { type: "expandBorder"; borderId: string }
   | { type: "cancelConstruction"; constructionId: string }
   | { type: "cancelLine"; lineId: string }
+  | { type: "cancelLineUpgrade"; lineId: string }
   | { type: "buyForecastSystem"; level: ForecastLevel }
   | { type: "connectCity"; cityId: string }
   | { type: "noop" };
@@ -181,6 +185,8 @@ export function applyAction(state: GameState, action: Action): GameState {
       return buildBorder(state, action.hex);
     case "buildLine":
       return buildLine(state, action.lineType, action.path);
+    case "upgradeLine":
+      return upgradeLine(state, action.lineId, action.lineType);
     case "expandPlant":
       return expandPlant(state, action.plantId, action.capacityMw);
     case "expandFarm":
@@ -197,6 +203,8 @@ export function applyAction(state: GameState, action: Action): GameState {
       return cancelConstruction(state, action.constructionId);
     case "cancelLine":
       return cancelLine(state, action.lineId);
+    case "cancelLineUpgrade":
+      return cancelLineUpgrade(state, action.lineId);
     case "buyForecastSystem":
       return buyForecastSystem(state, action.level);
     case "connectCity":
@@ -611,12 +619,20 @@ export function resolveTurn(state: GameState): GameState {
   // still show it — until the new one is actually played.
   const dayReports = state.calendar.turnIndex === 0 ? [report] : [...state.dayReports, report];
 
-  // Line construction advances by the played block (01 §2.6).
-  const lines = state.lines.map((line) =>
-    isLineBuilt(line)
-      ? line
-      : { ...line, builtHours: Math.min(line.totalHours, line.builtHours + HOURS_PER_TURN) },
-  );
+  // Line construction and line upgrades advance by the played block (01 §2.6).
+  // An upgrade that runs out of hours flips the type right here: this is the
+  // first turn the corridor carries power on the new one (01 §4.2, 0.17).
+  const lines = state.lines.map((line) => {
+    if (!isLineBuilt(line)) {
+      return { ...line, builtHours: Math.min(line.totalHours, line.builtHours + HOURS_PER_TURN) };
+    }
+    const upgrade = line.upgrade;
+    if (!upgrade) return line;
+    const builtHours = upgrade.builtHours + HOURS_PER_TURN;
+    return builtHours >= upgrade.totalHours
+      ? { ...line, type: upgrade.type, upgrade: null }
+      : { ...line, upgrade: { ...upgrade, builtHours } };
+  });
 
   if (nextTurn < TURNS_PER_DAY) {
     return {

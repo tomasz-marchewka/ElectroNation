@@ -81,11 +81,24 @@ export function buildQueue(state: GameState): BuildQueueRow[] {
   }));
 
   for (const line of state.lines) {
-    if (isLineBuilt(line)) continue;
-    const remainingHours = line.totalHours - line.builtHours;
+    const km = formatNumber((line.path.length - 1) * KM_PER_HEX);
+    if (!isLineBuilt(line)) {
+      const remainingHours = line.totalHours - line.builtHours;
+      rows.push({
+        key: line.id,
+        name: `LINIA ${LINE_TYPE_LABELS[line.type]} · ${km} KM`,
+        remaining: `${formatNumber(remainingHours)} H`,
+        remainingHours,
+      });
+      continue;
+    }
+    // A raise runs on the same clock and belongs in the same list (01 §4.2).
+    const raise = line.upgrade;
+    if (!raise) continue;
+    const remainingHours = raise.totalHours - raise.builtHours;
     rows.push({
-      key: line.id,
-      name: `LINIA ${LINE_TYPE_LABELS[line.type]} · ${formatNumber((line.path.length - 1) * KM_PER_HEX)} KM`,
+      key: `${line.id}:upgrade`,
+      name: `ROZBUDOWA LINII ${LINE_TYPE_LABELS[line.type]} DO ${LINE_TYPE_LABELS[raise.type]} · ${km} KM`,
       remaining: `${formatNumber(remainingHours)} H`,
       remainingHours,
     });

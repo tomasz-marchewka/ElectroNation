@@ -1,7 +1,7 @@
 // The load path of a save (M9): validation, the migration chain and the
-// domain errors that replace exceptions on it. The registry is still empty —
-// schema 8 is the oldest version any save was written in — so the chain itself
-// is exercised on a synthetic one.
+// domain errors that replace exceptions on it. Schema 9 is the oldest version
+// any save was written in, so the chain proper starts there; the mechanism is
+// also exercised on a synthetic registry.
 
 import { describe, expect, test } from "vitest";
 import {
@@ -69,12 +69,39 @@ describe("migrateState", () => {
   });
 
   test("an older save without its migration is rejected, not guessed", () => {
-    const result = migrateState(previousSchemaSave());
+    // Two schemas back: nothing was ever written at 8, so the chain is broken
+    // at the first step and the loader says so instead of guessing the shape.
+    const result = migrateState({ ...playTurns(11, 3), schema: STATE_SCHEMA_VERSION - 2 });
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error.code).toBe("missingMigration");
-      expect(result.error.schema).toBe(STATE_SCHEMA_VERSION - 1);
+      expect(result.error.schema).toBe(STATE_SCHEMA_VERSION - 2);
+    }
+  });
+
+  test("9 → 10: every line of an older save gains an empty upgrade slot", () => {
+    // What a schema-9 save looked like: lines without the field at all.
+    const state = playTurns(11, 3);
+    const old = {
+      ...JSON.parse(JSON.stringify(state)),
+      schema: 9,
+      lines: state.lines.map((line) => {
+        const without: Record<string, unknown> = { ...line };
+        delete without.upgrade;
+        return without;
+      }),
+    };
+    expect(old.lines.length).toBeGreaterThan(0);
+
+    const result = migrateState(old);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.state.schema).toBe(STATE_SCHEMA_VERSION);
+      expect(result.state.lines.every((line) => line.upgrade === null)).toBe(true);
+      // Nothing else moved: the migration only fills the new field.
+      expect(result.state).toStrictEqual(state);
     }
   });
 

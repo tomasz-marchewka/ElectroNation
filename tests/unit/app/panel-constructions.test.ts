@@ -37,6 +37,20 @@ describe("build queue", () => {
     expect(rows[1]?.remaining).toBe("5 DÓB");
   });
 
+  test("a line raise joins the list on the same clock (01 §4.2)", () => {
+    // The scenario's own MV line, raised to HV: 4 × 12 h × 70% = 34 h.
+    const state = applyAction(newGame(7, makeScenario()), {
+      type: "upgradeLine",
+      lineId: "line-1",
+      lineType: "hv",
+    });
+    const rows = buildQueue(state);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.name).toBe("ROZBUDOWA LINII SN DO WN · 100 KM");
+    expect(rows[0]?.remaining).toBe("34 H");
+  });
+
   test("an expansion names the object it upgrades in place (01 §7)", () => {
     const state = applyAction(newGame(7, makeScenario()), {
       type: "expandPlant",
