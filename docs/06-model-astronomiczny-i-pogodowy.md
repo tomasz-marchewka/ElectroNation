@@ -1,11 +1,18 @@
 # ElectroNation — Model astronomiczny, klimatyczny i pogodowy
 
-**Wersja:** 0.5
-**Data:** 2026-08-15
+**Wersja:** 0.6
+**Data:** 2026-08-16
 **Status:** **obowiązujący** — źródłowy model pogody, produkcji OZE (PV, wiatr) i błędu
 prognozy dla uproszczonej wersji gry (01 v0.8, §2.4 i §5.2). Uproszczenie dotyczy silnika
 przepływu energii w sieci (01 §4) i nie zmienia niczego w tym modelu. Elementy „na przyszłość"
 wymienione w §10 pozostają odłożone ([90-pomysly-na-przyszlosc.md §2](90-pomysly-na-przyszlosc.md)).
+
+**Zmiany 0.5 → 0.6 (domknięcie testu §12.12):** test 12 dostaje **definicję epizodu
+Dunkelflaute w kalendarzu gry** (doba wyżu zimowego z produkcją referencyjnego portfela
+OZE poniżej 10% mocy zainstalowanej; epizod = ciąg kolejnych takich dób, także przez
+granicę miesiąca) i **pasma przeliczone na doby gry**. Dotychczasowe „2–5 epizodów ≥3 doby
+w roku" było statystyką kalendarza rzeczywistego i nie miało odpowiednika w modelu 3 dób
+na miesiąc — szczegóły i pomiar w §12.12. Reszta modelu bez zmian.
 
 **Zmiany 0.4 → 0.5 (weryfikacja pomiarowa na pełnym torze §8):** §6.1 rozstrzyga wreszcie
 konflikt λ vs CF — kolumna CF w 0.4 była **wartością analityczną** (całka Weibulla), a pełny
@@ -629,10 +636,38 @@ Implementacja jest poprawna, jeśli spełnia poniższe kontrole:
 | 9 | Stosunek energii PV grudzień : czerwiec | 1 : 10 do 1 : 12 |
 | 10 | Średnia prędkość wiatru styczeń : lipiec | ~1,43 : 1 |
 | 11 | Suma godzin z v ≥ 25 m/s w roku | 10–40 h (wyłączenia sztormowe) |
-| 12 | Liczba epizodów Dunkelflaute (≥3 doby) w roku | 2–5 |
+| 12 | Epizody Dunkelflaute w kalendarzu gry, na rok gry (definicja niżej) | doby: 4–6; epizody ≥2 dób: 1,0–1,5; epizody ≥3 dób: 0,8–1,4 |
 | 13 | Roczny CF wiatru w terenie osłoniętym (klasa z 0.5; por. test 7) | 13–18% |
 
 Testy 1–5 są **deterministyczne** i muszą przechodzić dokładnie. Testy 6–13 są statystyczne — weryfikować na symulacji 20+ lat.
+
+### 12.12 — definicja epizodu Dunkelflaute w kalendarzu gry
+
+**Doba Dunkelflaute** to doba gry, która spełnia oba warunki naraz:
+
+1. reżim doby to wyż zimowy — mroźny albo mglisty (§8.2);
+2. dobowy CF referencyjnego portfela OZE (1 MW wiatru w terenie otwartym + 1 MW PV,
+   §5–§6) jest **poniżej 10%** mocy zainstalowanej.
+
+**Epizod** to maksymalny ciąg kolejnych dób Dunkelflaute — także przez granicę
+miesiąca, bo reżim losuje się miesiącami (§8.4) i dwa wyżowe miesiące z rzędu dają
+jeden długi epizod, a nie dwa krótkie.
+
+Warunek 2 jest w praktyce prawie zawsze spełniony, gdy spełniony jest 1 (średni CF
+doby wyżowej to ~2,6%), i pełni rolę zabezpieczenia: gdyby strojenie reżimów kiedyś
+przepuściło wiatr do wyżu zimowego, doba przestanie się liczyć jako Dunkelflaute.
+
+**Dlaczego pasma są inne niż w 0.5.** Do 0.5 test brzmiał „liczba epizodów ≥3 doby
+w roku = 2–5" i była to statystyka **kalendarza rzeczywistego**. W grze doba
+reprezentuje ~10,13 dnia rzeczywistego (01 §2.1), więc epizod „≥3 doby gry" to
+~30 dni rzeczywistych — wielkość, która w rzeczywistej pogodzie nie występuje, a
+liczba epizodów w kalendarzu gry jest z definicji kilkukrotnie mniejsza niż
+w rzeczywistym. Pasma wyżej są przeliczone na doby gry i zmierzone na pełnym torze
+generacji (100 lat symulacji, 6 ziaren: doby 4,56–4,98; epizody ≥2 dób 1,19–1,28;
+≥3 dób 1,06–1,23). W przeliczeniu na kalendarz rzeczywisty odpowiada to ~47 dniom
+warunków Dunkelflaute rocznie — górna część tego, co daje pasmo z 0.5 (2–5 epizodów
+po 3–10 dni). Jeśli strojenie ekonomii uzna to za zbyt częste, właściwym miejscem
+korekty są miesięczne wagi reżimów (§8.3), a nie ten test.
 
 ---
 
