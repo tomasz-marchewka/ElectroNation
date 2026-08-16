@@ -8,6 +8,7 @@ import type {
   LineType,
   PlantTech,
   RegimeId,
+  StorageMode,
   StorageTech,
   TurnPhase,
 } from "../engine";
@@ -78,6 +79,25 @@ export const FARM_TECH_LABELS: Record<FarmTech, string> = {
 export const STORAGE_TECH_LABELS: Record<StorageTech, string> = {
   battery: "BESS",
   pumped: "ESP",
+};
+
+/**
+ * Technology as a setpoint row prints it: lowercase, acronyms kept
+ * (SetpointSlider.d.ts — "technologia małymi literami", yet the handoff's own
+ * example writes `CCGT`). The map keeps the uppercase set above.
+ */
+export const PLANT_TECH_INLINE_LABELS: Record<PlantTech, string> = {
+  nuclear: "jądrowa",
+  coal: "węgiel",
+  ccgt: "CCGT",
+  ocgt: "OCGT",
+};
+
+/** Storage modes of the ŁADUJ / STOP / ODDAWAJ control (01 §5.3). */
+export const STORAGE_MODE_LABELS: Record<StorageMode, string> = {
+  charge: "ŁADUJ",
+  idle: "STOP",
+  discharge: "ODDAWAJ",
 };
 
 /**

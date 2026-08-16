@@ -1,0 +1,139 @@
+/* ═══ ElectroNation — dispatcher panel ═══
+   The game's own layer, like app-shell.css: components.css next to it stays a
+   copy of the handoff, so everything the reference build solved with inline
+   styles (the setpoint column, the storage controls, the RES row) gets a class
+   here instead. No new visual values — tokens and proportions of the handoff. */
+
+/* The forecast value column: the handoff sized it for its four-digit mock
+   (`1500 ±33`). The game prints the unit as well (copy rules) and demand grows
+   into five digits as the map fills up (01 §3.4), so the column is wider. */
+.en-panel .en-statrow__value {
+  width: 104px;
+  white-space: nowrap;
+}
+
+/* ── NASTAWY ────────────────────────────────────────────
+   The section that gives: the handoff pins the commit button to the bottom of
+   the panel and scrolls the setpoint list instead, so a player with twenty
+   units still has the primary action in the same place. The panel's own
+   scrollbar (app-shell.css) stays as the fallback for a very short window. */
+.en-panel .en-section--grow {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* One unit per row, in merit order. */
+.en-setpoints {
+  display: flex;
+  flex-direction: column;
+  gap: var(--en-space-5);
+}
+
+/* components.css gives the track everything but its display mode — the
+   reference build sets that inline, on a <label> that is inline by default. */
+.en-setpoint__track {
+  display: block;
+}
+
+/* The native range input lies transparent over the drawn track, so the pointer
+   and the keyboard both work without reimplementing either. */
+.en-setpoint__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: ew-resize;
+}
+
+.en-setpoint__input:disabled {
+  cursor: default;
+}
+
+/* Storage: the slider carries the power, the row under it the mode and the SOC. */
+.en-unit__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--en-space-2);
+  margin-top: var(--en-space-3);
+}
+
+.en-soc {
+  display: flex;
+  align-items: center;
+  gap: var(--en-space-3);
+  margin-left: auto;
+  font-family: var(--en-font-mono);
+  font-size: var(--en-fs-micro);
+}
+
+.en-soc__track {
+  display: block;
+  width: 64px;
+  height: var(--en-track-h-sm);
+  background: var(--en-bg-track);
+}
+
+.en-soc__fill {
+  display: block;
+  height: 100%;
+  background: var(--en-ok);
+}
+
+.en-soc__value {
+  color: var(--en-ok);
+}
+
+/* RES: a pill and the weather's own number — never a slider (01 §4.1). */
+.en-farm {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--en-font-mono);
+  font-size: var(--en-fs-base);
+  color: var(--en-text);
+}
+
+.en-farm__name small {
+  font-size: inherit;
+  color: var(--en-text-3);
+}
+
+.en-farm__control {
+  display: flex;
+  align-items: center;
+  gap: var(--en-space-3);
+}
+
+/* ── actions ────────────────────────────────────────────
+   The screen's one primary button, with the (still inert) skip beside it. */
+.en-panel__actions {
+  display: flex;
+  gap: var(--en-space-4);
+  margin-top: var(--en-space-6);
+}
+
+.en-panel__actions .en-btn--block {
+  flex: 1;
+  width: auto;
+}
+
+/* ── day axis ───────────────────────────────────────────
+   The axis is a read-out until turn scrubbing lands (01 §2.5, M8): its cells
+   are disabled, so they may not offer a pointer or a hover state either. */
+.en-turn:disabled {
+  cursor: default;
+}
+
+.en-turn:disabled:hover {
+  color: var(--en-text-4);
+}
+
+.en-turn.is-past:disabled:hover {
+  color: var(--en-text-3);
+}
+
+.en-turn.is-current:disabled:hover {
+  color: var(--en-action-fg);
+}
