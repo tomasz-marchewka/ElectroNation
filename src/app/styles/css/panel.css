@@ -106,6 +106,91 @@
   gap: var(--en-space-3);
 }
 
+/* ── hex panel (M7) ─────────────────────────────────────
+   The catalogue of the reference build is a list of `.en-seg` buttons with the
+   name on the left and the price on the right; it set that up inline, so the
+   classes live here. Under an entry sit its size steppers and — where the hex
+   refuses it — the diagnosis. */
+.en-catalog,
+.en-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--en-space-3);
+}
+
+.en-catalog__entry {
+  display: flex;
+  flex-direction: column;
+  gap: var(--en-space-2);
+}
+
+.en-catalog__buy {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--en-space-4);
+  width: 100%;
+  padding: var(--en-space-3) var(--en-space-4);
+  text-align: left;
+  font-size: var(--en-fs-sm);
+}
+
+.en-catalog__name {
+  color: var(--en-text);
+}
+
+.en-catalog__buy:disabled .en-catalog__name {
+  color: var(--en-text-4);
+}
+
+.en-catalog__size {
+  display: block;
+  font-size: var(--en-fs-micro);
+  color: var(--en-text-4);
+}
+
+.en-catalog__price {
+  color: var(--en-text-2);
+  white-space: nowrap;
+}
+
+/* Refused, not hidden: the player reads WHY the entry is out of reach. */
+.en-note {
+  font-family: var(--en-font-mono);
+  font-size: var(--en-fs-micro);
+  color: var(--en-text-4);
+  margin-top: var(--en-space-1);
+}
+
+.en-stepper {
+  display: flex;
+  align-items: center;
+  gap: var(--en-space-2);
+  font-family: var(--en-font-mono);
+  font-size: var(--en-fs-micro);
+  color: var(--en-text-4);
+}
+
+.en-stepper__value {
+  min-width: 76px;
+  text-align: right;
+  color: var(--en-text-2);
+}
+
+.en-stepper__label {
+  margin-right: auto;
+}
+
+/* A disabled control keeps its shape: the system's filled disabled state
+   belongs to the primary button, and a hex panel can hold a column of refused
+   ghost actions. */
+.en-btn--ghost:disabled,
+.en-seg:disabled {
+  background: transparent;
+  border-color: var(--en-border);
+  color: var(--en-text-4);
+  cursor: not-allowed;
+}
+
 /* ── actions ────────────────────────────────────────────
    The screen's one primary button, with the (still inert) skip beside it. */
 .en-panel__actions {

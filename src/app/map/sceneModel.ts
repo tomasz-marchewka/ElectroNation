@@ -111,15 +111,37 @@ export interface MapSceneLabel {
   tone: MapLabelTone;
 }
 
-export interface MapSceneOverload {
+/** A piece of text the map writes next to a place on the board. */
+export interface MapSceneCallout {
   x: number;
   y: number;
   text: string;
 }
 
+export type MapSceneOverload = MapSceneCallout;
+
 export interface MapSceneSelection extends Point {
   /** Engine hex key of the selected tile — matches `MapSceneHex.key`. */
   key: string;
+}
+
+/** The route being drawn right now (01 §3.3, M7) — a preview, not a line yet. */
+export interface MapSceneRoute {
+  /** Polyline through the hex centers of the previewed route. */
+  points: Point[];
+  lineType: LineType;
+  /** The engine would accept it; a blocked route is drawn in the danger tone. */
+  valid: boolean;
+  /** Stops the player pinned by hand, drawn as markers on the route. */
+  waypoints: Point[];
+  /** Price and build time, written at the cursor end of the route. */
+  label: MapSceneCallout | null;
+}
+
+/** What POKAŻ WĄSKIE GARDŁO paints: one segment, or one node's hex. */
+export interface MapSceneHighlight {
+  kind: "segment" | "node";
+  points: Point[];
 }
 
 export interface MapScene {
@@ -135,8 +157,58 @@ export interface MapScene {
   /** The selected hex, if one is selected and it exists on this map. */
   selection: MapSceneSelection | null;
   overload: MapSceneOverload | null;
+  route: MapSceneRoute | null;
+  highlight: MapSceneHighlight | null;
   biomeLegend: BiomeLegendEntry[];
   scaleLabel: string;
+}
+
+/** The route the player is drawing, as the app's routing module computed it. */
+export interface RoutePreview {
+  path: readonly HexCoord[];
+  /** Stops pinned by hand — a subset of the path (01 §3.3). */
+  waypoints: readonly HexCoord[];
+  lineType: LineType;
+  valid: boolean;
+  /** Cost and time, e.g. `1,20 mld zł · 3 DOBY`. */
+  label: string;
+}
+
+/** What the interface asks the map to paint on top of the world (M7). */
+export interface MapSceneOverlay {
+  route?: RoutePreview | null;
+  bottleneck?: BottleneckRef | null;
+}
+
+/** What POKAŻ WĄSKIE GARDŁO points at — the tightest place in the report. */
+export type BottleneckRef =
+  | { kind: "segment"; segmentId: string }
+  | { kind: "node"; nodeId: string };
+
+/**
+ * The tightest spot of the resolved turn: the segment or capped node closest
+ * to its limit. Ties resolve by id, so one report always points at one place.
+ */
+export function worstBottleneck(report: TurnReport): BottleneckRef | null {
+  const candidates: { ratio: number; id: string; ref: BottleneckRef }[] = [];
+  for (const segment of report.segments) {
+    if (!(segment.capacityMw > 0) || !(segment.usedMw > IDLE_FLOW_MW)) continue;
+    candidates.push({
+      ratio: segment.usedMw / segment.capacityMw,
+      id: segment.segmentId,
+      ref: { kind: "segment", segmentId: segment.segmentId },
+    });
+  }
+  for (const node of report.nodes) {
+    if (!(node.throughputMw > 0) || !(node.usedMw > IDLE_FLOW_MW)) continue;
+    candidates.push({
+      ratio: node.usedMw / node.throughputMw,
+      id: node.nodeId,
+      ref: { kind: "node", nodeId: node.nodeId },
+    });
+  }
+  candidates.sort((a, b) => b.ratio - a.ratio || a.id.localeCompare(b.id));
+  return candidates[0]?.ref ?? null;
 }
 
 // --- Placement constants ----------------------------------------------------
@@ -157,6 +229,10 @@ const LINE_LABEL_DY = -8;
 /** Offset of the overload callout from its segment's midpoint (handoff). */
 const OVERLOAD_DX = 15;
 const OVERLOAD_DY = 15;
+
+/** Same offset for the routing callout, measured off the route's last hex. */
+const ROUTE_LABEL_DX = 15;
+const ROUTE_LABEL_DY = -15;
 
 /** Build progress a line makes per game day: 8 turns × 3 h (01 §2.6). */
 const BUILD_HOURS_PER_DAY = TURNS_PER_DAY * HOURS_PER_TURN;
@@ -282,10 +358,46 @@ function lineRemainingDays(builtHours: number, totalHours: number): number {
   return Math.max(0, Math.ceil((totalHours - builtHours) / BUILD_HOURS_PER_DAY));
 }
 
+/** The previewed route as the renderer takes it: pixels, not hexes. */
+function buildRoute(preview: RoutePreview | null | undefined): MapSceneRoute | null {
+  if (!preview || preview.path.length === 0) return null;
+  const points = preview.path.map(hexCenterOf);
+  const end = points[points.length - 1];
+  return {
+    points,
+    lineType: preview.lineType,
+    valid: preview.valid,
+    waypoints: preview.waypoints.map(hexCenterOf),
+    label:
+      end && preview.label !== ""
+        ? { x: end.x + ROUTE_LABEL_DX, y: end.y + ROUTE_LABEL_DY, text: preview.label }
+        : null,
+  };
+}
+
+/** The one place the player asked to see, taken straight from the report. */
+function buildHighlight(
+  state: GameState,
+  report: TurnReport | null,
+  routes: Map<string, Point[]>,
+  ref: BottleneckRef | null | undefined,
+): MapSceneHighlight | null {
+  if (!ref || !report) return null;
+  if (ref.kind === "node") {
+    const node = [...state.junctions, ...state.borders].find((item) => item.id === ref.nodeId);
+    return node ? { kind: "node", points: [hexCenterOf(node.hex)] } : null;
+  }
+  const segment = report.segments.find((candidate) => candidate.segmentId === ref.segmentId);
+  if (!segment) return null;
+  const points = (routes.get(segment.lineId) ?? []).slice(segment.fromIndex, segment.toIndex + 1);
+  return points.length > 0 ? { kind: "segment", points } : null;
+}
+
 export function buildMapScene(
   state: GameState,
   report: TurnReport | null,
   selected: HexCoord | null,
+  overlay: MapSceneOverlay = {},
 ): MapScene {
   const objects: MapSceneObject[] = [];
   const labels: MapSceneLabel[] = [];
@@ -499,6 +611,8 @@ export function buildMapScene(
       hottest === null
         ? null
         : { x: hottest.at.x + OVERLOAD_DX, y: hottest.at.y + OVERLOAD_DY, text: hottest.text },
+    route: buildRoute(overlay.route),
+    highlight: buildHighlight(state, report, routes, overlay.bottleneck),
     biomeLegend: biomeLegend(),
     scaleLabel: SCALE_LABEL,
   };

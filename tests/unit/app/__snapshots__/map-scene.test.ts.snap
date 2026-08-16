@@ -458,6 +458,7 @@ exports[`scene of a resolved turn > the whole scene model 1`] = `
       "y": 177,
     },
   ],
+  "highlight": null,
   "labels": [
     {
       "key": "line-5:build",
@@ -716,6 +717,7 @@ exports[`scene of a resolved turn > the whole scene model 1`] = `
     "x": 151,
     "y": 44.5,
   },
+  "route": null,
   "scaleLabel": "1 HEKS = 25 KM",
   "selection": {
     "key": "2,0",
