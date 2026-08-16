@@ -48,10 +48,7 @@ export interface Segment {
  * holds an object becomes a node on the route (01 §3.3 — a passing line taps
  * the object). Path endpoints must be objects.
  */
-export function buildSegments(
-  nodes: NetworkNode[],
-  lines: NetworkLine[],
-): Segment[] {
+export function buildSegments(nodes: NetworkNode[], lines: NetworkLine[]): Segment[] {
   const byHex = new Map<string, string>();
   for (const node of nodes) byHex.set(hexKey(node.hex), node.id);
 

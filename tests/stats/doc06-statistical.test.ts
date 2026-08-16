@@ -77,15 +77,9 @@ function simulate(seed: number): SimStats {
         rng = gen.rng;
         for (let hour = 0; hour < 24; hour++) {
           for (const windClass of ["sheltered", "open", "coastal", "baltic"] as WindClass[]) {
-            windSum[windClass] += turbinePowerFraction(
-              gen.weather.windMs[windClass][hour] ?? 0,
-            );
+            windSum[windClass] += turbinePowerFraction(gen.weather.windMs[windClass][hour] ?? 0);
           }
-          const pv = pvPowerMw(
-            1,
-            gen.weather.ghiW[hour] ?? 0,
-            gen.weather.tempC[hour] ?? 15,
-          );
+          const pv = pvPowerMw(1, gen.weather.ghiW[hour] ?? 0, gen.weather.tempC[hour] ?? 15);
           pvSum += pv;
           pvFarmSum += farmPowerMwAtHour(fullFarm, gen.weather, hour);
           pvDimFarmSum += farmPowerMwAtHour(dimFarm, gen.weather, hour);
@@ -111,9 +105,7 @@ function simulate(seed: number): SimStats {
     pvFarmCf: pvFarmSum / hours,
     pvDimFarmCf: pvDimFarmSum / hours,
     pvEnergyByMonth,
-    meanSpeedByMonth: speedSumByMonth.map(
-      (sum, m) => sum / (speedHoursByMonth[m] ?? 1),
-    ),
+    meanSpeedByMonth: speedSumByMonth.map((sum, m) => sum / (speedHoursByMonth[m] ?? 1)),
     stormHoursPerRealYear: (stormHours / YEARS) * REAL_DAYS_PER_GAME_DAY,
   };
 }
@@ -187,4 +179,6 @@ describe("doc 06 §12.11: storm-cutout hours per year = 10–40", () => {
   });
 });
 
-test.todo("§12.12: Dunkelflaute episodes (≥3 days) per year = 2–5 (needs an episode mapping for the 3-day calendar)");
+test.todo(
+  "§12.12: Dunkelflaute episodes (≥3 days) per year = 2–5 (needs an episode mapping for the 3-day calendar)",
+);

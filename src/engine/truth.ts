@@ -12,12 +12,7 @@ import { FORECAST_LEVELS, type ForecastLevel } from "./config";
 import { cityDemandDayMw, type DayType } from "./demand";
 import { nextFloat01, seedStream, type PrngState } from "./prng";
 import { quantize001 } from "./quantize";
-import {
-  pickMonthRegimes,
-  pickRegimeForecast,
-  type MonthRegimes,
-  type RegimeId,
-} from "./regimes";
+import { pickMonthRegimes, pickRegimeForecast, type MonthRegimes, type RegimeId } from "./regimes";
 import { DAYS_PER_MONTH, DAYS_PER_YEAR, type CityState, type DayTruth } from "./state";
 import { generateWeatherDay } from "./weather";
 
@@ -60,10 +55,7 @@ function drawUniforms(rng: PrngState, count: number): number[] {
  * regimes, whichever day of it is asked about.
  */
 export function monthRegimesForDay(seed: number, dayIndex: number): MonthRegimes {
-  const u = drawUniforms(
-    seedStream(seed, `regime-month-${monthIndexForGameDay(dayIndex)}`),
-    3,
-  );
+  const u = drawUniforms(seedStream(seed, `regime-month-${monthIndexForGameDay(dayIndex)}`), 3);
   return pickMonthRegimes(monthForGameDay(dayIndex), [u[0] ?? 0, u[1] ?? 0, u[2] ?? 0]);
 }
 
@@ -101,11 +93,7 @@ export function monthRegimeForecastForDay(
  * (05 §6). The resulting error is a fraction of a percent over a ≤7-day horizon
  * and is not measurable by the player — see 06 §8.6.3.
  */
-export function generateDayTruth(
-  seed: number,
-  dayIndex: number,
-  cities: CityState[],
-): DayTruth {
+export function generateDayTruth(seed: number, dayIndex: number, cities: CityState[]): DayTruth {
   const month = monthForGameDay(dayIndex);
   const dayType = dayTypeForGameDay(dayIndex);
   const dayOfYear = dayOfYearForGameDay(dayIndex);
@@ -127,8 +115,7 @@ export function generateDayTruth(
     const u2 = nextFloat01(u1.state);
     fRng = u2.state;
     const z =
-      Math.sqrt(-2 * Math.log(Math.max(u1.value, 1e-12))) *
-      Math.cos(2 * Math.PI * u2.value);
+      Math.sqrt(-2 * Math.log(Math.max(u1.value, 1e-12))) * Math.cos(2 * Math.PI * u2.value);
     return quantize001(Math.max(-3, Math.min(3, z)));
   };
   const forecastZ = { wind: drawZ(), pv: drawZ(), demand: drawZ() };

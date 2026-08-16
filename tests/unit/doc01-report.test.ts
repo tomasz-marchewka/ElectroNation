@@ -144,9 +144,7 @@ describe("01 §4.5: energy not served per city", () => {
     expect(report.totals.ensMw).toBeCloseTo(report.totals.demandMw, 3);
     // ENS penalty is the only money flow of this turn.
     expect(report.finance.ensPenaltyPln).toBeGreaterThan(0);
-    expect(
-      Math.abs(report.finance.ensPenaltyPln + report.finance.netPln),
-    ).toBeLessThanOrEqual(1);
+    expect(Math.abs(report.finance.ensPenaltyPln + report.finance.netPln)).toBeLessThanOrEqual(1);
   });
 });
 

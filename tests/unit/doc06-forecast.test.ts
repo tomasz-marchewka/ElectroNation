@@ -118,10 +118,7 @@ describe("doc 06 §8.6.1: forecast is a noisy view of existing truth", () => {
       const truth = state.dayTruth.cityDemandMw[cityId]?.[hour] ?? 0;
       const peak = Math.max(...(state.dayTruth.cityDemandMw[cityId] ?? [1]));
       const relative = ((point?.mw ?? 0) - truth) / peak;
-      expect(relative).toBeCloseTo(
-        state.dayTruth.forecastZ.demand * sigmaDemand(hour + 1),
-        10,
-      );
+      expect(relative).toBeCloseTo(state.dayTruth.forecastZ.demand * sigmaDemand(hour + 1), 10);
     }
   });
 

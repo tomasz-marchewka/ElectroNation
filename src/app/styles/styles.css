@@ -1,0 +1,10 @@
+/* Jedyny punkt wejścia CSS gry — kolejność jak w handoffie
+   (design-system/styles.css), plus rama ekranu gry na końcu. */
+@import url("tokens/fonts.css");
+@import url("tokens/colors.css");
+@import url("tokens/typography.css");
+@import url("tokens/layout.css");
+@import url("tokens/motion.css");
+@import url("css/base.css");
+@import url("css/components.css");
+@import url("css/app-shell.css");

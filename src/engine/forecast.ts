@@ -8,19 +8,9 @@
 // a look-ahead day is generated on demand from that day's own PRNG streams, so
 // what the forecast points at today is bit-for-bit what the day resolves to.
 
-import {
-  CONFIG,
-  FORECAST_LEVELS,
-  STORAGE_TECHS,
-  type ForecastLevel,
-} from "./config";
+import { CONFIG, FORECAST_LEVELS, STORAGE_TECHS, type ForecastLevel } from "./config";
 import type { DayType } from "./demand";
-import {
-  HOURS_PER_TURN,
-  type DayTruth,
-  type FarmState,
-  type GameState,
-} from "./state";
+import { HOURS_PER_TURN, type DayTruth, type FarmState, type GameState } from "./state";
 import { generateDayTruth } from "./truth";
 import { farmPowerMwAtHour } from "./weather";
 
@@ -34,8 +24,7 @@ const HOURS_PER_DAY = 24;
  */
 function levelScale(level: ForecastLevel, dayOffset: number): number {
   return (
-    FORECAST_LEVELS[level].sigmaMultiplier *
-    (1 + CONFIG.forecastSigmaGrowthPerDay) ** dayOffset
+    FORECAST_LEVELS[level].sigmaMultiplier * (1 + CONFIG.forecastSigmaGrowthPerDay) ** dayOffset
   );
 }
 
@@ -81,10 +70,7 @@ export function forecastHorizonDays(state: GameState): number {
  * forecast horizon. Day 0 is the state's own truth; later days are generated
  * from their day-keyed streams (see truth.ts on the city-roster caveat).
  */
-export function dayTruthAtOffset(
-  state: GameState,
-  dayOffset: number,
-): DayTruth | undefined {
+export function dayTruthAtOffset(state: GameState, dayOffset: number): DayTruth | undefined {
   if (!Number.isInteger(dayOffset) || dayOffset < 0) return undefined;
   if (dayOffset >= forecastHorizonDays(state)) return undefined;
   if (dayOffset === 0) return state.dayTruth;
@@ -96,9 +82,7 @@ export function dayTruthAtOffset(
  * before the pending block of the current day are revealed truth (horizon ≤ 0).
  */
 function horizonHours(state: GameState, hour: number, dayOffset: number): number {
-  return (
-    dayOffset * HOURS_PER_DAY + hour - state.calendar.turnIndex * HOURS_PER_TURN + 1
-  );
+  return dayOffset * HOURS_PER_DAY + hour - state.calendar.turnIndex * HOURS_PER_TURN + 1;
 }
 
 function demandPoint(
@@ -203,10 +187,7 @@ export interface DayForecast {
  * Whole-day aggregated forecast — what the multi-day panel draws. Generates the
  * day's truth once, unlike per-hour calls. Undefined past the horizon.
  */
-export function dayForecast(
-  state: GameState,
-  dayOffset: number,
-): DayForecast | undefined {
+export function dayForecast(state: GameState, dayOffset: number): DayForecast | undefined {
   const truth = dayTruthAtOffset(state, dayOffset);
   if (!truth) return undefined;
   const level = state.forecastLevel;
@@ -289,10 +270,7 @@ export function projectBalance(state: GameState): BalanceProjectionPoint[] {
   for (const storage of state.storages) {
     const leg = Math.sqrt(STORAGE_TECHS[storage.tech].cycleEfficiency);
     if (storage.setpoint.mode === "discharge") {
-      dispatchableMw += Math.min(
-        storage.setpoint.mw,
-        (storage.socMwh * leg) / HOURS_PER_TURN,
-      );
+      dispatchableMw += Math.min(storage.setpoint.mw, (storage.socMwh * leg) / HOURS_PER_TURN);
     } else if (storage.setpoint.mode === "charge") {
       extraLoadMw += Math.min(
         storage.setpoint.mw,

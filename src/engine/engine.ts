@@ -69,11 +69,7 @@ import {
   type TurnCityReport,
   type TurnReport,
 } from "./state";
-import {
-  generateDayTruth,
-  monthRegimeForecastForDay,
-  monthRegimesForDay,
-} from "./truth";
+import { generateDayTruth, monthRegimeForecastForDay, monthRegimesForDay } from "./truth";
 import { farmPowerMwAtHour } from "./weather";
 
 export { CONFIG } from "./config";
@@ -88,12 +84,7 @@ export function newGame(seed: number, scenario: Scenario = MAP_V1): GameState {
     calendar: { dayIndex: 0, turnIndex: 0 },
     rng: { cityGrowth: seedStream(seed, "city-growth") },
     monthRegimes,
-    monthRegimeForecast: monthRegimeForecastForDay(
-      seed,
-      0,
-      monthRegimes.dominant,
-      forecastLevel,
-    ),
+    monthRegimeForecast: monthRegimeForecastForDay(seed, 0, monthRegimes.dominant, forecastLevel),
     forecastLevel,
     ...fields,
     dayTruth: generateDayTruth(seed, 0, fields.cities),
@@ -138,9 +129,7 @@ export function applyAction(state: GameState, action: Action): GameState {
       return {
         ...state,
         plants: state.plants.map((p) =>
-          p.id === action.plantId
-            ? { ...p, setpointMw: clampMw(action.mw, p.capacityMw) }
-            : p,
+          p.id === action.plantId ? { ...p, setpointMw: clampMw(action.mw, p.capacityMw) } : p,
         ),
       };
     case "setStorage":
@@ -351,8 +340,7 @@ export function resolveTurn(state: GameState): GameState {
     .filter((s) => s.setpoint.mode === "charge")
     .map((storage) => {
       const eta = legEfficiency(STORAGE_TECHS[storage.tech].cycleEfficiency);
-      const headroomMw =
-        (storage.capacityMwh - storage.socMwh) / (HOURS_PER_TURN * eta);
+      const headroomMw = (storage.capacityMwh - storage.socMwh) / (HOURS_PER_TURN * eta);
       return {
         id: storage.id,
         nodeId: storage.id,
@@ -385,10 +373,7 @@ export function resolveTurn(state: GameState): GameState {
 
   const usedTotal = new Map<string, number>();
   for (const s of sources) {
-    usedTotal.set(
-      s.id,
-      (usedAfterCharge[s.id] ?? 0) + (exportPass.usedMwBySource[s.id] ?? 0),
-    );
+    usedTotal.set(s.id, (usedAfterCharge[s.id] ?? 0) + (exportPass.usedMwBySource[s.id] ?? 0));
   }
 
   // 02 §4 steps 6–8: dump penalty, ENS, finances (all flow-derived money
@@ -473,8 +458,7 @@ export function resolveTurn(state: GameState): GameState {
   // Fixed O&M hits at day end only (yearly / 365 × represented days — 01 §6).
   const fixedCostPln =
     nextTurn < TURNS_PER_DAY ? 0 : Math.round((yearlyFixedCostsPln(state) / 365) * weight);
-  const moneyPln =
-    state.moneyPln + Math.round((revenuePln - costsPln) * weight) - fixedCostPln;
+  const moneyPln = state.moneyPln + Math.round((revenuePln - costsPln) * weight) - fixedCostPln;
 
   // The turn's bet against the forecast (01 §2.3): block averages of what the
   // pre-reveal forecast promised vs the revealed truth. Disabled farms are the
@@ -519,10 +503,7 @@ export function resolveTurn(state: GameState): GameState {
   };
   let resCurtailedMw = 0;
   for (const farm of state.farms) {
-    resCurtailedMw += Math.max(
-      0,
-      (farmBlockMw.get(farm.id) ?? 0) - (usedTotal.get(farm.id) ?? 0),
-    );
+    resCurtailedMw += Math.max(0, (farmBlockMw.get(farm.id) ?? 0) - (usedTotal.get(farm.id) ?? 0));
   }
 
   const report: TurnReport = {
@@ -721,12 +702,7 @@ export function resolveTurn(state: GameState): GameState {
   // the forecast level owned at that moment (06 §8.4 pt 5).
   const monthRegimeForecast =
     nextDay % DAYS_PER_MONTH === 0
-      ? monthRegimeForecastForDay(
-          state.seed,
-          nextDay,
-          monthRegimes.dominant,
-          state.forecastLevel,
-        )
+      ? monthRegimeForecastForDay(state.seed, nextDay, monthRegimes.dominant, state.forecastLevel)
       : state.monthRegimeForecast;
   return {
     ...done,

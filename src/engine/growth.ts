@@ -46,10 +46,7 @@ export function evaluateMonthlyGrowth(
       const shrink = (1 - served) * CITY_GROWTH.shrinkFactor;
       return {
         ...reset,
-        households: Math.max(
-          CITY_GROWTH.minHouseholds,
-          Math.round(city.households * (1 - shrink)),
-        ),
+        households: Math.max(CITY_GROWTH.minHouseholds, Math.round(city.households * (1 - shrink))),
         firms: Math.max(CITY_GROWTH.minFirms, Math.round(city.firms * (1 - shrink))),
       };
     }

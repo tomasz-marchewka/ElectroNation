@@ -138,9 +138,7 @@ function expectWithinSiteLimits(state: GameState): void {
       expect(storage.powerMw).toBeLessThanOrEqual(BATTERY.maxPowerMwPerHex);
       expect(storage.capacityMwh).toBeLessThanOrEqual(BATTERY.maxCapacityMwhPerHex);
     } else {
-      expect(storage.powerMw).toBeLessThanOrEqual(
-        PUMPED_BLOCK.maxBlocks * PUMPED_BLOCK.powerMw,
-      );
+      expect(storage.powerMw).toBeLessThanOrEqual(PUMPED_BLOCK.maxBlocks * PUMPED_BLOCK.powerMw);
     }
   }
   for (const junction of state.junctions) {

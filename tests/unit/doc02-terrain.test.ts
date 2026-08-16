@@ -93,9 +93,9 @@ describe("doc 02 §8.1: terrain multiplies what a route costs", () => {
       expect(
         apply(state, { type: "buildPlant", tech: "ocgt", capacityMw: 50, hex: at(1, 0) }),
       ).toBe(state);
-      expect(
-        apply(state, { type: "buildFarm", tech: "pv", capacityMw: 50, hex: at(1, 0) }),
-      ).toBe(state);
+      expect(apply(state, { type: "buildFarm", tech: "pv", capacityMw: 50, hex: at(1, 0) })).toBe(
+        state,
+      );
     }
   });
 });
@@ -113,10 +113,7 @@ describe("doc 01 §3.2: pumped storage needs elevation AND water next to it", ()
   });
 
   test("plains next to a lake are refused as well", () => {
-    const state = newGame(
-      5,
-      makeScenario({ terrain: { [NEIGHBOR_KEY]: "lake" } }),
-    );
+    const state = newGame(5, makeScenario({ terrain: { [NEIGHBOR_KEY]: "lake" } }));
     expect(apply(state, build)).toBe(state);
   });
 

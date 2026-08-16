@@ -1,0 +1,137 @@
+/* ═══ ElectroNation — kolory ═══
+   :root  = motyw CIEMNY (domyślny, sala dyspozytorska)
+   [data-theme="light"] = motyw JASNY (ten sam układ, chłodna jasna paleta)
+   Konwencja: --en-<rola>. Biomy: --en-biome-<nazwa>-{fill,edge,tex}. */
+
+:root {
+  color-scheme: dark;
+
+  /* — powierzchnie — */
+  --en-bg-app: #0b0f15;
+  --en-bg-header: #0e141d;
+  --en-bg-map: #070b10;
+  --en-bg-panel: #0f151e;
+  --en-bg-panel-sunk: #0c1219;
+  --en-bg-chart: #0a0f16;
+  --en-bg-track: #0a1018;
+  --en-bg-tint-ok: #101a12;
+  --en-bg-tint-info: #12202e;
+  --en-bg-report: #0c1017;
+
+  /* — obrysy — */
+  --en-border: #1e2a3a;
+  --en-border-subtle: #141d29;
+  --en-border-strong: #33465c;
+
+  /* — tekst — */
+  --en-text: #eaf3fc;
+  --en-text-2: #8fa2b5;
+  --en-text-3: #6b7c8f;
+  --en-text-4: #54687d;
+
+  /* — stany systemu (obciążenie linii, bilans, alarmy) — */
+  --en-ok: #37d67a;
+  --en-warn: #f5a623;
+  --en-warn-text: #f5a623;
+  --en-danger: #ff5252;
+  --en-danger-text: #ff8a8a;
+  --en-info: #38bdd8;
+  --en-idle: #33465c;
+
+  /* — akcja główna (zatwierdzenie tury) — */
+  --en-action: #f5a623;
+  --en-action-fg: #0b0f15;
+
+  /* — technologie wytwarzania (wykres doby, ikony, suwaki) — */
+  --en-coal: #7a6248;
+  --en-coal-ico: #e08c3c;
+  --en-gas: #d99a3d;
+  --en-gas-ico: #f5a623;
+  --en-wind: #38bdd8;
+  --en-pv: #f5d76e;
+  --en-storage: #9b7fd4;
+
+  /* — mapa — */
+  --en-obj-ring: #7d99b8;
+  --en-city-ring: #a8c2dd;
+  --en-map-label: #8296aa;
+  --en-map-label-city: #cfe0ef;
+  --en-map-scale: #4a5f74;
+  --en-map-pad: #0b0f15;
+  --en-map-pad-opacity: 0.78;
+
+  /* — biomy heksów: fill = wypełnienie, edge = obrys, tex = faktura — */
+  --en-biome-nizina-fill: #18261f;  --en-biome-nizina-edge: #2f4a3a;  --en-biome-nizina-tex: #3a5c47;
+  --en-biome-wyzyna-fill: #262719;  --en-biome-wyzyna-edge: #454529;  --en-biome-wyzyna-tex: #565534;
+  --en-biome-gory-fill: #2b323b;    --en-biome-gory-edge: #414b57;    --en-biome-gory-tex: #4d5866;
+  --en-biome-las-fill: #0f2a1a;     --en-biome-las-edge: #1d5130;     --en-biome-las-tex: #2f8047;
+  --en-biome-bagno-fill: #1b2a2b;   --en-biome-bagno-edge: #2c4344;   --en-biome-bagno-tex: #35514f;
+  --en-biome-jezioro-fill: #0d2439; --en-biome-jezioro-edge: #1a3c58; --en-biome-jezioro-tex: #215073;
+  --en-biome-morze-fill: #0a1d31;   --en-biome-morze-edge: #153450;   --en-biome-morze-tex: #1c476b;
+  --en-biome-miasto-fill: #2a2a35;  --en-biome-miasto-edge: #41415a;  --en-biome-miasto-tex: #585873;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  --en-bg-app: #eef1f5;
+  --en-bg-header: #e7eff7;
+  --en-bg-map: #e6ebf1;
+  --en-bg-panel: #f3f8fc;
+  --en-bg-panel-sunk: #dde8f3;
+  --en-bg-chart: #f2f5f8;
+  --en-bg-track: #d2dfea;
+  --en-bg-tint-ok: #dbeee2;
+  --en-bg-tint-info: #d8ebf3;
+  --en-bg-report: #e4edf6;
+
+  /* nagłówek panelu: mocniejszy odcień niż korpus panelu */
+  --en-panel-head-bg: #dbe7f4;
+  /* etykiety sekcji dostają barwę zamiast szarości */
+  --en-label-accent: #2f6b83;
+
+  --en-border: #c2d2e0;
+  --en-border-subtle: #d7e2ee;
+  --en-border-strong: #9fb3c6;
+
+  --en-text: #0f1c2a;
+  --en-text-2: #52687d;
+  --en-text-3: #52687d;
+  --en-text-4: #7891a8;
+
+  --en-ok: #1f9e5a;
+  --en-warn: #c07c14;
+  --en-warn-text: #a06508;
+  --en-danger: #d63b3b;
+  --en-danger-text: #c04040;
+  --en-info: #1583a0;
+  --en-idle: #a9b8c6;
+
+  --en-action: #c07c14;
+  --en-action-fg: #ffffff;
+
+  --en-coal: #8a6d4e;
+  --en-coal-ico: #b06a28;
+  --en-gas: #c8892a;
+  --en-gas-ico: #c07c14;
+  --en-wind: #3b9ec0;
+  --en-pv: #b8931c;
+  --en-storage: #6f5aa8;
+
+  --en-obj-ring: #5d7186;
+  --en-city-ring: #33465c;
+  --en-map-label: #5d6f82;
+  --en-map-label-city: #1b2733;
+  --en-map-scale: #93a3b2;
+  --en-map-pad: #f7f9fb;
+  --en-map-pad-opacity: 0.82;
+
+  --en-biome-nizina-fill: #e3efe4;  --en-biome-nizina-edge: #bfd6c2;  --en-biome-nizina-tex: #a3c1a8;
+  --en-biome-wyzyna-fill: #ecebd2;  --en-biome-wyzyna-edge: #cbc9a0;  --en-biome-wyzyna-tex: #b0ad7e;
+  --en-biome-gory-fill: #dcdfe4;    --en-biome-gory-edge: #b3bac4;    --en-biome-gory-tex: #98a1ae;
+  --en-biome-las-fill: #d0e6cc;     --en-biome-las-edge: #9cc596;     --en-biome-las-tex: #74ab6d;
+  --en-biome-bagno-fill: #dbe8e2;   --en-biome-bagno-edge: #aac7bb;   --en-biome-bagno-tex: #88ab9c;
+  --en-biome-jezioro-fill: #cfe2f0; --en-biome-jezioro-edge: #9dc2dd; --en-biome-jezioro-tex: #7aa8ca;
+  --en-biome-morze-fill: #c2d9ec;   --en-biome-morze-edge: #8fb6d6;   --en-biome-morze-tex: #6b9bc4;
+  --en-biome-miasto-fill: #e6e2ee;  --en-biome-miasto-edge: #c0b8d2;  --en-biome-miasto-tex: #a196ba;
+}

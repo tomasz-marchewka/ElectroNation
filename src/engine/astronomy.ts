@@ -28,10 +28,7 @@ export function sinSolarAltitude(
   const phi = latitudeDeg * DEG;
   const delta = solarDeclinationDeg(dayOfYear) * DEG;
   const omega = hourAngleDeg(solarHour) * DEG;
-  return (
-    Math.sin(phi) * Math.sin(delta) +
-    Math.cos(phi) * Math.cos(delta) * Math.cos(omega)
-  );
+  return Math.sin(phi) * Math.sin(delta) + Math.cos(phi) * Math.cos(delta) * Math.cos(omega);
 }
 
 /** §3.4: solar altitude α [deg]; negative below the horizon. */
@@ -44,18 +41,12 @@ export function solarAltitudeDeg(
 }
 
 /** §3.4: solar altitude at solar noon, α_max [deg]. */
-export function maxSolarAltitudeDeg(
-  latitudeDeg: number,
-  dayOfYear: number,
-): number {
+export function maxSolarAltitudeDeg(latitudeDeg: number, dayOfYear: number): number {
   return 90 - latitudeDeg + solarDeclinationDeg(dayOfYear);
 }
 
 /** §3.6: hour angle of sunset ω_s [deg]; 180 = polar day, 0 = polar night. */
-export function sunsetHourAngleDeg(
-  latitudeDeg: number,
-  dayOfYear: number,
-): number {
+export function sunsetHourAngleDeg(latitudeDeg: number, dayOfYear: number): number {
   const phi = latitudeDeg * DEG;
   const delta = solarDeclinationDeg(dayOfYear) * DEG;
   const cosOmegaS =
