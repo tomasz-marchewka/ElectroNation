@@ -1,10 +1,15 @@
 # ElectroNation — Model symulacji uproszczonej (silnik tury)
 
-**Wersja:** 0.3
-**Data:** 2026-08-16
+**Wersja:** 0.4
+**Data:** 2026-08-18
 **Status:** **obowiązuje** — formalizuje rdzeń mechaniki z dokumentu 01 §4 (graf sieci,
 rozpływ, straty, niedobory) oraz krok rozstrzygnięcia tury. Wprowadzona tu zmiana 01 §4.1
 (nadwyżka sterowalna karana) obowiązuje od 01 v0.16.
+
+**Zmiany 0.3 → 0.4 (archiwum tur):** krok rozstrzygnięcia dostaje punkt 9 — **skrót tury**
+dopisywany do trwałego archiwum w stanie gry (§4.1), pod wstęgę czasu i podgląd tur wstecz
+z 01 v0.18 §8 pkt 2. Rachunek rozpływu, kar i finansów bez zmian; nowy test akceptacyjny
+§9.12.
 
 **Zmiany 0.2 → 0.3:** reguła rozbudowy §8.4 rozszerzona na **linie** (01 §4.2 w 0.17):
 85% CAPEX-u / 70% czasu typu docelowego, praca na starym typie do końca robót, miejsce
@@ -132,10 +137,47 @@ Kolejność jest częścią kontraktu silnika:
    (od energii **wykorzystanej**, §5), kara za zrzut, kara za niedobór; postęp budów
    (linie: długość bloku, obiekty: licznik dób). Koszty stałe nalicza się raz na dobę
    (01 §6). SOC magazynów po sprawnościach.
+9. **Archiwum**: dopisanie **skrótu tury** (§4.1) na koniec trwałego archiwum w stanie gry.
 
 Priorytet miasta → ładowanie → eksport (**DECYZJA 4**) obowiązuje przez rozdzielenie
 na trzy przebiegi: przy ciasnej sieci eksport i ładowanie nigdy nie odbierają miastom
 przepustowości.
+
+### 4.1 Skrót tury — archiwum pod wstęgę czasu
+
+Wstęga czasu i podgląd tur wstecz (01 §8 pkt 2, §2.5) wymagają, żeby **każda rozstrzygnięta
+tura** została w stanie gry na zawsze — także po wczytaniu zapisu. Trzymanie w tym celu
+pełnych raportów tur jest wykluczone rachunkiem: pełny raport waży ~3,7 KB na sieci
+średniozaawansowanej (4 miasta, 7 źródeł, 11 segmentów), z czego połowę zjadają przepływy
+per segment; na dojrzałej sieci (~150 segmentów) to 25–30 KB. Rok gry = 288 tur, czyli
+1 MB → 7–8 MB **na rok gry**, serializowanych przy każdym autozapisie, czyli po każdej turze.
+
+**DECYZJA: archiwum trzyma skrót, nie raport.** Skrót zawiera dokładnie tyle, ile rysuje
+wstęga i pisze pasek raportu:
+
+| Grupa | Zawartość |
+|---|---|
+| Pozycja | doba, tura, typ doby, miesiąc, reżim, waga doby |
+| Sumy | popyt, dostarczenie, niedobór, straty, zrzut sterowalny, przycięcie OZE |
+| Pokrycie | 7 warstw mocy **wykorzystanej**: jądrowa, węgiel, gaz, wiatr, PV, magazyn, import |
+| Zakład z prognozą | popyt / wiatr / PV: prognoza, pasmo ±1σ z chwili zakładu, prawda |
+| Finanse | pełne rozbicie przychodów, kosztów i kar + `net` równy zmianie budżetu |
+| Niedobór | lista miast z niedoborem (identyfikator + moc), tylko niezerowe |
+
+Skrót waży ~0,7 KB, czyli **~200 KB na rok gry** i ~2 MB na dziesięć lat gry — na tyle
+mało, że archiwum jest **nielimitowane**; nie ma progu, po którym gra zapomina turę.
+
+Trzy konsekwencje, które są częścią kontraktu:
+
+1. **Rozbicie na warstwy liczy silnik w chwili rozstrzygnięcia**, nie interfejs przy
+   rysowaniu. Technologia źródła jest własnością obiektu, a obiekty przybywają i zmieniają
+   się w czasie; historia nie może zależeć od tego, co stoi na mapie dzisiaj.
+2. **Pełny raport pozostaje wyłącznie dla tury ostatniej.** To on zasila kolorowanie mapy
+   i warunki stopu przewijania (01 §2.5) — obie rzeczy dotyczą teraźniejszości, a mapa
+   z założenia nie cofa się razem ze wstęgą (01 §8 pkt 1).
+3. **Archiwum jest wynikiem, nie źródłem losowości**: żadnego PRNG, dopisanie w czasie
+   stałym, koszt tury niezależny od długości historii (test wydajnościowy „rok gry
+   pozostaje liniowy").
 
 ## 5. Nadwyżka — zrzut i kara
 
@@ -310,6 +352,10 @@ Testy specyfikacyjne cytują sekcje tego dokumentu:
     liczą się od **starego** typu, po ukończeniu od nowego; rozbudowa w dół, rozbudowa
     linii w budowie i druga rozbudowa tej samej linii są odrzucane; linia w rozbudowie
     zajmuje korytarz (⩽9/heks) w obu typach.
+12. **§4.1** — archiwum: po `n` rozstrzygniętych turach archiwum ma `n` skrótów w kolejności
+    kalendarza, bez luk; skrót tury `k` jest identyczny z tym, co pasek raportu pokazywał
+    na żywo po turze `k`; suma `net` skrótów doby = `WYNIK DOBY`; suma warstw pokrycia =
+    dostarczenie + straty; round-trip zapisu nie gubi ani jednego skrótu.
 
 ## 10. Pytania otwarte
 
@@ -320,6 +366,10 @@ Testy specyfikacyjne cytują sekcje tego dokumentu:
 3. **Zachłanność rozpływu**: czy przypadki, w których kolejne-najtańsze-ścieżki
    dostarczają mniej niż optimum, są w praktyce odczuwalne — obserwować na goldenach;
    ewentualna wymiana na pełny min-cost flow jest lokalna (kontrakt §3.1 bez zmian).
+4. **Rozmiar archiwum w bardzo długiej kampanii** (§4.1): przy ~200 KB na rok gry zapis
+   przekroczy megabajt po ~5 latach gry, a autozapis serializuje go co turę. Obserwować;
+   furtką jest zgrubianie tur starszych niż rok do agregatów dobowych — bez zmiany
+   kontraktu, bo wstęga i tak rysuje tylko okno widoczne.
 
 ## 11. Wpływ na inne dokumenty
 
@@ -332,3 +382,11 @@ Testy specyfikacyjne cytują sekcje tego dokumentu:
 - **04 (katalog)** — konsoliduje tabele 01 §5 + §8 tego dokumentu.
 - **05 §6.1** — `U` liczone z liczników niedoboru per miasto z §6 (bez zmian w 05).
 - **07 (mapa)** — generator proceduralny; do tego czasu obowiązuje ręczna mapa §8.6.
+- **01 §2.4, §8 pkt 1–2, §2.5** — zaktualizowane w 01 v0.18: wstęga czasu, podgląd tur
+  wstecz, mapa zawsze na turze ostatniej, horyzont kroczący. §4.1 tego dokumentu jest
+  kontraktem silnika dla archiwum.
+- **06 §8.6.3** — horyzont kroczący (`1 ≤ h ≤ 24·D`) i wymóg dostępności prawdy dla
+  `Δdoba ≤ D`; zaktualizowane w 06 v0.7.
+- **08 (interfejs)** — wstęga czasu jest pierwszym elementem ekranu, którego handoff
+  wizualny nie opisuje: przewijanie, separatory dób i karta prognozy na pasku raportu
+  wymagają projektu.

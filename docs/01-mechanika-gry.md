@@ -1,8 +1,31 @@
 # ElectroNation — Dokument bazowy mechaniki gry
 
-**Wersja:** 0.17 (dokument koncepcyjny)
-**Data:** 2026-08-16
+**Wersja:** 0.18 (dokument koncepcyjny)
+**Data:** 2026-08-18
 **Status:** obowiązuje **wersja uproszczona** gry; mechaniki odłożone czekają w [90-pomysly-na-przyszlosc.md](90-pomysly-na-przyszlosc.md)
+
+**Zmiany 0.17 → 0.18 (wstęga czasu: przegląd tur wstecz i horyzont kroczący):**
+
+1. **Oś tur i wykres doby zlewają się we wstęgę czasu** (§8 pkt 2): jedna wstęga przewijana
+   lewo-prawo, o wspólnej osi X, sięgająca wstecz do pierwszej rozegranej tury i w przód do
+   granicy horyzontu prognozy. Doba to nadal 8 tur po 3 h (§2.2) — wstęga pokazuje ich
+   więcej niż osiem naraz, ale nigdy nie zmienia jednostki.
+2. **Klik w turę = podgląd, nigdy ruch czasu** (§2.5). Przewijanie zostaje przy swoim
+   przycisku obok „następnej tury", a wybór tury na wstędze tylko nadaje mu cel. Wcześniej
+   klik w komórkę przyszłej tury nieodwracalnie rozstrzygał tury — jedno mylne kliknięcie
+   zjadało pół doby.
+3. **Raport na dole opisuje turę wybraną, nie zawsze ostatnią** (§2.3, §8 pkt 5). Domyślnie
+   wybrana jest tura ostatnio rozstrzygnięta, czyli stan sprzed 0.18. Dla tury przyszłej
+   pasek pokazuje **kartę prognozy** tej tury (pasma, nie wynik) — wstęga jest przez to
+   symetryczna: wstecz zakład rozstrzygnięty, w przód zakład do postawienia.
+4. **Horyzont prognozy jest kroczący** (§2.4; 06 §8.6.3): 24 h / 3 doby / 7 dób liczone
+   **od tury bieżącej**, a nie do końca bieżącej doby. Poziom podstawowy widzi więc zawsze
+   pełną dobę do przodu, także przez granicę doby. Uchyla „prognoza na bieżącą dobę" z 0.13.
+   Lekki buff poziomu podstawowego — pozycja do weryfikacji przy dokumencie 03.
+5. **Archiwum tur należy do stanu gry** (§8 pkt 2; 02 §4): każda rozstrzygnięta tura zostawia
+   **skrót** (wynik, pokrycie warstwami, zakład z prognozą, miasta w niedoborze), trwały
+   i zapisywany razem ze stanem. Pełny raport tury żyje dalej tylko dla tury ostatniej —
+   mapa nie cofa się razem ze wstęgą i pokazuje zawsze stan bieżący (§8 pkt 1).
 
 **Zmiany 0.16 → 0.17 (rozbudowa linii przesyłowych):**
 
@@ -251,8 +274,9 @@ widoku, a czas przesuwa wyłącznie klik **„następna tura"**:
 │                                                              │
 │  PROGNOZA  panel prognozy: popyt i OZE na kolejne godziny,   │
 │            Z BŁĘDEM — pasmo rozszerza się z horyzontem       │
-│  RAPORT    panel raportu OSTATNIEJ tury: wynik finansowy,    │
-│            energia niedostarczona, koszt pomyłki prognozy    │
+│  RAPORT    panel raportu WYBRANEJ tury (domyślnie ostatniej  │
+│            rozstrzygniętej): wynik finansowy, energia        │
+│            niedostarczona, koszt pomyłki prognozy — §2.5     │
 │  DECYZJA   nastawy edytowalne CAŁY CZAS: elektrownie,        │
 │            magazyny (ładuj/oddawaj), import/eksport,         │
 │            wyłączenia farm OZE                               │
@@ -271,6 +295,14 @@ Rozstrzygnięcie ma być **pokazane, nie tylko podliczone**: przepływy na mapie
 zmieniające kolor z obciążeniem, miasto w niedoborze gasnące na oczach gracza. Dramat polega
 na tym, że gracz **patrzy, jak rozstrzyga się jego zakład z prognozą**. Jeśli ten moment
 będzie tylko odświeżeniem liczb, mechanika umrze.
+
+**Uzupełnienie 0.18: raport nie znika wraz z następną turą.** Pasek raportu opisuje turę
+**wybraną na wstędze czasu** (§8 pkt 2), a domyślnie — turę ostatnio rozstrzygniętą, więc
+widok domyślny jest dokładnie taki jak przed 0.18. Wybór tury innej niż bieżąca jest
+wyłącznie odczytem: **nie rusza czasu, nie zmienia nastaw i nie cofa mapy** (§2.5).
+Każde przesunięcie czasu — zatwierdzenie tury, przewinięcie, wczytanie zapisu — sprowadza
+wybór z powrotem na turę ostatnio rozstrzygniętą; gracz nigdy nie planuje, patrząc
+niechcący na dane sprzed tygodnia.
 
 ### 2.4 Prognoza z błędem — źródło napięcia
 
@@ -301,23 +333,69 @@ Własności, które są sednem mechaniki:
    architektoniczny silnika.
 
 **Dokładność i zasięg prognozy są kupowalne** (0.13; inwestycje w systemy prognostyczne —
-06 §8.6.3). Poziom bazowy pokazuje prognozę na **bieżącą dobę (24 h)**; wyższe poziomy
-**zwężają pasmo** (mnożniki σ ×0,7 / ×0,5) **i wydłużają horyzont** — zaawansowany do
-**3 dób**, ansamblowy do **7 dób** (maksimum). Każda kolejna doba prognozy niesie większy
-błąd — σ rośnie dalej z horyzontem. Ceny poziomów (parametr, doc 03): ~600 mln / ~1,2 mld zł.
-Rzadki przypadek inwestycji, która nie dodaje ani megawata, a obniża koszty. Prognoza jest
-prezentowana jako **pasmo, nie liczba** (06 §8.6.4).
+06 §8.6.3). Poziomy **zwężają pasmo** (mnożniki σ ×1,0 / ×0,7 / ×0,5) **i wydłużają
+horyzont**: podstawowy **24 h**, zaawansowany **3 doby**, ansamblowy **7 dób** (maksimum).
+Każda kolejna doba prognozy niesie większy błąd — σ rośnie dalej z horyzontem. Ceny poziomów
+(parametr, doc 03): ~600 mln / ~1,2 mld zł. Rzadki przypadek inwestycji, która nie dodaje ani
+megawata, a obniża koszty. Prognoza jest prezentowana jako **pasmo, nie liczba** (06 §8.6.4).
 
-### 2.5 Przewijanie tur
+**DECYZJA (0.18): horyzont jest kroczący — liczy się od tury bieżącej, nie do końca doby.**
+Uchyla „prognoza na bieżącą dobę" z 0.13. W jednostce gry brzmi to prościej niż w godzinach:
+**prognoza obejmuje zawsze tyle samo tur** — poziom podstawowy 8 (tura bieżąca i 7 kolejnych),
+zaawansowany 24, ansamblowy 56 — niezależnie od tego, która to pora doby. Powody:
 
-Gracz steruje przewijaniem sam:
+- **Horyzont, który topnieje w ciągu doby, nie jest horyzontem.** Wersja poprzednia dawała
+  o PÓŹNYM WIECZORZE 3 h prognozy i nazywała to systemem 24-godzinnym; decyzje magazynowe
+  na noc i poranek doby następnej — czyli najtrudniejsze, jakie ta gra ma — nie miały żadnej
+  podstawy.
+- **Interfejs od początku obiecywał wersję kroczącą**: pasek górny pisze `PODSTAWOWY · 24 H`
+  niezależnie od pory doby.
+- Wielkość, którą horyzont ogranicza, jest jedna: **jak daleko w przód wolno przewinąć
+  wstęgę czasu** (§8 pkt 2). Za granicą horyzontu wstęga po prostu się kończy — nie ma
+  „prognozy szarej" ani wartości bez pasma.
 
-- „przewiń do wybranej tury",
-- „przewiń, aż coś się stanie" — zatrzymanie przy niedoborze, przeciążeniu linii powyżej
-  progu, odchyleniu od prognozy albo zmianie bilansu przekraczającej zadany próg.
+Skutkiem jest lekkie wzmocnienie poziomu podstawowego (zyskuje do 21 h widoku doby
+następnej) i osłabienie różnicy wobec zaawansowanego. Przyjęte świadomie: dokument 03
+(ekonomia) przy strojeniu cen poziomów bierze to jako pozycję do weryfikacji — narzędziem
+korekty jest cena i mnożnik σ, nie powrót do horyzontu topniejącego.
+
+### 2.5 Przewijanie tur i podgląd wstecz
+
+**DECYZJA (0.18): to są dwie różne rzeczy i mają dwie różne kontrolki.** Podgląd jest
+odczytem i jest darmowy; przewijanie rozstrzyga tury i jest nieodwracalne. Do 0.17 obie
+mieszkały pod tym samym kliknięciem w oś tur, więc pomyłka o jedną komórkę kosztowała
+pół doby.
+
+**Podgląd (klik w dowolną turę wstęgi czasu — §8 pkt 2).** Nigdy nie rusza czasu, nie
+zmienia nastaw i nie cofa mapy. Zmienia wyłącznie to, co opisuje pasek na dole:
+
+- **tura wstecz** — jej raport: wynik, pokrycie, niedobór, rozstrzygnięty zakład
+  z prognozą (dokładnie ten sam, który gracz widział na żywo);
+- **tura w przód**, w granicach horyzontu (§2.4) — **karta prognozy** tej tury: popyt,
+  wiatr i PV jako pasma, wyraźnie oznaczone jako prognoza, nie wynik.
+
+Zasięg wstecz jest nieograniczony: każda rozstrzygnięta tura zostawia trwały skrót
+w stanie gry (§8 pkt 2). Zasięg w przód to horyzont kupionego systemu prognostycznego —
+8 tur, 24 albo 56 (§2.4). Przewijanie wstęgi jest przez to najbardziej dosłownym efektem
+tej inwestycji, jaki gra ma.
+
+**Przewijanie (jawna akcja, nigdy zwykły klik).** Obie jego postacie dzielą **jeden
+przycisk**, stojący przy „następnej turze" (§8 pkt 5) — wstęga tylko go celuje:
+
+- **bez wybranej tury w przód** — „przewiń, aż coś się stanie": zatrzymanie przy niedoborze,
+  przeciążeniu linii powyżej progu, odchyleniu od prognozy albo zmianie bilansu
+  przekraczającej zadany próg;
+- **z turą przyszłą wybraną na wstędze** — „przewiń do tej tury": przycisk nazywa wtedy cel
+  (`PRZEWIŃ DO T6`), więc widać, dokąd skoczy czas, zanim się go ruszy.
+
+Jedna kontrolka, bo obie postacie robią dokładnie to samo — rozstrzygają ciąg tur bez zmiany
+nastaw — i różnią się wyłącznie warunkiem zatrzymania. Pasek raportu zostaje przez to czystym
+odczytem: opisuje turę, nie działa na nią.
 
 W przewijanych turach nastawy pozostają bez zmian — przewijanie to świadome przyjęcie ryzyka,
-nie darmowe pominięcie. Tempo gry z przewijaniem: **rok gry ≈ 2–2,5 h przy stole**.
+nie darmowe pominięcie. Po zatrzymaniu wybór wraca na turę ostatnio rozstrzygniętą (§2.3),
+czyli na tę, która przewijanie zatrzymała. Tempo gry z przewijaniem: **rok gry ≈ 2–2,5 h
+przy stole** — podgląd jest opcjonalny i nie wchodzi do tego budżetu.
 
 ### 2.6 Czasy budowy (K ≈ 40; linie 3–12 h na heks wg typu)
 
@@ -773,22 +851,47 @@ starzenie majątku i remonty, kolejka przyłączeniowa — 90 §3, §7, §10.)*
 ## 8. Interfejs (wersja uproszczona)
 
 1. **Mapa** — heksy, obiekty, linie w kolorach obciążenia (zielony → żółty → czerwony);
-   miasto w niedoborze gaśnie/miga.
-2. **Wykres doby** — zapotrzebowanie (prawda za nami, prognoza z pasmem przed nami) vs
-   pokrycie warstwami (jądrowa/węgiel/gaz/wiatr/PV/magazyn/import). Prawda za nami jest
-   rysowana blokami tur: wartość tury trzyma poziom przez środek swojego bloku, a łagodnie
-   przechodzi w sąsiednią dopiero przy granicy bloku. To wyłącznie zabieg wizualny —
-   tura nadal jest **płaską średnią 3 h** (§2.2), silnik niczego wewnątrz bloku nie
-   interpoluje, a odczyt wartości bierze się ze środka bloku.
+   miasto w niedoborze gaśnie/miga. **Mapa pokazuje zawsze turę ostatnio rozstrzygniętą
+   i nie cofa się razem ze wstęgą czasu** (0.18): sieć sprzed miesiąca to inny świat —
+   inne linie, inne obiekty, część dzisiejszych jeszcze nie istniała — więc malowanie
+   starych przepływów na dzisiejszej mapie kłamałoby.
+2. **Wstęga czasu** (0.18; do 0.17 „oś tur" + „wykres doby" osobno) — oś tur i wykres
+   pokrycia zlane w **jeden pas przewijany lewo-prawo**, o wspólnej osi X w jednostce
+   tury (3 h, §2.2). Doba to nadal 8 tur; wstęga pokazuje ich naraz więcej niż osiem,
+   z czytelnymi separatorami dób i podpisem doby (miesiąc, typ doby).
+   - **Za nami** — zapotrzebowanie (prawda) vs pokrycie warstwami
+     (jądrowa/węgiel/gaz/wiatr/PV/magazyn/import), **plus pasmo prognozy popytu, które
+     obowiązywało przed rozstrzygnięciem tury**: gracz widzi na wykresie to, o co w tej
+     grze chodzi — gdzie prawda wyszła poza pasmo, na które się zakładał. Wiatr i PV
+     zostają przy liczbach na pasku raportu; trzy pasma na wykresie z siedmioma warstwami
+     to ścianka.
+   - **Przed nami** — prognoza popytu z pasmem, do granicy horyzontu (§2.4). Za granicą
+     wstęga się kończy.
+   - Prawda za nami jest rysowana blokami tur: wartość tury trzyma poziom przez środek
+     swojego bloku, a łagodnie przechodzi w sąsiednią dopiero przy granicy bloku. To
+     wyłącznie zabieg wizualny — tura nadal jest **płaską średnią 3 h** (§2.2), silnik
+     niczego wewnątrz bloku nie interpoluje, a odczyt wartości bierze się ze środka bloku.
+   - **Klik w turę = podgląd** (§2.5). Tura wybrana jest zaznaczona na wstędze; powrót
+     do teraz jest jednym kliknięciem i dzieje się sam przy każdym ruchu czasu.
+   - **Historia jest trwała**: każda rozstrzygnięta tura zostawia w stanie gry **skrót**
+     (wynik finansowy, pokrycie warstwami, zakład z prognozą, miasta w niedoborze) —
+     wystarczający dla wstęgi i paska raportu, i tani na tyle, by trzymać go bez limitu
+     (02 §4.1). Pełny raport tury — z przepływami per segment i węzeł — pozostaje tylko
+     dla tury ostatniej; to on zasila mapę (pkt 1) i warunki stopu przewijania (§2.5).
 3. **Panel prognozy** — pasma popytu i OZE na kolejne godziny + kolumna **„bilans przy
    obecnych nastawach"** (czy plan przeżyje najbliższe 6 h — 06 §8.6.4).
 4. **Panel nastaw** — jednostki z suwakami, magazyny (ładuj/oddawaj), import/eksport,
    saldo bilansu. **DECYZJA: bez auto-nastaw** — wszystkie nastawy ustawia gracz ręcznie,
    nie ma przycisku „obsadź najtaniej".
 5. **Panel dyspozytora jest stale widoczny** (0.12) — prognoza, nastawy (edytowalne
-   cały czas — §2.3), raport ostatniej tury oraz harmonogram budów i systemy
+   cały czas — §2.3), raport tury wybranej na wstędze oraz harmonogram budów i systemy
    prognostyczne; budżet i wynik doby w pasku górnym; przycisk **„następna tura"**
    — jedyna akcja przechodząca czas. Nie ma osobnej zakładki budowy.
+   **Pasek raportu opisuje turę wybraną** (0.18, §2.3): dla tury rozstrzygniętej — jej
+   wynik, dla tury przyszłej — kartę prognozy z pasmami. Zawsze nazywa turę, o której
+   mówi, i zawsze widać, czy patrzy się na wynik, czy na zakład; sam pasek nie niesie
+   żadnej akcji. Przycisk przewijania stoi obok „następnej tury" i przejmuje cel z wstęgi
+   (§2.5) — obie akcje przechodzące czas są w jednym miejscu ekranu.
 6. **Panel heksa (0.12, zastępuje okienko obiektu z 0.11)** — klik na **dowolny heks**
    (także pusty) otwiera panel dokowany przy prawej krawędzi mapy, nad jej częścią:
    parametry heksa (teren, mnożnik kosztu, wiatr/słońce, lokalizacja szczytowo-pompowa),
@@ -802,7 +905,8 @@ starzenie majątku i remonty, kolejka przyłączeniowa — 90 §3, §7, §10.)*
 paleta, typografia, układ ekranu, styl mapy i kart. Zakres funkcjonalny gry wynika z tego
 dokumentu: np. wskaźnik częstotliwości widoczny w handoffie **nie istnieje** w wersji
 uproszczonej (wraca z 90 §1), a karty prognozy obowiązują; pasek 24 tur z handoffu staje
-się paskiem 8 tur (§2.2).
+się wstęgą tur 3-godzinnych (§2.2, pkt 2) — jednostką jest tura, nigdy godzina, a jedna
+doba to zawsze 8 komórek.
 
 ---
 
@@ -861,13 +965,13 @@ indeksem ceny.
 | ✅ | **Topologia bezpośrednia (0.11)**: linie łączą obiekty wprost; **6 przyłączy liniowych na obiekt** (0.12; wcześniej 2 i stacja jako jedyny węzeł zbiorczy); stacja rozdzielcza = dedykowany węzeł z rozbudową przyłączy i własną przepustowością; **linia w przelocie przyłącza mijane obiekty, ⩽9 linii jednego typu na heks** (0.13) | 3.3, 4.3 |
 | ✅ | **Trzy typy linii przesyłowych NN/SN/WN** (0.13; uchyla „jeden typ" z 0.11): 150/500/1500 MW, straty 4/2/1%/100 km, budowa 3/6/12 h/heks | 4.2 |
 | ✅ | **OZE: ręczne sterowanie tylko włącz/wyłącz całą farmę**; przycinanie nadwyżek automatyczne (0.13) | 4.1 |
-| ✅ | **Horyzont prognozy: 24 h bazowo, poziomy wydłużają do 3 / 7 dób** i zwężają pasmo (0.13) | 2.4 |
+| ✅ | **Horyzont prognozy: 24 h bazowo, poziomy wydłużają do 3 / 7 dób** i zwężają pasmo (0.13); **kroczący (0.18)** — liczony od tury bieżącej, nie do końca doby (uchyla „bieżąca doba" z 0.13); lekki buff poziomu podstawowego do weryfikacji w doc 03 | 2.4, 06 §8.6.3 |
 | ✅ | **Wartości ekonomiczne = strojenie z prototypu (0.13)**: taryfa 650, kara 4 000 zł/MWh, CAPEX ~×0,6, graniczne 1,0 mld, przyłączenie miasta 30 mln — baseline dla doc 03 | 4.5, 5, 6 |
 | ✅ | Pogoda wg dokumentu 06 (reżimy, prawda przy init doby, seed) | 2.4, 06 |
 | ✅ | Skala czasu — 3 doby reprezentatywne na miesiąc (36 dób/rok) | 2.1 |
 | ✅ | Gra turowa — **doba = 8 tur po 3 h** (tury nazwane od pór doby; prawda pozostaje godzinowa) (0.12) | 2.2 |
 | ✅ | Prognoza z błędem zamiast stanu bieżącego — źródło napięcia | 2.4 |
-| ✅ | Przewijanie tur sterowane przez gracza | 2.5 |
+| ✅ | Przewijanie tur sterowane przez gracza; **podgląd i przewijanie rozdzielone (0.18)** — klik = podgląd i nigdy nie rusza czasu; obie postacie przewijania to jeden przycisk przy „następnej turze", celowany wyborem na wstędze | 2.5, 8 pkt 5 |
 | ✅ | **Start z minimalnym stanem posiadania** (elektrownia + sieć + jedno miasto, darmowe); pozostałe miasta niepodłączone | 3.4 |
 | ✅ | Skala systemu ~1 GW → 20–30 GW, wynika z przyłączeń | 3.4 |
 | ✅ | Waluta — złoty (PLN), parametr | 6 |
@@ -885,6 +989,9 @@ indeksem ceny.
 | ✅ | Import i eksport dostępne od startu | 5.7 |
 | ✅ | Bez auto-nastaw — wszystkie nastawy ręczne | 8 |
 | ✅ | Panel heksa (0.12): klik na dowolny heks = informacje + katalog budowy (jedyna droga budowania) + akcje obiektu; panel dyspozytora stale widoczny, bez zakładki budowy | 8 |
+| ✅ | **Wstęga czasu (0.18)**: oś tur i wykres pokrycia zlane w jeden pas przewijany lewo-prawo, jednostką tura 3 h; wstecz bez ograniczeń, w przód do horyzontu prognozy; za nami dodatkowo pasmo prognozy popytu sprzed rozstrzygnięcia | 8 pkt 2, 2.5 |
+| ✅ | **Raport opisuje turę wybraną (0.18)**, domyślnie ostatnio rozstrzygniętą; dla tury przyszłej pasek pokazuje kartę prognozy. Każdy ruch czasu sprowadza wybór na teraz | 2.3, 8 pkt 5 |
+| ✅ | **Archiwum tur w stanie gry (0.18)**: trwały skrót każdej rozstrzygniętej tury (wynik, pokrycie warstwami, zakład z prognozą, miasta w niedoborze), bez limitu; pełny raport tylko dla tury ostatniej — **mapa nigdy nie cofa się ze wstęgą** | 8 pkt 1–2, 02 §4 |
 | ✅ | Brak twardego stanu przegranej — porażka zawsze miękka | 9 |
 | ✅ | **Kampania nieskończona**, bez wariantów długości | 2.7 |
 
@@ -915,7 +1022,7 @@ indeksem ceny.
 | 05 | [Model zapotrzebowania](05-model-zapotrzebowania.md) | profile godzinowe, sezonowość, czynnik pogodowy, wzrost i przyłączanie miast | ✅ napisany |
 | 06 | [Model astronomiczny i pogodowy](06-model-astronomiczny-i-pogodowy.md) | pogoda, produkcja OZE, model błędu prognozy — **obowiązuje w wersji uproszczonej** | ✅ napisany |
 | 07 | **Model mapy i generator** | struktura danych heksa (w tym potencjał wiatru/nasłonecznienie), generacja proceduralna, trasowanie linii | do napisania |
-| 08 | **Projekt interfejsu** | przełożenie handoffu wizualnego na zakres funkcjonalny §8 | handoff wizualny istnieje |
+| 08 | **Projekt interfejsu** | przełożenie handoffu wizualnego na zakres funkcjonalny §8; **wstęga czasu (0.18) nie ma odpowiednika w handoffie** — przewijanie, separatory dób i karta prognozy na pasku raportu wymagają projektu | handoff wizualny istnieje |
 | 09 | **Progresja i onboarding** | minimalny start jako samouczek; co dopowiedzieć wprost | do napisania |
 | 10 | **Architektura techniczna** | silnik, moduły, format zapisu, seed i odtwarzalność | do napisania |
 | 90 | [Pomysły na przyszłość](90-pomysly-na-przyszlosc.md) | magazyn mechanik odłożonych + kolejność przywracania | ✅ napisany |

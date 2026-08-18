@@ -1,6 +1,6 @@
 # Plan implementacji v1 — briefy dla wykonawców
 
-Katalog zawiera samodzielne opisy kamieni milowych M2–M10 pierwszej grywalnej wersji
+Katalog zawiera samodzielne opisy kamieni milowych M2–M11 pierwszej grywalnej wersji
 ElectroNation. Każdy plik to kompletny brief do przekazania modelowi/programiście:
 kontekst, zakres, wymagania, kryteria akceptacji. Kamień M1 (raport tury w silniku)
 jest **zrealizowany** — briefy zakładają jego obecność.
@@ -15,6 +15,7 @@ M4 (fundament UI) ── M5 (mapa SVG) ── M6 (pętla tury) ── M7 (budowa
                                                      └── M8 (wykres + przewijanie)
 M9 (zapis) — po M6
 M10 (stabilizacja) — na końcu
+M11 (wstęga czasu) — po M8 i M9
 ```
 
 Minimalna grywalna pętla istnieje po M6 (na mapie z M2). M7 czyni grę kompletną.
@@ -99,3 +100,4 @@ ekran dyspozytora. Przeczytaj jego `README.md` w całości przed każdym kamieni
 | [M08-wykres-doby-i-przewijanie.md](M08-wykres-doby-i-przewijanie.md) | Wykres doby, przewijanie tur | UI + silnik |
 | [M09-zapis-i-wczytywanie.md](M09-zapis-i-wczytywanie.md) | IndexedDB, eksport/import, migracje | UI + silnik |
 | [M10-stabilizacja.md](M10-stabilizacja.md) | Goldeny scenariuszowe, e2e, strojenie | całość |
+| [M11-wstega-czasu.md](M11-wstega-czasu.md) | Wstęga czasu, archiwum tur, horyzont kroczący | silnik + UI |
