@@ -3,14 +3,23 @@
 // One error process per day and quantity (§8.6.2 pt 3), scaled by the horizon;
 // the demand error is systemic — one factor shared by all cities (doc 02 §7).
 //
-// The horizon spans whole days (§8.6.3): the forecast system owned decides how
-// many days ahead are visible (1 / 3 / 7) and how wide the bands are. Truth of
-// a look-ahead day is generated on demand from that day's own PRNG streams, so
-// what the forecast points at today is bit-for-bit what the day resolves to.
+// The horizon ROLLS with the turn (§8.6.3, 01 §2.4 v0.18): the forecast system
+// owned decides how many days ahead are visible (1 / 3 / 7) and how wide the
+// bands are, counted from the PENDING turn — not to the end of the current day.
+// In the game's own unit that is exactly 8·D turns, always, whatever the hour.
+// Truth of a look-ahead day is generated on demand from that day's own PRNG
+// streams, so what the forecast points at today is bit-for-bit what the day
+// resolves to.
 
 import { CONFIG, FORECAST_LEVELS, STORAGE_TECHS, type ForecastLevel } from "./config";
 import type { DayType } from "./demand";
-import { HOURS_PER_TURN, type DayTruth, type FarmState, type GameState } from "./state";
+import {
+  HOURS_PER_TURN,
+  TURNS_PER_DAY,
+  type DayTruth,
+  type FarmState,
+  type GameState,
+} from "./state";
 import { generateDayTruth } from "./truth";
 import { farmPowerMwAtHour } from "./weather";
 
@@ -65,14 +74,33 @@ export function forecastHorizonDays(state: GameState): number {
   return FORECAST_LEVELS[state.forecastLevel].horizonDays;
 }
 
+/** The same reach in hours — the rolling limit itself: `1 ≤ h ≤ 24·D`. */
+export function forecastHorizonHours(state: GameState): number {
+  return forecastHorizonDays(state) * HOURS_PER_DAY;
+}
+
+/**
+ * The same reach in turns, which is the number the interface works in: the
+ * forecast covers the pending turn and `8·D − 1` after it, whatever the hour
+ * of the day. A turn is 3 h and the limit is a whole number of days from a
+ * turn boundary, so a block is never half inside the horizon.
+ */
+export function forecastHorizonTurns(state: GameState): number {
+  return forecastHorizonDays(state) * TURNS_PER_DAY;
+}
+
 /**
  * Truth of the day `dayOffset` days from the current one, or undefined past the
  * forecast horizon. Day 0 is the state's own truth; later days are generated
  * from their day-keyed streams (see truth.ts on the city-roster caveat).
+ *
+ * The bound is `dayOffset ≤ D`, not `< D` (06 §8.6.3): a rolling horizon reaches
+ * into the day AFTER the last full one in every turn but the first. Which hours
+ * of that day are actually visible is decided per hour, by `horizonHours`.
  */
 export function dayTruthAtOffset(state: GameState, dayOffset: number): DayTruth | undefined {
   if (!Number.isInteger(dayOffset) || dayOffset < 0) return undefined;
-  if (dayOffset >= forecastHorizonDays(state)) return undefined;
+  if (dayOffset > forecastHorizonDays(state)) return undefined;
   if (dayOffset === 0) return state.dayTruth;
   return generateDayTruth(state.seed, state.calendar.dayIndex + dayOffset, state.cities);
 }
@@ -83,6 +111,11 @@ export function dayTruthAtOffset(state: GameState, dayOffset: number): DayTruth 
  */
 function horizonHours(state: GameState, hour: number, dayOffset: number): number {
   return dayOffset * HOURS_PER_DAY + hour - state.calendar.turnIndex * HOURS_PER_TURN + 1;
+}
+
+/** Whether a target hour is still inside the rolling horizon (06 §8.6.3). */
+function inHorizon(state: GameState, horizon: number): boolean {
+  return horizon <= forecastHorizonHours(state);
 }
 
 function demandPoint(
@@ -139,14 +172,9 @@ export function cityDemandForecast(
 ): ForecastPoint | undefined {
   const truth = dayTruthAtOffset(state, dayOffset);
   if (!truth || hour < 0 || hour >= HOURS_PER_DAY) return undefined;
-  return demandPoint(
-    truth,
-    cityId,
-    hour,
-    horizonHours(state, hour, dayOffset),
-    state.forecastLevel,
-    dayOffset,
-  );
+  const horizon = horizonHours(state, hour, dayOffset);
+  if (!inHorizon(state, horizon)) return undefined;
+  return demandPoint(truth, cityId, hour, horizon, state.forecastLevel, dayOffset);
 }
 
 /**
@@ -162,14 +190,9 @@ export function farmProductionForecast(
   const farm: FarmState | undefined = state.farms.find((f) => f.id === farmId);
   const truth = dayTruthAtOffset(state, dayOffset);
   if (!farm || !truth || hour < 0 || hour >= HOURS_PER_DAY) return undefined;
-  return farmPoint(
-    truth,
-    farm,
-    hour,
-    horizonHours(state, hour, dayOffset),
-    state.forecastLevel,
-    dayOffset,
-  );
+  const horizon = horizonHours(state, hour, dayOffset);
+  if (!inHorizon(state, horizon)) return undefined;
+  return farmPoint(truth, farm, hour, horizon, state.forecastLevel, dayOffset);
 }
 
 /** One day of the multi-day forecast panel — aggregates, hour by hour. */
@@ -177,7 +200,12 @@ export interface DayForecast {
   dayOffset: number;
   dayIndex: number;
   dayType: DayType;
-  /** 24 hourly points each, summed over connected cities / enabled farms. */
+  /**
+   * Hourly points, summed over connected cities / enabled farms, indexed BY
+   * HOUR. The current day always has all 24; the last day of a rolling horizon
+   * is cut where the horizon ends, so the arrays are a prefix of the day and
+   * `length` names the first hour nobody can see yet (06 §8.6.3).
+   */
   demand: ForecastPoint[];
   wind: ForecastPoint[];
   pv: ForecastPoint[];
@@ -196,6 +224,7 @@ export function dayForecast(state: GameState, dayOffset: number): DayForecast | 
   const pv: ForecastPoint[] = [];
   for (let hour = 0; hour < HOURS_PER_DAY; hour++) {
     const horizon = horizonHours(state, hour, dayOffset);
+    if (!inHorizon(state, horizon)) break;
     const totals = {
       demand: { mw: 0, bandMw: 0 },
       wind: { mw: 0, bandMw: 0 },
@@ -219,6 +248,7 @@ export function dayForecast(state: GameState, dayOffset: number): DayForecast | 
     wind.push(totals.wind);
     pv.push(totals.pv);
   }
+  if (demand.length === 0) return undefined;
   return {
     dayOffset,
     dayIndex: state.calendar.dayIndex + dayOffset,
@@ -226,6 +256,68 @@ export function dayForecast(state: GameState, dayOffset: number): DayForecast | 
     demand,
     wind,
     pv,
+  };
+}
+
+/** Block-average forecast of one turn — what a ribbon column ahead of TERAZ shows. */
+export interface TurnForecast {
+  dayOffset: number;
+  turnIndex: number;
+  demand: ForecastPoint;
+  wind: ForecastPoint;
+  pv: ForecastPoint;
+}
+
+/**
+ * The forecast for one whole turn, averaged over its three hours exactly as the
+ * resolution averages truth (01 §2.2) — so what the report strip prints ahead of
+ * TERAZ is comparable, number for number, with what it prints behind it.
+ * Undefined past the rolling horizon, and for the turns already resolved: their
+ * band is gone, and the archive keeps what it was (02 §4.1).
+ */
+export function turnForecast(
+  state: GameState,
+  dayOffset: number,
+  turnIndex: number,
+): TurnForecast | undefined {
+  if (!Number.isInteger(turnIndex) || turnIndex < 0 || turnIndex >= TURNS_PER_DAY) return undefined;
+  const truth = dayTruthAtOffset(state, dayOffset);
+  if (!truth) return undefined;
+  const level = state.forecastLevel;
+  const startHour = turnIndex * HOURS_PER_TURN;
+  const totals = {
+    demand: { mw: 0, bandMw: 0 },
+    wind: { mw: 0, bandMw: 0 },
+    pv: { mw: 0, bandMw: 0 },
+  };
+  for (let hour = startHour; hour < startHour + HOURS_PER_TURN; hour++) {
+    const horizon = horizonHours(state, hour, dayOffset);
+    if (horizon <= 0 || !inHorizon(state, horizon)) return undefined;
+    for (const city of state.cities) {
+      if (!city.connected) continue;
+      const point = demandPoint(truth, city.id, hour, horizon, level, dayOffset);
+      if (!point) continue;
+      totals.demand.mw += point.mw;
+      totals.demand.bandMw += point.bandMw;
+    }
+    for (const farm of state.farms) {
+      if (!farm.enabled) continue;
+      const point = farmPoint(truth, farm, hour, horizon, level, dayOffset);
+      const bucket = farm.tech === "wind" ? totals.wind : totals.pv;
+      bucket.mw += point.mw;
+      bucket.bandMw += point.bandMw;
+    }
+  }
+  const average = (point: ForecastPoint): ForecastPoint => ({
+    mw: point.mw / HOURS_PER_TURN,
+    bandMw: point.bandMw / HOURS_PER_TURN,
+  });
+  return {
+    dayOffset,
+    turnIndex,
+    demand: average(totals.demand),
+    wind: average(totals.wind),
+    pv: average(totals.pv),
   };
 }
 

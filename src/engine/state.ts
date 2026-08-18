@@ -23,7 +23,7 @@ import type { MonthRegimes, RegimeId } from "./regimes";
  * by the build before it still loads. A bump without its migration turns every
  * existing save into a load error.
  */
-export const STATE_SCHEMA_VERSION = 10;
+export const STATE_SCHEMA_VERSION = 11;
 
 export const TURNS_PER_DAY = 8;
 export const HOURS_PER_TURN = 3;
@@ -319,7 +319,26 @@ export interface TurnFinanceReport {
   netPln: number;
 }
 
-export interface TurnReport {
+export interface TurnTotals {
+  demandMw: number;
+  deliveredMw: number;
+  ensMw: number;
+  lossesMw: number;
+  /** Dispatchable surplus curtailed at the source — penalized (01 §4.1). */
+  dumpMw: number;
+  /** RES surplus curtailed — free (01 §4.1). */
+  resCurtailedMw: number;
+}
+
+/** The turn's bet against the forecast (01 §2.3), per quantity. */
+export interface TurnForecastMiss {
+  demand: ForecastComparison;
+  wind: ForecastComparison;
+  pv: ForecastComparison;
+}
+
+/** Calendar position of a resolved turn, shared by the report and its digest. */
+export interface TurnStamp {
   /** Calendar position of the RESOLVED turn (the state is already advanced). */
   dayIndex: number;
   turnIndex: number;
@@ -328,22 +347,11 @@ export interface TurnReport {
   month: number;
   regime: RegimeId;
   dayWeight: number;
-  totals: {
-    demandMw: number;
-    deliveredMw: number;
-    ensMw: number;
-    lossesMw: number;
-    /** Dispatchable surplus curtailed at the source — penalized (01 §4.1). */
-    dumpMw: number;
-    /** RES surplus curtailed — free (01 §4.1). */
-    resCurtailedMw: number;
-  };
-  /** The turn's bet against the forecast (01 §2.3), per quantity. */
-  forecastMiss: {
-    demand: ForecastComparison;
-    wind: ForecastComparison;
-    pv: ForecastComparison;
-  };
+}
+
+export interface TurnReport extends TurnStamp {
+  totals: TurnTotals;
+  forecastMiss: TurnForecastMiss;
   cities: TurnCityReport[];
   sources: TurnSourceReport[];
   storages: TurnStorageReport[];
@@ -351,6 +359,44 @@ export interface TurnReport {
   segments: TurnSegmentReport[];
   nodes: TurnNodeReport[];
   finance: TurnFinanceReport;
+}
+
+// --- Turn archive ------------------------------------------------------------
+// The time ribbon (01 §8 pt 2) needs every resolved turn to survive for good,
+// and full reports cannot: one weighs ~3,7 kB on a mid-game grid and 25–30 kB
+// on a mature one, which is 7–8 MB per game year written on every autosave
+// (02 §4.1). The digest below carries exactly what the ribbon draws and the
+// report strip prints — ~0,7 kB, ~200 kB per game year — and nothing else.
+
+/**
+ * Coverage layers of the day chart, merit order from the bottom (01 §8 pt 2).
+ * Split in the engine at resolution time, not in the interface at draw time:
+ * a source's technology belongs to an object, and objects come and go.
+ */
+export const COVERAGE_LAYERS = [
+  "nuclear",
+  "coal",
+  "gas",
+  "wind",
+  "pv",
+  "storage",
+  "import",
+] as const;
+export type CoverageLayer = (typeof COVERAGE_LAYERS)[number];
+
+export interface TurnShortfall {
+  cityId: string;
+  ensMw: number;
+}
+
+export interface TurnDigest extends TurnStamp {
+  totals: TurnTotals;
+  /** Power ACTUALLY drawn by the flow, per COVERAGE_LAYERS, aligned by index. */
+  coverageMw: number[];
+  forecastMiss: TurnForecastMiss;
+  finance: TurnFinanceReport;
+  /** Cities left short this turn; empty when every city was served. */
+  shortfalls: TurnShortfall[];
 }
 
 export interface GameState {
@@ -399,13 +445,16 @@ export interface GameState {
   /** Regional insolation multiplier per hex key (01 §3.2); missing = 1.0. */
   solarMultipliers: Record<string, number>;
   dayTruth: DayTruth;
-  /** Report of the last resolved turn; null until the first resolution. */
+  /**
+   * Full report of the last resolved turn; null until the first resolution.
+   * The ONLY full report kept (01 §8 pt 1–2, 02 §4.1): it feeds the map's load
+   * colouring, the hex panel and the scrub stop rules — all of them about now.
+   */
   lastTurnReport: TurnReport | null;
   /**
-   * Reports of the day being played, oldest first — what the day chart draws
-   * behind the TERAZ line and what `WYNIK DOBY` sums up (01 §8 pt 2, pt 5).
-   * The history restarts with the FIRST resolution of a day, not at the day
-   * roll-over: a finished day stays readable until the new one is played.
+   * Digest of every resolved turn, oldest first and without gaps (02 §4.1).
+   * This is what the time ribbon draws and what the report strip prints for any
+   * turn the player looks back at, so it is never trimmed and never restarted.
    */
-  dayReports: TurnReport[];
+  history: TurnDigest[];
 }

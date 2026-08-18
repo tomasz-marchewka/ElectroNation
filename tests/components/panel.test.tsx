@@ -54,10 +54,17 @@ function renderPanel(game: GameState) {
   const onAction = vi.fn<(action: Action) => void>();
   const onCommit = vi.fn();
   const onSkip = vi.fn();
+  const onScrubTo = vi.fn<(turnIndex: number) => void>();
   const view = render(
-    <DispatcherPanel game={game} onAction={onAction} onCommit={onCommit} onSkip={onSkip} />,
+    <DispatcherPanel
+      game={game}
+      onAction={onAction}
+      onCommit={onCommit}
+      onSkip={onSkip}
+      onScrubTo={onScrubTo}
+    />,
   );
-  return { ...view, onAction, onCommit, onSkip };
+  return { ...view, onAction, onCommit, onSkip, onScrubTo };
 }
 
 function slider(name: string): HTMLInputElement {
@@ -193,6 +200,7 @@ describe("setpoints — every unit set by hand (01 §8 pt 4)", () => {
         onAction={onAction}
         onCommit={vi.fn()}
         onSkip={vi.fn()}
+        onScrubTo={vi.fn()}
       />,
     );
     expect(screen.getByText("0 · WYŁ.")).toBeDefined();
@@ -232,31 +240,84 @@ describe("panel structure", () => {
 });
 
 describe("turn scrubbing (01 §2.5)", () => {
-  test("only future cells of the day axis scrub", () => {
+  test("the scrub action shows up on future turns of this day, and only there", async () => {
     useGameStore.setState({ game: newGame(7, DISPATCH_SCENARIO) });
     useGameStore.getState().resolve();
-    render(<App />);
+    const { container } = render(<App />);
 
-    const cells = [...document.querySelectorAll<HTMLButtonElement>(".en-turn")];
+    const cells = [...container.querySelectorAll<HTMLButtonElement>(".en-turn")];
     expect(cells).toHaveLength(8);
-    // Resolved turns and the pending one are a read-out; the rest are targets.
-    expect(cells.slice(0, 2).every((cell) => cell.disabled)).toBe(true);
-    expect(cells.slice(2).every((cell) => !cell.disabled)).toBe(true);
+    // Every cell is readable now (01 §2.5) — the ribbon has no dead columns.
+    expect(cells.some((cell) => cell.disabled)).toBe(false);
+
+    // One ghost button next to the commit, aimed by the ribbon: with nothing
+    // ahead selected it is the "run until something happens" scrub (01 §2.5).
+    const scrub = () => screen.getByRole("button", { name: /^PRZEWIŃ/ }).textContent;
+    expect(scrub()).toBe("PRZEWIŃ ⏭"); // the last resolved turn: nothing to aim at
+
+    await userEvent.click(cells[0] as HTMLElement);
+    expect(scrub()).toBe("PRZEWIŃ ⏭"); // a resolved turn is never replayable
+    await userEvent.click(cells[1] as HTMLElement);
+    expect(scrub()).toBe("PRZEWIŃ ⏭"); // the pending turn is where time already is
+    await userEvent.click(cells[5] as HTMLElement);
+    expect(scrub()).toBe("PRZEWIŃ DO T6 ⏭");
   });
 
-  test("clicking a future cell resolves every turn up to it", async () => {
+  test("clicking a cell reads a turn; only the explicit scrub moves time (01 §2.5)", async () => {
     useGameStore.setState({ game: newGame(7, DISPATCH_SCENARIO) });
     const { container } = render(<App />);
+    const label = () => container.querySelector(".en-report__label")?.textContent ?? "";
 
     const cells = container.querySelectorAll<HTMLButtonElement>(".en-turn");
     await userEvent.click(cells[4] as HTMLElement);
 
+    // The calendar did not budge, and the strip turned into a forecast card:
+    // ahead of TERAZ there is no result to report, only a bet to place.
+    expect(useGameStore.getState().game.calendar).toEqual({ dayIndex: 0, turnIndex: 0 });
+    expect(label()).toContain("PROGNOZA TURY");
+    expect(label()).toContain("TURA 5 · POŁUDNIE");
+    // Bands, not results: ahead of TERAZ there is nothing settled to report.
+    const tiles = [...container.querySelectorAll(".en-report .en-tile__label")];
+    expect(tiles.map((tile) => tile.textContent)).toStrictEqual([
+      "POPYT",
+      "WIATR",
+      "PV",
+      "HORYZONT",
+    ]);
+
+    await userEvent.click(screen.getByRole("button", { name: /^PRZEWIŃ DO T5/ }));
+
     const game = useGameStore.getState().game;
     expect(game.calendar).toEqual({ dayIndex: 0, turnIndex: 4 });
-    expect(game.dayReports).toHaveLength(4);
+    expect(game.history).toHaveLength(4);
     expect(screen.getByText(/TURA 5\/8/)).toBeDefined();
-    // The report strip stands on the last turn the scrub resolved.
-    expect(screen.getByText("TURA 4 · PRZEDPOŁ.")).toBeDefined();
+    // Time moving brings the strip back to the last turn the scrub resolved.
+    expect(label()).toContain("RAPORT TURY");
+    expect(label()).toContain("TURA 4 · PRZEDPOŁ.");
+  });
+
+  test("a turn read back keeps its own numbers, and the map stays on now", async () => {
+    useGameStore.setState({ game: newGame(7, DISPATCH_SCENARIO) });
+    const { container } = render(<App />);
+    const label = () => container.querySelector(".en-report__label")?.textContent ?? "";
+    const tiles = () =>
+      [...container.querySelectorAll(".en-tile__value")].map((t) => t.textContent);
+
+    await userEvent.click(screen.getByRole("button", { name: "ZATWIERDŹ TURĘ ▸" }));
+    const firstTurn = tiles();
+    await userEvent.click(screen.getByRole("button", { name: "ZATWIERDŹ TURĘ ▸" }));
+    expect(label()).toContain("TURA 2 · PRZEDŚWIT");
+
+    // Back to turn 1: the strip shows exactly what it showed when it resolved.
+    const cells = container.querySelectorAll<HTMLButtonElement>(".en-turn");
+    await userEvent.click(cells[0] as HTMLElement);
+    expect(label()).toContain("TURA 1 · NOC");
+    expect(tiles()).toStrictEqual(firstTurn);
+    expect(useGameStore.getState().game.calendar).toEqual({ dayIndex: 0, turnIndex: 2 });
+
+    // TERAZ brings the strip back to the last resolved turn.
+    await userEvent.click(screen.getByTitle("Wróć do tury bieżącej"));
+    expect(label()).toContain("TURA 2 · PRZEDŚWIT");
   });
 
   test("a scrub that stops prints the diagnosis above the buttons", async () => {

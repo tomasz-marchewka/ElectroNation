@@ -3,10 +3,14 @@
 // order tells cause and effect: weather → delivery → shortfall → money →
 // result (ReportStrip.prompt.md).
 //
-// One divergence from the handoff: its label reads "PO ZATWIERDZENIU", because
-// the reference build only showed the strip right after a commit. In the game
+// Two divergences from the handoff. Its label reads "PO ZATWIERDZENIU", because
+// the reference build only showed the strip right after a commit; in the game
 // the report is a permanent part of the continuous view (01 §2.3) — it is there
 // after loading a save too — so the caller names the turn the numbers belong to.
+// And since 0.18 the turn it names is the one SELECTED on the ribbon, which may
+// be one still ahead: then the tiles are a forecast, not a result. The strip
+// stays a read-out either way — the action about a turn ahead lives next to
+// ZATWIERDŹ TURĘ, where every other move of time already lives (01 §2.5).
 
 export type ReportTone = "ok" | "warn" | "danger" | "info";
 
@@ -27,12 +31,15 @@ export interface ReportStripProps {
   label?: string;
   /** Bold title under the label. */
   title?: string;
+  /** Which day the turn belongs to, under the title. */
+  note?: string;
   tiles?: readonly ReportTile[];
 }
 
 export function ReportStrip({
   label = "RAPORT OSTATNIEJ TURY",
   title,
+  note,
   tiles = [],
 }: ReportStripProps) {
   return (
@@ -43,6 +50,12 @@ export function ReportStrip({
           <>
             <br />
             <b>{title}</b>
+          </>
+        )}
+        {note && (
+          <>
+            <br />
+            {note}
           </>
         )}
       </div>

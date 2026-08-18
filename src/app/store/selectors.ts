@@ -9,6 +9,7 @@ import {
   TURNS_PER_DAY,
   dayTypeForGameDay,
   forecastHorizonDays,
+  lastDayDigests,
   monthForGameDay,
   type DayType,
   type GameState,
@@ -23,7 +24,7 @@ import {
   type DayTurn,
 } from "../labels";
 
-export interface CalendarContext {
+export interface DayContext {
   /** 1-based game year; a game year is 36 days (01 §2.1). */
   year: number;
   /** 0..11 month of the calendar year. */
@@ -36,12 +37,19 @@ export interface CalendarContext {
   dayLabel: string;
   /** How many real days this game day stands for (01 §2.1). */
   dayWeight: number;
+}
+
+export interface CalendarContext extends DayContext {
   /** 0..7 within the day. */
   turnIndex: number;
 }
 
-export function calendarContext(state: GameState): CalendarContext {
-  const { dayIndex, turnIndex } = state.calendar;
+/**
+ * Everything the calendar says about a game day. Keyed on the day index alone,
+ * not on the state: the time ribbon captions days the player is only looking
+ * at, which may be weeks behind or ahead of the one being played (01 §8 pt 2).
+ */
+export function dayContext(dayIndex: number): DayContext {
   const month = monthForGameDay(dayIndex);
   const dayOfMonth = dayIndex % DAYS_PER_MONTH;
   const dayType = dayTypeForGameDay(dayIndex);
@@ -57,8 +65,11 @@ export function calendarContext(state: GameState): CalendarContext {
         ? "DOBA WOLNA"
         : `DOBA ROBOCZA ${String.fromCharCode("A".charCodeAt(0) + dayOfMonth)}`,
     dayWeight: DAY_WEIGHTS[dayType],
-    turnIndex,
   };
+}
+
+export function calendarContext(state: GameState): CalendarContext {
+  return { ...dayContext(state.calendar.dayIndex), turnIndex: state.calendar.turnIndex };
 }
 
 /** Top bar context line: `ROK 1 · STYCZEŃ · DOBA ROBOCZA A`. */
@@ -83,7 +94,7 @@ export function budgetKpi(state: GameState): string {
 
 /** Sum of the turn results of the day being played (01 §8 pt 5). */
 export function dayResultPln(state: GameState): number {
-  return state.dayReports.reduce((sum, report) => sum + report.finance.netPln, 0);
+  return lastDayDigests(state).reduce((sum, digest) => sum + digest.finance.netPln, 0);
 }
 
 export interface DayResultKpi {
@@ -93,14 +104,14 @@ export interface DayResultKpi {
 }
 
 /**
- * `WYNIK DOBY` KPI. Before the day's first turn is resolved the history still
- * describes the finished day (state.ts), which is exactly what the player wants
- * to read right after committing its last turn; a session that has resolved
- * nothing at all shows a toneless zero rather than a green success.
+ * `WYNIK DOBY` KPI. Before the day's first turn is resolved the KPI still
+ * describes the finished day (`lastDayDigests`), which is exactly what the
+ * player wants to read right after committing its last turn; a session that has
+ * resolved nothing at all shows a toneless zero rather than a green success.
  */
 export function dayResultKpi(state: GameState): DayResultKpi {
   const pln = dayResultPln(state);
-  if (state.dayReports.length === 0) return { value: formatSignedMoneyPln(pln) };
+  if (state.history.length === 0) return { value: formatSignedMoneyPln(pln) };
   return { value: formatSignedMoneyPln(pln), tone: pln >= 0 ? "ok" : "danger" };
 }
 

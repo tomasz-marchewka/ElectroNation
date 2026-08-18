@@ -1,5 +1,5 @@
 // The dispatcher screen (01 §8, handoff README "Layout"): top bar → map +
-// docked 400 px panel → day axis → chart strip → full-width report strip.
+// docked 400 px panel → time ribbon → full-width report strip.
 //
 // The 400 px column has three mutually exclusive states and never shows two of
 // them at once: the dispatcher panel by default, the hex panel while a hex is
@@ -10,22 +10,21 @@
 
 import { useEffect, useMemo } from "react";
 import { hexKey } from "../engine";
-import { DayChartView } from "./chart/DayChartView";
-import { buildDayChart } from "./chart/dayChart";
 import { HexPanel } from "./components/HexPanel";
 import { ReportStrip } from "./components/ReportStrip";
 import { RoutingPanel } from "./components/RoutingPanel";
 import { SessionBar } from "./components/SessionBar";
 import { ThemeSwitch } from "./components/ThemeSwitch";
 import { TopBar } from "./components/TopBar";
-import { TurnBar } from "./components/TurnBar";
 import { formatMoneyPln } from "./format";
 import { daysLabel } from "./labels";
 import { HexMapView } from "./map/HexMapView";
 import { buildMapScene, type RoutePreview } from "./map/sceneModel";
 import { DispatcherPanel } from "./panel/DispatcherPanel";
-import { reportTiles, reportTitle } from "./panel/report";
+import { buildReportStrip } from "./panel/report";
 import { planRoute } from "./routing/session";
+import { TimelineView } from "./timeline/TimelineView";
+import { buildTimeline } from "./timeline/timeline";
 import { useGameStore } from "./store/gameStore";
 import {
   budgetKpi,
@@ -53,9 +52,16 @@ export function App() {
   const cancelRouting = useGameStore((store) => store.cancelRouting);
   const confirmRouting = useGameStore((store) => store.confirmRouting);
   const showBottleneck = useGameStore((store) => store.showBottleneck);
-  // The map paints the last resolved turn (01 §2.3) — after a scrub, the turn
-  // it stopped on, which is the one the report strip names too.
+  const selectedTurn = useGameStore((store) => store.selectedTurn);
+  const timelineFrom = useGameStore((store) => store.timelineFrom);
+  const selectTurn = useGameStore((store) => store.selectTurn);
+  const scrollTimeline = useGameStore((store) => store.scrollTimeline);
+  const showNow = useGameStore((store) => store.showNow);
+  // The map paints the last resolved turn and ONLY it (01 §8 pt 1): reading an
+  // older turn on the ribbon never rewinds the world, because the world of a
+  // month ago had other lines and other objects standing in it.
   const report = game.lastTurnReport;
+  const atNow = selectedTurn === null && timelineFrom === null;
 
   // Live preview of the route under the cursor (01 §3.3): the price on the map
   // is the price the engine will charge, computed by the same function.
@@ -76,18 +82,25 @@ export function App() {
     () => buildMapScene(game, report, selectedHex, { route: preview, bottleneck }),
     [game, report, selectedHex, preview, bottleneck],
   );
-  const chart = useMemo(() => buildDayChart(game), [game]);
+  const timeline = useMemo(
+    () => buildTimeline(game, { from: timelineFrom, selected: selectedTurn }),
+    [game, timelineFrom, selectedTurn],
+  );
+  const strip = useMemo(() => buildReportStrip(game, selectedTurn), [game, selectedTurn]);
 
-  // ESC steps back one level: out of routing first, out of the hex panel next.
+  // ESC steps back one level: out of routing first, out of the hex panel next,
+  // out of a turn being read back last (01 §2.5).
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
-      if (useGameStore.getState().routing) cancelRouting();
-      else selectHex(null);
+      const store = useGameStore.getState();
+      if (store.routing) cancelRouting();
+      else if (store.selectedHex) selectHex(null);
+      else showNow();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [cancelRouting, selectHex]);
+  }, [cancelRouting, selectHex, showNow]);
 
   return (
     <div className="en-app">
@@ -110,11 +123,16 @@ export function App() {
               onHexHover={routing ? hoverRouting : undefined}
             />
           </div>
-          <TurnBar current={game.calendar.turnIndex} onSelect={resolveUntilTurn} />
-          <DayChartView model={chart}>
+          <TimelineView
+            model={timeline}
+            onSelect={selectTurn}
+            onScroll={scrollTimeline}
+            onNow={showNow}
+            atNow={atNow}
+          >
             <SessionBar />
             <ThemeSwitch />
-          </DayChartView>
+          </TimelineView>
         </div>
 
         {routing ? (
@@ -144,14 +162,24 @@ export function App() {
             onAction={dispatch}
             onCommit={resolve}
             onSkip={skip}
+            onScrubTo={resolveUntilTurn}
+            scrubTurnIndex={strip?.scrubTurnIndex ?? null}
             stopNote={skipStop?.text}
           />
         )}
       </div>
 
-      {/* Not a post-commit flash: the report of the last turn is a standing
-          part of the view (01 §2.3), so a loaded save shows it right away. */}
-      {report && <ReportStrip title={reportTitle(report)} tiles={reportTiles(game, report)} />}
+      {/* Not a post-commit flash: the strip is a standing part of the view
+          (01 §2.3), so a loaded save shows it right away. It describes the turn
+          selected on the ribbon — a result behind TERAZ, a bet ahead of it. */}
+      {strip && (
+        <ReportStrip
+          label={strip.label}
+          title={strip.title}
+          note={strip.note}
+          tiles={strip.tiles}
+        />
+      )}
     </div>
   );
 }

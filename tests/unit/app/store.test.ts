@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, test } from "vitest";
 import { STATE_SCHEMA_VERSION, TURNS_PER_DAY } from "../../../src/engine";
 import { DEFAULT_SEED, seedFromSearch, useGameStore } from "../../../src/app/store/gameStore";
+import { timelineRange } from "../../../src/app/timeline/timeline";
 import { DEFAULT_THEME, otherTheme, parseTheme } from "../../../src/app/store/themeStore";
 
 describe("seedFromSearch", () => {
@@ -83,8 +84,48 @@ describe("gameStore", () => {
 
     const { game, skipStop } = useGameStore.getState();
     expect(game.calendar).toEqual({ dayIndex: 0, turnIndex: 6 });
-    expect(game.dayReports).toHaveLength(6);
+    expect(game.history).toHaveLength(6);
     expect(skipStop).toBeNull();
+  });
+
+  test("reading a turn on the ribbon changes nothing about the world (01 §2.5)", () => {
+    useGameStore.getState().resolve();
+    useGameStore.getState().resolve();
+    const before = useGameStore.getState().game;
+
+    useGameStore.getState().selectTurn(0);
+    expect(useGameStore.getState().game).toBe(before);
+    expect(useGameStore.getState().selectedTurn).toBe(0);
+
+    // Time moving forward brings the ribbon back to now, every way it can move.
+    useGameStore.getState().resolve();
+    expect(useGameStore.getState().selectedTurn).toBeNull();
+    useGameStore.getState().selectTurn(1);
+    useGameStore.getState().skip();
+    expect(useGameStore.getState().selectedTurn).toBeNull();
+  });
+
+  test("the ribbon scrolls by deltas and stops at its bounds", () => {
+    for (let turn = 0; turn < 12; turn++) useGameStore.getState().resolve();
+    const store = () => useGameStore.getState();
+    const window = () =>
+      timelineRange(store().game, { from: store().timelineFrom, selected: store().selectedTurn });
+    const start = window().from;
+
+    // Two steps in a row are two turns, even without a render in between.
+    store().scrollTimeline(-1);
+    store().scrollTimeline(-1);
+    expect(window().from).toBe(start - 2);
+
+    // Past the ends it clamps instead of running off the archive.
+    store().scrollTimeline(-999);
+    expect(window().from).toBe(window().minFrom);
+    store().scrollTimeline(999);
+    expect(window().from).toBe(window().maxFrom);
+
+    store().showNow();
+    expect(store().timelineFrom).toBeNull();
+    expect(window().from).toBe(start);
   });
 
   test("restart(seed) starts a new session and clears the selection", () => {
@@ -95,7 +136,7 @@ describe("gameStore", () => {
     const { game, selectedHex, skipStop } = useGameStore.getState();
     expect(game.seed).toBe(99);
     expect(game.calendar).toEqual({ dayIndex: 0, turnIndex: 0 });
-    expect(game.dayReports).toStrictEqual([]);
+    expect(game.history).toStrictEqual([]);
     expect(selectedHex).toBeNull();
     expect(skipStop).toBeNull();
   });

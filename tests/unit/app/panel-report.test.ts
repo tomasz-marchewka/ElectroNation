@@ -1,6 +1,7 @@
 // The settlement strip's tiles (01 §2.3 phase 3–4). Every value is compared
-// against the report the engine wrote, so a change of tariff, penalty or day
-// weight can never be "fixed" by editing a constant in the UI.
+// against the digest the engine archived, so a change of tariff, penalty or day
+// weight can never be "fixed" by editing a constant in the UI — and what the
+// strip prints for a turn read back later is what it printed live (02 §4.1).
 
 import { describe, expect, test } from "vitest";
 import {
@@ -10,19 +11,20 @@ import {
   newGame,
   resolveTurn,
   type GameState,
-  type TurnReport,
+  type TurnDigest,
 } from "../../../src/engine";
 import { formatBand, formatMw, formatSignedMoneyPln } from "../../../src/app/format";
 import { reportTiles, reportTitle } from "../../../src/app/panel/report";
 import { makeScenario } from "../../helpers/scenario";
 
-function resolved(state: GameState): { state: GameState; report: TurnReport } {
+function resolved(state: GameState): { state: GameState; report: TurnDigest } {
   const next = resolveTurn(state);
-  if (next.lastTurnReport === null) throw new Error("resolveTurn must record lastTurnReport");
-  return { state: next, report: next.lastTurnReport };
+  const digest = next.history.at(-1);
+  if (!digest) throw new Error("resolveTurn must archive the turn");
+  return { state: next, report: digest };
 }
 
-function tile(state: GameState, report: TurnReport, label: string) {
+function tile(state: GameState, report: TurnDigest, label: string) {
   const found = reportTiles(state, report).find((entry) => entry.label === label);
   if (!found) throw new Error(`no tile ${label}`);
   return found;
@@ -40,7 +42,7 @@ describe("tile order tells cause and effect (ReportStrip.prompt.md)", () => {
       "KARY",
       "WYNIK TURY",
     ]);
-    expect(reportTitle(report)).toBe("TURA 1 · NOC");
+    expect(reportTitle(report.turnIndex)).toBe("TURA 1 · NOC");
   });
 });
 
@@ -130,8 +132,8 @@ describe("money — every tile traceable to the report", () => {
       mw: 300,
     });
     for (let turn = 0; turn < TURNS_PER_DAY - 1; turn++) state = resolveTurn(state);
-    const midDay = state.lastTurnReport;
-    if (midDay === null) throw new Error("missing report");
+    const midDay = state.history.at(-1);
+    if (!midDay) throw new Error("missing digest");
     expect(tile(state, midDay, "KOSZTY").note).not.toContain("KOSZTY STAŁE");
 
     const dayEnd = resolved(state);

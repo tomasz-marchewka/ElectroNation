@@ -23,12 +23,13 @@ body,
   min-height: 0;
 }
 
-/* Left column of the body: map (elastic) → day axis → chart strip → legend. */
+/* Left column of the body: map (elastic) → time ribbon → legend. */
 .en-body > .en-main {
   display: flex;
   flex-direction: column;
 }
 
+.en-timeline,
 .en-turnbar,
 .en-report {
   flex: none;
@@ -78,8 +79,85 @@ body,
   cursor: pointer;
 }
 
-/* ── day chart (M8) ─────────────────────────────────────
-   The region IS the chart box, so the SVG viewBox never has to stretch: its
+/* ── time ribbon (M11) ──────────────────────────────────
+   Day captions, the eight turn cells and the chart over one axis, with the
+   scroll controls in gutters so that nothing inside the body breaks the column
+   alignment: the cells and the chart columns MUST line up, or the ribbon lies
+   about which turn a bar belongs to (01 §8 pt 2). */
+.en-timeline {
+  display: flex;
+  align-items: stretch;
+  background: var(--en-bg-header);
+  border-top: var(--en-border-w) solid var(--en-border);
+}
+
+.en-timeline__body {
+  flex: 1;
+  min-width: 0;
+  /* The window slides in whole turns, so the browser has nothing to scroll. */
+  touch-action: none;
+}
+
+.en-timeline__nav,
+.en-timeline__now {
+  padding: 0 var(--en-space-4);
+  background: transparent;
+  border: 0;
+  border-right: var(--en-border-w) solid var(--en-border-subtle);
+  color: var(--en-text-3);
+  font-family: var(--en-font-mono);
+  font-size: var(--en-fs-micro);
+  cursor: pointer;
+}
+
+.en-timeline__side {
+  display: flex;
+  flex-direction: column;
+}
+
+.en-timeline__side > .en-timeline__nav,
+.en-timeline__side > .en-timeline__now {
+  flex: 1;
+  border-right: 0;
+  border-left: var(--en-border-w) solid var(--en-border-subtle);
+}
+
+.en-timeline__nav:hover:not(:disabled),
+.en-timeline__now:hover:not(:disabled) {
+  color: var(--en-text);
+}
+
+.en-timeline__nav:disabled,
+.en-timeline__now:disabled {
+  color: var(--en-text-4);
+  cursor: default;
+}
+
+/* Which day each stretch of columns belongs to; a day may be cut by the window
+   edge, so the caption shortens rather than pushing the columns apart. */
+.en-timeline__days {
+  display: flex;
+  font-family: var(--en-font-mono);
+  font-size: var(--en-fs-micro);
+  color: var(--en-text-4);
+  border-bottom: var(--en-border-w) solid var(--en-border-subtle);
+}
+
+.en-timeline__day {
+  flex-basis: 0;
+  min-width: 0;
+  padding: 2px var(--en-space-3);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  border-right: var(--en-border-w) solid var(--en-border-subtle);
+}
+
+.en-timeline__day:last-child {
+  border-right: 0;
+}
+
+/* The region IS the chart box, so the SVG viewBox never has to stretch: its
    proportion is the handoff's own (DayChart: viewBox 0 0 1060 130). The legend
    is a strip of its own under it, as in the reference build. */
 .en-region--chart {

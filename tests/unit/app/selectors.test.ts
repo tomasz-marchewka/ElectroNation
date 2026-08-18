@@ -70,7 +70,7 @@ describe("top bar", () => {
     let state = applyAction(newGame(1), { type: "setPlantSetpoint", plantId: "plant-1", mw: 400 });
     for (let turn = 0; turn < 3; turn++) state = resolveTurn(state);
     expect(dayResultPln(state)).toBe(
-      state.dayReports.reduce((sum, report) => sum + report.finance.netPln, 0),
+      state.history.reduce((sum, digest) => sum + digest.finance.netPln, 0),
     );
     expect(dayResultKpi(state).value).toBe(formatSignedMoneyPln(dayResultPln(state)));
     expect(dayResultKpi(state).tone).toBe(dayResultPln(state) >= 0 ? "ok" : "danger");

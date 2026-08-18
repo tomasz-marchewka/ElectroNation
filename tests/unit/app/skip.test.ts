@@ -119,7 +119,7 @@ describe("01 §2.5: przewiń — until something happens", () => {
 
     expect(stop).toBeNull();
     expect(game.calendar).toStrictEqual({ dayIndex: 1, turnIndex: 0 });
-    expect(game.dayReports).toHaveLength(TURNS_PER_DAY);
+    expect(game.history).toHaveLength(TURNS_PER_DAY);
     // Whole days are never scrubbed at once (01 §2.5): the day is the unit, so
     // one run of the scrub can never carry the calendar past the next one.
     expect(skipTurns(game).game.calendar.dayIndex).toBeLessThanOrEqual(game.calendar.dayIndex + 1);
@@ -182,7 +182,7 @@ describe("01 §2.5: przewiń do tury", () => {
     const state = scrubToTurn(quietDay(), 5);
 
     expect(state.calendar).toStrictEqual({ dayIndex: 0, turnIndex: 5 });
-    expect(state.dayReports.map((report) => report.turnIndex)).toStrictEqual([0, 1, 2, 3, 4]);
+    expect(state.history.map((digest) => digest.turnIndex)).toStrictEqual([0, 1, 2, 3, 4]);
   });
 
   test("never leaves the day, and never runs backwards", () => {
