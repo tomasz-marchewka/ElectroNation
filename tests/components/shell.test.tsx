@@ -4,14 +4,15 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi } from "vitest";
-import { TURN_PHASES } from "../../src/engine";
+import { TURN_PHASES, newGame, resolveTurn, type GameState } from "../../src/engine";
 import { Button } from "../../src/app/components/Button";
 import { Panel } from "../../src/app/components/Panel";
 import { PanelSection } from "../../src/app/components/PanelSection";
 import { StatusDot } from "../../src/app/components/StatusDot";
 import { TopBar } from "../../src/app/components/TopBar";
-import { TurnBar } from "../../src/app/components/TurnBar";
 import { DAY_TURNS, dayTurnAt } from "../../src/app/labels";
+import { TimelineView } from "../../src/app/timeline/TimelineView";
+import { buildTimeline } from "../../src/app/timeline/timeline";
 
 describe("TopBar", () => {
   test("renders the wordmark, the context and the KPIs", () => {
@@ -75,10 +76,21 @@ describe("Panel", () => {
   });
 });
 
-describe("TurnBar", () => {
-  test("a day is 8 turns, never 24 hours (01 §2.2)", () => {
-    render(<TurnBar current={0} />);
-    expect(screen.getAllByRole("button")).toHaveLength(8);
+describe("TimelineView", () => {
+  const ribbon = (state: GameState, from: number | null = null, selected: number | null = null) =>
+    buildTimeline(state, { from, selected });
+
+  test("a window is 8 turns, never 24 hours (01 §2.2)", () => {
+    const { container } = render(
+      <TimelineView
+        model={ribbon(newGame(7))}
+        onSelect={vi.fn()}
+        onScroll={vi.fn()}
+        onNow={vi.fn()}
+        atNow
+      />,
+    );
+    expect(container.querySelectorAll(".en-turn")).toHaveLength(8);
     expect(DAY_TURNS).toHaveLength(8);
   });
 
@@ -89,29 +101,86 @@ describe("TurnBar", () => {
     expect(dayTurnAt(99)).toBe(DAY_TURNS[0]);
   });
 
-  test("marks the current turn and dims the resolved ones", () => {
-    const { container } = render(<TurnBar current={6} />);
+  test("marks the current turn, dims the resolved ones and outlines the read one", () => {
+    let state = newGame(7);
+    for (let turn = 0; turn < 6; turn++) state = resolveTurn(state);
+    const { container } = render(
+      <TimelineView
+        model={ribbon(state, null, 2)}
+        onSelect={vi.fn()}
+        onScroll={vi.fn()}
+        onNow={vi.fn()}
+        atNow={false}
+      />,
+    );
     const cells = container.querySelectorAll(".en-turn");
     expect(cells[6]?.className).toContain("is-current");
     expect(cells[0]?.className).toContain("is-past");
+    expect(cells[2]?.className).toContain("is-selected");
     expect(cells[7]?.className).toBe("en-turn");
     expect(cells[6]?.textContent).toContain("◂ TURA 7");
   });
 
-  test("onSelect reports the clicked turn index — future cells only (01 §2.5)", async () => {
+  test("a click reads a turn — any turn, in both directions (01 §2.5)", async () => {
     const onSelect = vi.fn();
-    const { container } = render(<TurnBar current={2} onSelect={onSelect} />);
+    let state = newGame(7);
+    for (let turn = 0; turn < 3; turn++) state = resolveTurn(state);
+    const { container } = render(
+      <TimelineView
+        model={ribbon(state)}
+        onSelect={onSelect}
+        onScroll={vi.fn()}
+        onNow={vi.fn()}
+        atNow
+      />,
+    );
     const cells = [...container.querySelectorAll<HTMLButtonElement>(".en-turn")];
 
-    await userEvent.click(cells[5] as HTMLElement);
-    expect(onSelect).toHaveBeenCalledWith(5);
-
-    // A resolved turn is never replayable and the current one is where time
-    // already stands — neither cell is a scrub target.
-    expect(cells.slice(0, 3).every((cell) => cell.disabled)).toBe(true);
+    // Behind TERAZ, on it, and ahead of it: no cell is dead any more, and none
+    // of them moves time — that is what the explicit scrub action is for.
     await userEvent.click(cells[0] as HTMLElement);
-    await userEvent.click(cells[2] as HTMLElement);
-    expect(onSelect).toHaveBeenCalledTimes(1);
+    await userEvent.click(cells[3] as HTMLElement);
+    await userEvent.click(cells[5] as HTMLElement);
+    expect(onSelect.mock.calls).toEqual([[0], [3], [5]]);
+    expect(cells.some((cell) => cell.disabled)).toBe(false);
+  });
+
+  test("the window slides, and stops where the archive and the horizon do", async () => {
+    const onScroll = vi.fn();
+    const onNow = vi.fn();
+    let state = newGame(7);
+    for (let turn = 0; turn < 10; turn++) state = resolveTurn(state);
+    const model = ribbon(state);
+    render(
+      <TimelineView
+        model={model}
+        onSelect={vi.fn()}
+        onScroll={onScroll}
+        onNow={onNow}
+        atNow={false}
+      />,
+    );
+
+    // Deltas, not targets: two clicks in one frame must move two turns.
+    await userEvent.click(screen.getByTitle("Wcześniejsze tury"));
+    expect(onScroll).toHaveBeenCalledWith(-1);
+    await userEvent.click(screen.getByTitle("Późniejsze tury"));
+    expect(onScroll).toHaveBeenCalledWith(1);
+    await userEvent.click(screen.getByTitle("Wróć do tury bieżącej"));
+    expect(onNow).toHaveBeenCalledTimes(1);
+
+    // At the very start of the archive there is nothing earlier to show.
+    const first = ribbon(state, model.range.minFrom);
+    render(
+      <TimelineView
+        model={first}
+        onSelect={vi.fn()}
+        onScroll={onScroll}
+        onNow={onNow}
+        atNow={false}
+      />,
+    );
+    expect(screen.getAllByTitle("Wcześniejsze tury").at(-1)).toHaveProperty("disabled", true);
   });
 });
 

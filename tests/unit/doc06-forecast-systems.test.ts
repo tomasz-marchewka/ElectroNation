@@ -10,6 +10,8 @@ import {
   dayTruthAtOffset,
   farmProductionForecast,
   forecastHorizonDays,
+  forecastHorizonHours,
+  forecastHorizonTurns,
   monthForGameDay,
   monthRegimeForecastForDay,
   monthRegimesForDay,
@@ -18,6 +20,7 @@ import {
   sigmaDemand,
   sigmaPv,
   sigmaWind,
+  turnForecast,
   type ForecastLevel,
   type GameState,
 } from "../../src/engine";
@@ -77,7 +80,7 @@ describe("doc 06 §8.6.3: a forecast system narrows every band", () => {
   });
 });
 
-describe("doc 01 §2.4: the horizon is 1 / 3 / 7 game days", () => {
+describe("doc 01 §2.4 + 06 §8.6.3: the horizon rolls with the turn", () => {
   test.each([
     { level: "basic" as const, days: 1 },
     { level: "advanced" as const, days: 3 },
@@ -85,11 +88,73 @@ describe("doc 01 §2.4: the horizon is 1 / 3 / 7 game days", () => {
   ])("$level sees $days day(s) ahead and nothing past that", ({ level, days }) => {
     const state = withLevel(4, level);
     expect(forecastHorizonDays(state)).toBe(days);
-    expect(dayTruthAtOffset(state, days - 1)).toBeDefined();
-    expect(dayTruthAtOffset(state, days)).toBeUndefined();
+    expect(forecastHorizonHours(state)).toBe(days * 24);
+    expect(forecastHorizonTurns(state)).toBe(days * TURNS_PER_DAY);
+    // Truth reaches ONE day further than the last full one: from any turn but
+    // the first, a rolling horizon looks into the day after it (06 §8.6.3).
+    expect(dayTruthAtOffset(state, days)).toBeDefined();
+    expect(dayTruthAtOffset(state, days + 1)).toBeUndefined();
     expect(cityDemandForecast(state, "city-jasienica", 10, days - 1)).toBeDefined();
     expect(cityDemandForecast(state, "city-jasienica", 10, days)).toBeUndefined();
     expect(dayForecast(state, days)).toBeUndefined();
+  });
+
+  test.each([
+    { level: "basic" as const, days: 1 },
+    { level: "advanced" as const, days: 3 },
+  ])("$level covers exactly 8·D turns, whatever the hour of the day", ({ level, days }) => {
+    for (const turn of [0, 3, 5, 7]) {
+      const state = run(withLevel(4, level), turn);
+      expect(state.calendar.turnIndex).toBe(turn);
+
+      let visible = 0;
+      // Well past the far end, so a horizon that failed to move would show up
+      // as a count that is too small AND one that starts in the wrong place.
+      for (let ahead = 0; ahead < days * TURNS_PER_DAY + TURNS_PER_DAY; ahead++) {
+        const absolute = turn + ahead;
+        const dayOffset = Math.floor(absolute / TURNS_PER_DAY);
+        const turnIndex = absolute % TURNS_PER_DAY;
+        if (turnForecast(state, dayOffset, turnIndex)) visible += 1;
+      }
+      expect(visible).toBe(days * TURNS_PER_DAY);
+      // Resolved turns are truth, not forecast: they have no band left to show.
+      if (turn > 0) expect(turnForecast(state, 0, turn - 1)).toBeUndefined();
+    }
+  });
+
+  test("the window eats into the next day by 3 h per turn played", () => {
+    for (const [turn, hoursIntoTomorrow] of [
+      [0, 0],
+      [1, 3],
+      [5, 15],
+      [7, 21],
+    ]) {
+      const state = run(newGame(4), turn ?? 0);
+      const visible = Array.from({ length: 24 }, (_, hour) => hour).filter(
+        (hour) => cityDemandForecast(state, "city-jasienica", hour, 1) !== undefined,
+      );
+      expect(visible).toHaveLength(hoursIntoTomorrow ?? 0);
+      // What is visible is the START of that day, hour by hour, never a gap.
+      expect(visible).toStrictEqual(
+        Array.from({ length: hoursIntoTomorrow ?? 0 }, (_, hour) => hour),
+      );
+      // The aggregated day is cut at the same place, and indexes stay by hour.
+      expect(dayForecast(state, 1)?.demand.length ?? 0).toBe(hoursIntoTomorrow ?? 0);
+    }
+  });
+
+  test("a turn block is never half inside the horizon", () => {
+    // 24·D is a whole number of turns from a turn boundary, so the far edge of
+    // the window always falls between two blocks — the ribbon never shows a
+    // column that is only partly forecast (06 §8.6.3).
+    const state = run(newGame(4), 5);
+    const last = turnForecast(state, 1, 4);
+    expect(last).toBeDefined();
+    expect(turnForecast(state, 1, 5)).toBeUndefined();
+    for (const hour of [12, 13, 14]) {
+      expect(cityDemandForecast(state, "city-jasienica", hour, 1)).toBeDefined();
+    }
+    expect(cityDemandForecast(state, "city-jasienica", 15, 1)).toBeUndefined();
   });
 
   test("the current day is still the default argument", () => {

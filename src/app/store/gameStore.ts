@@ -30,6 +30,7 @@ import {
 } from "../routing/session";
 import { loadGame, saveGame } from "../save/autosave";
 import { readSaveFile } from "../save/file";
+import { timelineRange } from "../timeline/timeline";
 import { scrubToTurn, skipTurns, type SkipStop } from "./skip";
 
 /** Seed of the default session; `?seed=` in the URL overrides it. */
@@ -81,6 +82,14 @@ export interface GameStore {
   selectedHex: HexCoord | null;
   /** The line being drawn right now, or null (01 §3.3). */
   routing: RoutingSession | null;
+  /**
+   * Turn the report strip describes, on the ribbon's axis; null is the last
+   * resolved one (01 §2.3). View state, deliberately NOT part of GameState:
+   * reading a past turn changes nothing about the world.
+   */
+  selectedTurn: number | null;
+  /** First column of the ribbon window; null follows the day being played. */
+  timelineFrom: number | null;
   /** What POKAŻ WĄSKIE GARDŁO pointed at, until the view moves on. */
   bottleneck: BottleneckRef | null;
   /**
@@ -102,6 +111,16 @@ export interface GameStore {
   /** Scrubs until a stop rule fires or the day ends (01 §2.5). */
   skip: () => void;
   selectHex: (hex: HexCoord | null) => void;
+  /** Reads a turn on the ribbon (01 §2.5) — never moves time. */
+  selectTurn: (absTurn: number | null) => void;
+  /**
+   * Slides the ribbon window by `delta` turns. A delta, not a target: several
+   * scroll events can land before React re-renders, and each of them has to
+   * count. `timelineRange` clamps the result to the scroll bounds.
+   */
+  scrollTimeline: (delta: number) => void;
+  /** Back to the pending turn: window and selection at once. */
+  showNow: () => void;
   /** Enters line-routing mode from the object on `from` (01 §3.3). */
   startRouting: (from: HexCoord) => void;
   setRoutingType: (lineType: LineType) => void;
@@ -129,6 +148,8 @@ const CLEARED_VIEW = {
   routing: null,
   bottleneck: null,
   skipStop: null,
+  selectedTurn: null,
+  timelineFrom: null,
 } as const;
 
 export const useGameStore = create<GameStore>()((set, get) => {
@@ -141,7 +162,16 @@ export const useGameStore = create<GameStore>()((set, get) => {
    * before the write lands (M9 brief §1 — the save must not block the loop).
    */
   function advance(game: GameState, skipStop: SkipStop | null = null): void {
-    set({ game, bottleneck: null, skipStop, saveNotice: null });
+    // Time moving forward also brings the ribbon back to now (01 §2.3): nobody
+    // should plan the next turn while reading the numbers of an old one.
+    set({
+      game,
+      bottleneck: null,
+      skipStop,
+      saveNotice: null,
+      selectedTurn: null,
+      timelineFrom: null,
+    });
     void saveGame(game);
   }
 
@@ -151,6 +181,8 @@ export const useGameStore = create<GameStore>()((set, get) => {
     routing: null,
     bottleneck: null,
     skipStop: null,
+    selectedTurn: null,
+    timelineFrom: null,
     saveNotice: null,
     dispatch: (action) => {
       const before = get().game;
@@ -165,6 +197,16 @@ export const useGameStore = create<GameStore>()((set, get) => {
       const { game, stop } = skipTurns(get().game);
       advance(game, stop);
     },
+    selectTurn: (absTurn) => set({ selectedTurn: absTurn }),
+    scrollTimeline: (delta) =>
+      set((store) => ({
+        timelineFrom:
+          timelineRange(store.game, {
+            from: store.timelineFrom,
+            selected: store.selectedTurn,
+          }).from + delta,
+      })),
+    showNow: () => set({ selectedTurn: null, timelineFrom: null }),
     // Routing owns the map clicks until it ends (M7 brief pt 3).
     selectHex: (hex) =>
       set((store) => (store.routing ? store : { selectedHex: hex, bottleneck: null })),

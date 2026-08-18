@@ -63,15 +63,28 @@ export {
   dayTruthAtOffset,
   farmProductionForecast,
   forecastHorizonDays,
+  forecastHorizonHours,
+  forecastHorizonTurns,
   projectBalance,
   sigmaDemand,
   sigmaPv,
   sigmaWind,
+  turnForecast,
   type BalanceProjectionPoint,
   type DayForecast,
   type ForecastPoint,
+  type TurnForecast,
 } from "./forecast";
 export { evaluateMonthlyGrowth } from "./growth";
+export {
+  absoluteTurn,
+  buildTurnDigest,
+  coverageIndex,
+  digestAt,
+  digestTurn,
+  lastDayDigests,
+  type LayerIndex,
+} from "./history";
 export {
   DEFAULT_MAP_SIZE,
   areNeighbors,
@@ -130,6 +143,7 @@ export {
   type ScenarioPlant,
 } from "./scenario";
 export {
+  COVERAGE_LAYERS,
   DAYS_PER_MONTH,
   DAYS_PER_YEAR,
   HOURS_PER_TURN,
@@ -143,6 +157,7 @@ export {
   type Calendar,
   type CityState,
   type ConstructionState,
+  type CoverageLayer,
   type DayTruth,
   type FarmState,
   type ForecastComparison,
@@ -157,13 +172,18 @@ export {
   type StorageState,
   type TurnBorderReport,
   type TurnCityReport,
+  type TurnDigest,
   type TurnFinanceReport,
+  type TurnForecastMiss,
   type TurnNodeReport,
   type TurnPhase,
   type TurnReport,
   type TurnSegmentReport,
+  type TurnShortfall,
   type TurnSourceReport,
+  type TurnStamp,
   type TurnStorageReport,
+  type TurnTotals,
   type WeatherTruth,
 } from "./state";
 export {

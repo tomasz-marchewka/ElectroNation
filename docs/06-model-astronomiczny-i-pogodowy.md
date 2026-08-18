@@ -1,11 +1,16 @@
 # ElectroNation — Model astronomiczny, klimatyczny i pogodowy
 
-**Wersja:** 0.6
-**Data:** 2026-08-16
+**Wersja:** 0.7
+**Data:** 2026-08-18
 **Status:** **obowiązujący** — źródłowy model pogody, produkcji OZE (PV, wiatr) i błędu
 prognozy dla uproszczonej wersji gry (01 v0.8, §2.4 i §5.2). Uproszczenie dotyczy silnika
 przepływu energii w sieci (01 §4) i nie zmienia niczego w tym modelu. Elementy „na przyszłość"
 wymienione w §10 pozostają odłożone ([90-pomysly-na-przyszlosc.md §2](90-pomysly-na-przyszlosc.md)).
+
+**Zmiany 0.6 → 0.7 (horyzont kroczący):** §8.6.3 rozstrzyga, że horyzont systemu prognostycznego
+liczy się **od tury bieżącej**, a nie do końca bieżącej doby (01 v0.18 §2.4) — z formalną granicą
+zasięgu i jej konsekwencją dla generacji prawdy dób następnych. Model błędu (§8.6.2), architektura
+(§8.6.1) i prezentacja (§8.6.4) bez zmian.
 
 **Zmiany 0.5 → 0.6 (domknięcie testu §12.12):** test 12 dostaje **definicję epizodu
 Dunkelflaute w kalendarzu gry** (doba wyżu zimowego z produkcją referencyjnego portfela
@@ -517,14 +522,26 @@ Dla farmy 900 MW oznacza to ±56 MW przy +1 h i ±155 MW przy +6 h.
 
 Dokładność prognozy jest **kupowalna**: mezoskalowy model pogody, telemetria farm, prognoza ansamblowa. Każdy poziom mnoży współczynniki `σ` przez wartość poniżej 1 **i wydłuża horyzont prognozy** (0.3; dok. 01 §2.4):
 
-| Poziom | Mnożnik σ | Horyzont | Efekt |
+| Poziom | Mnożnik σ | Horyzont `D` | Efekt |
 |---|---|---|---|
 | Brak (persystencja) | ×1,6 | — | prognoza = stan bieżący (punkt odniesienia, poza grą) |
-| Podstawowy | ×1,0 | bieżąca doba (24 h) | wartości z tabeli |
-| Zaawansowany | ×0,7 | 3 doby | |
-| Ansamblowy | ×0,5 | 7 dób (maksimum) | |
+| Podstawowy | ×1,0 | 1 doba (24 h) | wartości z tabeli |
+| Zaawansowany | ×0,7 | 3 doby (72 h) | |
+| Ansamblowy | ×0,5 | 7 dób (168 h, maksimum) | |
 
-Poza pierwszą dobą σ **rośnie dalej z horyzontem** — każda kolejna doba prognozy ma szersze pasmo (ograniczenie `min(h, 12)` z §8.6.2 dotyczy przebiegu wewnątrz doby; przyrost międzydobowy, np. +20–30% σ na dobę, do strojenia przy implementacji prognozy wielodobowej). Prognozy dób przyszłych wymagają wygenerowania ich prawdy z wyprzedzeniem — architektonicznie: prawda może powstawać dla całego horyzontu przy inicjalizacji, doba po dobie z tego samego ziarna (§8.6.1 stosuje się bez zmian).
+**DECYZJA (0.7, za 01 v0.18 §2.4): horyzont jest kroczący.** Liczy się od tury bieżącej, nie do końca bieżącej doby. Godzina docelowa jest w zasięgu prognozy dokładnie wtedy, gdy
+
+```
+1 ≤ h ≤ 24·D,     h = 24·Δdoba + godzina − tura_bieżąca·3 + 1
+```
+
+gdzie `Δdoba` to odstęp doby docelowej od bieżącej, `godzina` ∈ 0..23 liczy się wewnątrz doby docelowej, a `D` to horyzont poziomu w dobach. `h ≤ 0` oznacza godzinę już ujawnioną — prawda, pasmo 0 (§8.6.1).
+
+W jednostce rozgrywki granica jest równa: prognoza obejmuje **dokładnie `8·D` tur** — bieżącą i `8·D − 1` następnych — niezależnie od pory doby (8 / 24 / 56 tur). W turze 1 zasięg pokrywa się z bieżącą dobą; w każdej kolejnej okno przesuwa się o 3 h w przód, zaglądając odpowiednio głębiej w dobę następną (w turze 8 poziomu podstawowego: 21 h doby następnej).
+
+Konsekwencja implementacyjna: **prawda musi być dostępna dla `Δdoba ≤ D`, a nie `< D`** — poziom podstawowy zagląda do doby następnej we wszystkich turach poza pierwszą. Prognozy dób przyszłych wymagają wygenerowania ich prawdy z wyprzedzeniem; architektonicznie prawda może powstawać dla całego horyzontu przy inicjalizacji albo na żądanie, doba po dobie z tego samego ziarna (§8.6.1 stosuje się bez zmian — ta sama doba wygenerowana raz i wygenerowana ponownie musi być identyczna co do bitu).
+
+Poza pierwszą dobą σ **rośnie dalej z horyzontem** — każda kolejna doba prognozy ma szersze pasmo (ograniczenie `min(h, 12)` z §8.6.2 dotyczy przebiegu wewnątrz doby; przyrost międzydobowy, np. +20–30% σ na dobę, do strojenia przy implementacji prognozy wielodobowej). Przyrost międzydobowy jest kluczowany **odstępem doby kalendarzowej** (`Δdoba`), nie ciągłym horyzontem `h`: pasmo rośnie skokiem na granicy doby, a nie po 24 h od tury bieżącej. Świadome uproszczenie — trzyma rachunek σ deterministycznym i niezależnym od tego, w której turze gracz patrzy.
 
 To rzadki przypadek inwestycji, która **nie dodaje ani jednego megawata mocy, a mimo to realnie obniża koszty** — bo pozwala trzymać mniejszą rezerwę. Dobry sposób, by pokazać graczowi, ile warta jest informacja.
 

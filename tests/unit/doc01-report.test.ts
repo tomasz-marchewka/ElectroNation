@@ -4,8 +4,11 @@ import {
   DAY_WEIGHTS,
   TURNS_PER_DAY,
   applyAction,
+  digestAt,
+  digestTurn,
   farmPowerMwAtHour,
   farmProductionForecast,
+  lastDayDigests,
   newGame,
   projectBalance,
   resolveTurn,
@@ -44,31 +47,54 @@ describe("01 §2.3: the report describes the RESOLVED turn", () => {
   });
 });
 
-describe("01 §8 pt 2 + pt 5: history of the day being played", () => {
-  test("a full day leaves 8 reports in order; the new day restarts the history", () => {
+describe("02 §9.12 + 01 §8 pt 2: the turn archive", () => {
+  test("every resolved turn leaves one digest, in calendar order and without gaps", () => {
     let state = newGame(7, makeScenario());
-    expect(state.dayReports).toStrictEqual([]);
+    expect(state.history).toStrictEqual([]);
 
     for (let turn = 0; turn < TURNS_PER_DAY; turn++) {
       state = resolveTurn(state);
-      expect(state.dayReports).toHaveLength(turn + 1);
+      expect(state.history).toHaveLength(turn + 1);
     }
-    expect(state.dayReports.map((report) => report.turnIndex)).toStrictEqual([
-      0, 1, 2, 3, 4, 5, 6, 7,
-    ]);
-    expect(state.dayReports.every((report) => report.dayIndex === 0)).toBe(true);
-    // The day is over, yet its history stands: the calendar already shows the
-    // next day while the chart and WYNIK DOBY still describe the finished one.
+    expect(state.history.map((digest) => digest.turnIndex)).toStrictEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+    expect(state.history.every((digest) => digest.dayIndex === 0)).toBe(true);
     expect(state.calendar).toStrictEqual({ dayIndex: 1, turnIndex: 0 });
-    expect(state.dayReports.at(-1)).toStrictEqual(state.lastTurnReport);
 
+    // Unlike the per-day history it replaces, the archive does not restart:
+    // the ribbon scrolls back through every day ever played (01 §2.5).
     const next = resolveTurn(state);
-    expect(next.dayReports).toHaveLength(1);
-    expect(next.dayReports[0]?.dayIndex).toBe(1);
-    expect(next.dayReports[0]?.turnIndex).toBe(0);
+    expect(next.history).toHaveLength(TURNS_PER_DAY + 1);
+    expect(next.history.at(-1)?.dayIndex).toBe(1);
+    expect(next.history.at(-1)?.turnIndex).toBe(0);
+    // Positions on the ribbon's own axis are dense: `dayIndex × 8 + turnIndex`.
+    expect(next.history.map(digestTurn)).toStrictEqual([0, 1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(digestAt(next.history, 8)).toStrictEqual(next.history.at(-1));
+    expect(digestAt(next.history, 9)).toBeUndefined();
   });
 
-  test("WYNIK DOBY: the reports sum to exactly the day's money delta", () => {
+  test("the digest says what the last report said — that is what a review shows", () => {
+    const state = resolveTurn(resolveTurn(newGame(7, makeScenario())));
+    const report = state.lastTurnReport;
+    const digest = state.history.at(-1);
+    if (!report || !digest) throw new Error("missing report");
+
+    expect(digest.turnIndex).toBe(report.turnIndex);
+    expect(digest.totals).toStrictEqual(report.totals);
+    expect(digest.finance).toStrictEqual(report.finance);
+    expect(digest.forecastMiss).toStrictEqual(report.forecastMiss);
+    expect(digest.dayWeight).toBe(report.dayWeight);
+    // Coverage is the power the flow actually drew, split by technology.
+    const used = report.sources.reduce((sum, source) => sum + source.usedMw, 0);
+    const coverage = digest.coverageMw.reduce((sum, mw) => sum + mw, 0);
+    expect(coverage).toBeCloseTo(used, 3);
+    expect(coverage).toBeCloseTo(report.totals.deliveredMw + report.totals.lossesMw, 3);
+    // Only the cities that went short are named, and with their own numbers.
+    expect(digest.shortfalls.map((city) => city.cityId)).toStrictEqual(
+      report.cities.filter((city) => city.ensMw >= 0.001).map((city) => city.cityId),
+    );
+  });
+
+  test("WYNIK DOBY: the day's digests sum to exactly the day's money delta", () => {
     let state = applyAction(newGame(7, makeScenario()), {
       type: "setPlantSetpoint",
       plantId: "plant-1",
@@ -76,14 +102,20 @@ describe("01 §8 pt 2 + pt 5: history of the day being played", () => {
     });
     const before = state.moneyPln;
     for (let turn = 0; turn < TURNS_PER_DAY; turn++) state = resolveTurn(state);
-    const dayResultPln = state.dayReports.reduce((sum, report) => sum + report.finance.netPln, 0);
-    expect(dayResultPln).toBe(state.moneyPln - before);
+    const digests = lastDayDigests(state);
+    expect(digests).toHaveLength(TURNS_PER_DAY);
+    expect(digests.reduce((sum, digest) => sum + digest.finance.netPln, 0)).toBe(
+      state.moneyPln - before,
+    );
+    // The finished day stays readable after the calendar rolls over (01 §8 pt 5).
+    expect(state.calendar.dayIndex).toBe(1);
+    expect(digests.every((digest) => digest.dayIndex === 0)).toBe(true);
   });
 
   test("survives the JSON round-trip like the rest of the state", () => {
     const next = resolveTurn(resolveTurn(newGame(7, makeScenario())));
     const revived = JSON.parse(JSON.stringify(next)) as GameState;
-    expect(revived.dayReports).toStrictEqual(next.dayReports);
+    expect(revived.history).toStrictEqual(next.history);
   });
 });
 

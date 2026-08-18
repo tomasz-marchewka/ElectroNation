@@ -80,6 +80,10 @@ describe("golden scenarios", () => {
       scenario: scenario.name,
       description: scenario.description,
       perTurn,
+      // The archive is dense and never restarts (02 §4.1), so this is exactly
+      // the number of turns played — a reset or a gap would show up here as a
+      // readable diff instead of hiding inside the hash.
+      archiveTurns: state.history.length,
       finalStateHash: stateHash(state),
     };
     await expect(JSON.stringify(report, null, 2) + "\n").toMatchFileSnapshot(

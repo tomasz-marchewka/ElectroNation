@@ -16,10 +16,11 @@ test("dispatcher screen boots without console errors", async ({ page }) => {
   await expect(page.locator("[data-region='map'] svg")).toBeVisible();
   await expect(page.locator("path[data-hex]")).toHaveCount(24 * 16);
   await expect(page.getByText("1 HEKS = 25 KM")).toBeVisible();
-  // The day chart is a standing part of the view (01 §8 pt 2), with its key.
+  // The time ribbon is a standing part of the view (01 §8 pt 2), with its key.
   await expect(page.locator("[data-region='chart'] svg")).toBeVisible();
-  await expect(page.getByText("DOBA · POPYT vs POKRYCIE [MW]")).toBeVisible();
+  await expect(page.getByText("OŚ CZASU · POPYT vs POKRYCIE [MW]")).toBeVisible();
   await expect(page.locator(".en-chartlegend .en-swatch")).toHaveCount(7);
+  await expect(page.locator(".en-timeline__day")).toHaveText(["ROK 1 · STYCZEŃ · DOBA ROBOCZA A"]);
   expect(errors).toEqual([]);
 });
 
@@ -119,7 +120,13 @@ test("scrubbing to the evening peak plays every turn on the way", async ({ page 
   await page.goto("/");
 
   await page.getByLabel("EC MODRZYCA").press("End");
+  // A click only READS the turn (01 §2.5): its forecast card comes up, the
+  // calendar stays put, and moving time takes the explicit action next to it.
   await page.locator(".en-turn", { hasText: "SZCZYT WIECZ." }).click();
+  await expect(page.locator(".en-report__label")).toContainText("PROGNOZA TURY");
+  await expect(page.locator(".en-panel__meta")).toContainText("TURA 1/8");
+  // The ribbon aims the panel's own scrub button at the turn it named.
+  await page.getByRole("button", { name: "PRZEWIŃ DO T7 ⏭" }).click();
 
   // Six turns resolved on the way; the seventh is the one now pending.
   await expect(page.locator(".en-panel__meta")).toContainText("TURA 7/8");
@@ -129,6 +136,42 @@ test("scrubbing to the evening peak plays every turn on the way", async ({ page 
   await expect(page.locator("[data-region='chart'] .en-chart__area").first()).toBeVisible();
   await expect(page.locator("[data-region='chart'] polygon").first()).toBeVisible();
   await expect(page.locator(".en-topbar")).toContainText("WYNIK DOBY");
+  expect(errors).toEqual([]);
+});
+
+test("reading a turn back on the ribbon leaves the world where it is (01 §2.5)", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(String(error)));
+  await page.goto("/");
+  await page.getByRole("button", { name: "NOWA GRA" }).click();
+  await page.getByRole("button", { name: "POTWIERDŹ ✓" }).click();
+
+  // A full day plus two turns, so the archive spans a day boundary.
+  await page.getByLabel("EC MODRZYCA").press("End");
+  for (let turn = 0; turn < 10; turn++) {
+    await page.getByRole("button", { name: "ZATWIERDŹ TURĘ ▸" }).click();
+  }
+  await expect(page.locator(".en-topbar__ctx")).toContainText("DOBA ROBOCZA B");
+  await expect(page.locator(".en-report__label")).toContainText("TURA 2 · PRZEDŚWIT");
+
+  // Back over the day boundary: two days are captioned at once.
+  await page.getByTitle("Wcześniejsze tury").click();
+  await page.getByTitle("Wcześniejsze tury").click();
+  await page.getByTitle("Wcześniejsze tury").click();
+  await expect(page.locator(".en-timeline__day")).toHaveCount(2);
+
+  // A turn of the first day, read back: the strip follows, the calendar does
+  // not, and the map keeps painting the turn that actually stands.
+  await page.locator(".en-turn", { hasText: "SZCZYT WIECZ." }).click();
+  await expect(page.locator(".en-report__label")).toContainText("RAPORT TURY");
+  await expect(page.locator(".en-report__label")).toContainText("TURA 7 · SZCZYT WIECZ.");
+  await expect(page.locator(".en-report__label")).toContainText("DOBA ROBOCZA A");
+  await expect(page.locator(".en-panel__meta")).toContainText("TURA 3/8");
+
+  await page.getByTitle("Wróć do tury bieżącej").click();
+  await expect(page.locator(".en-report__label")).toContainText("TURA 2 · PRZEDŚWIT");
   expect(errors).toEqual([]);
 });
 
@@ -266,6 +309,7 @@ test("pełna pętla: nowa gra, budowa, linia, koniec doby, wznowienie po przeła
   // Scrub to the last turn of the day, then commit it — the day rolls over
   // and the PV farm ordered above joins the map (01 §2.5, §2.6).
   await page.locator(".en-turn", { hasText: "PÓŹNY WIECZ." }).click();
+  await page.getByRole("button", { name: "PRZEWIŃ DO T8 ⏭" }).click();
   await expect(page.locator(".en-panel__meta")).toContainText("TURA 8/8");
   await page.getByRole("button", { name: "ZATWIERDŹ TURĘ ▸" }).click();
   await expect(page.locator(".en-panel__meta")).toContainText("TURA 1/8");

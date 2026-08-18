@@ -3,7 +3,9 @@
 // picked off disk. Everything here therefore reports a domain result instead of
 // throwing — a foreign or broken file is a game situation, not a crash.
 
-import { STATE_SCHEMA_VERSION, type GameState } from "./state";
+import type { FarmTech, PlantTech } from "./config";
+import { buildTurnDigest, coverageIndex } from "./history";
+import { STATE_SCHEMA_VERSION, type GameState, type TurnDigest, type TurnReport } from "./state";
 
 /** Moves a state from schema `n` to `n + 1`; the loader stamps the number. */
 export type Migration = (state: unknown) => unknown;
@@ -14,7 +16,7 @@ export type MigrationRegistry = Record<number, Migration>;
 /**
  * Saving arrived with schema 9, so no save older than that can exist. Every
  * bump of STATE_SCHEMA_VERSION adds its entry here; see the comment at the
- * constant.
+ * constant. Keyed by the schema a migration READS, so they compose in order.
  */
 export const MIGRATIONS: MigrationRegistry = {
   /** 9 → 10: line upgrades (01 §4.2, 0.17). No save can have one in flight. */
@@ -25,7 +27,42 @@ export const MIGRATIONS: MigrationRegistry = {
       lines: state.lines.map((line) => (isRecord(line) ? { ...line, upgrade: null } : line)),
     };
   },
+  /**
+   * 10 → 11: the turn archive replaces `dayReports` (02 §4.1). The reports of
+   * the day the save was written on are all the history such a save ever had,
+   * so they become its whole archive — nothing older ever existed to lose.
+   */
+  10: (state) => {
+    if (!isRecord(state)) return state;
+    const { dayReports, ...rest } = state;
+    return { ...rest, history: digestsOfSavedReports(dayReports, state.plants, state.farms) };
+  },
 };
+
+/** Coarse guard: enough to keep a hand-edited save from crashing the loader. */
+function isTechObject(value: unknown): value is { id: string; tech: PlantTech & FarmTech } {
+  return isRecord(value) && typeof value.id === "string" && typeof value.tech === "string";
+}
+
+function isReportLike(value: unknown): value is TurnReport {
+  return (
+    isRecord(value) &&
+    Array.isArray(value.sources) &&
+    Array.isArray(value.cities) &&
+    isRecord(value.totals) &&
+    isRecord(value.finance) &&
+    isRecord(value.forecastMiss)
+  );
+}
+
+function digestsOfSavedReports(reports: unknown, plants: unknown, farms: unknown): TurnDigest[] {
+  if (!Array.isArray(reports)) return [];
+  const layers = coverageIndex({
+    plants: (Array.isArray(plants) ? plants : []).filter(isTechObject),
+    farms: (Array.isArray(farms) ? farms : []).filter(isTechObject),
+  });
+  return reports.filter(isReportLike).map((report) => buildTurnDigest(report, layers));
+}
 
 export type LoadErrorCode =
   /** Not an object, or no `schema`/`seed` — not one of our files at all. */
@@ -77,7 +114,7 @@ const REQUIRED_FIELDS: Record<string, FieldKind> = {
   lines: "array",
   constructions: "array",
   borderSites: "array",
-  dayReports: "array",
+  history: "array",
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {

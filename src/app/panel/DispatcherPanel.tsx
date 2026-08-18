@@ -140,6 +140,14 @@ export interface DispatcherPanelProps {
   onCommit: () => void;
   /** Scrub until something happens or the day ends (01 §2.5). */
   onSkip: () => void;
+  /** Scrub straight to a turn picked on the ribbon (01 §2.5). */
+  onScrubTo: (turnIndex: number) => void;
+  /**
+   * Future turn of THIS day selected on the ribbon, or null. It decides which
+   * of the two scrubs the one ghost button performs — the ribbon names the
+   * target, the panel keeps the action.
+   */
+  scrubTurnIndex?: number | null;
   /** Why the last scrub stopped; absent when time moved one turn at a time. */
   stopNote?: string;
 }
@@ -149,6 +157,8 @@ export function DispatcherPanel({
   onAction,
   onCommit,
   onSkip,
+  onScrubTo,
+  scrubTurnIndex = null,
   stopNote,
 }: DispatcherPanelProps) {
   const turn = currentDayTurn(game);
@@ -218,13 +228,19 @@ export function DispatcherPanel({
             ZATWIERDŹ TURĘ ▸
           </Button>
           {/* Commit and skip diverge (open question of the handoff README):
-              commit is one turn, skip runs until a stop rule fires (01 §2.5). */}
+              commit is one turn, skip runs until a stop rule fires (01 §2.5).
+              Picking a future turn on the ribbon aims the same button at it —
+              the two scrubs of 01 §2.5 are one control, never two. */}
           <Button
             variant="ghost"
-            onClick={onSkip}
-            title="Przewiń tury aż do zdarzenia albo do końca doby"
+            onClick={() => (scrubTurnIndex === null ? onSkip() : onScrubTo(scrubTurnIndex))}
+            title={
+              scrubTurnIndex === null
+                ? "Przewiń tury aż do zdarzenia albo do końca doby"
+                : `Przewiń do tury ${scrubTurnIndex + 1} — nastawy bez zmian`
+            }
           >
-            PRZEWIŃ ⏭
+            {scrubTurnIndex === null ? "PRZEWIŃ ⏭" : `PRZEWIŃ DO T${scrubTurnIndex + 1} ⏭`}
           </Button>
         </div>
       </PanelSection>

@@ -139,6 +139,9 @@ button.en-seg:hover { color: var(--en-text-2); border-color: var(--en-border-str
 .en-turn:hover { color: var(--en-text-2); }
 .en-turn.is-current { background: var(--en-action); color: var(--en-action-fg); font-weight: var(--en-fw-bold); }
 .en-turn.is-past { color: var(--en-text-3); }
+/* The turn the report strip is describing — an outline, never a fill: the fill
+   belongs to TERAZ, and the two are often different turns (01 §2.5). */
+.en-turn.is-selected { box-shadow: inset 0 0 0 var(--en-border-w) var(--en-text-2); color: var(--en-text); }
 
 /* ── pasek raportu po zatwierdzeniu tury ───────────────── */
 .en-report { display: flex; background: var(--en-bg-report); border-top: var(--en-border-w-accent) solid var(--en-action); font-family: var(--en-font-mono); }

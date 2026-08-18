@@ -44,6 +44,7 @@ import {
 } from "./config";
 import { cityDemandForecast, farmProductionForecast } from "./forecast";
 import { evaluateMonthlyGrowth } from "./growth";
+import { buildTurnDigest, coverageIndex } from "./history";
 import {
   buildSegments,
   emptyResidual,
@@ -91,7 +92,7 @@ export function newGame(seed: number, scenario: Scenario = MAP_V1): GameState {
     ...fields,
     dayTruth: generateDayTruth(seed, 0, fields.cities),
     lastTurnReport: null,
-    dayReports: [],
+    history: [],
   };
 }
 
@@ -614,10 +615,10 @@ export function resolveTurn(state: GameState): GameState {
     },
   };
 
-  // The day's history restarts with the day's FIRST resolution, not when the
-  // calendar rolls over: a finished day stays readable — chart and WYNIK DOBY
-  // still show it — until the new one is actually played.
-  const dayReports = state.calendar.turnIndex === 0 ? [report] : [...state.dayReports, report];
+  // 02 §4 step 9: the turn joins the archive. The digest is derived from the
+  // report and from the technologies standing in the world right now, so a
+  // layer split never depends on what the map looks like later (02 §4.1).
+  const history = [...state.history, buildTurnDigest(report, coverageIndex(state))];
 
   // Line construction and line upgrades advance by the played block (01 §2.6).
   // An upgrade that runs out of hours flips the type right here: this is the
@@ -643,7 +644,7 @@ export function resolveTurn(state: GameState): GameState {
       storages,
       lines,
       lastTurnReport: report,
-      dayReports,
+      history,
     };
   }
 
@@ -765,6 +766,6 @@ export function resolveTurn(state: GameState): GameState {
     constructions: stillBuilding,
     dayTruth: generateDayTruth(state.seed, nextDay, nextCities),
     lastTurnReport: report,
-    dayReports,
+    history,
   };
 }

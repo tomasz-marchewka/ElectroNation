@@ -3,6 +3,9 @@
 // any save was written in, so the chain proper starts there; the mechanism is
 // also exercised on a synthetic registry.
 
+/** The last schema nothing was ever written in — the chain has to break here. */
+const UNSUPPORTED_SCHEMA = 8;
+
 import { describe, expect, test } from "vitest";
 import {
   MIGRATIONS,
@@ -10,13 +13,29 @@ import {
   migrateState,
   newGame,
   parseSaveJson,
+  type GameState,
   type MigrationRegistry,
 } from "../../src/engine";
 import { playTurns } from "../helpers/run";
 
-/** A save of the previous schema: today's state with yesterday's number. */
+/**
+ * A save of the previous schema: today's state with yesterday's number. Used
+ * only with synthetic registries, so it keeps today's shape on purpose — the
+ * real chain is exercised by the per-step tests below.
+ */
 function previousSchemaSave(): Record<string, unknown> {
   return { ...playTurns(11, 3), schema: STATE_SCHEMA_VERSION - 1 };
+}
+
+/**
+ * What a schema-10 save looked like: the reports of the day being played, no
+ * archive. Only the last of them can be rebuilt from a current state, which is
+ * enough — the migration's job is to carry them over, not to invent history.
+ */
+function schema10Save(state: GameState): Record<string, unknown> {
+  const copy = JSON.parse(JSON.stringify(state)) as Record<string, unknown>;
+  delete copy.history;
+  return { ...copy, schema: 10, dayReports: state.lastTurnReport ? [state.lastTurnReport] : [] };
 }
 
 describe("registry", () => {
@@ -69,14 +88,14 @@ describe("migrateState", () => {
   });
 
   test("an older save without its migration is rejected, not guessed", () => {
-    // Two schemas back: nothing was ever written at 8, so the chain is broken
-    // at the first step and the loader says so instead of guessing the shape.
-    const result = migrateState({ ...playTurns(11, 3), schema: STATE_SCHEMA_VERSION - 2 });
+    // Nothing was ever written at 8, so the chain is broken at the first step
+    // and the loader says so instead of guessing the shape.
+    const result = migrateState({ ...playTurns(11, 3), schema: UNSUPPORTED_SCHEMA });
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error.code).toBe("missingMigration");
-      expect(result.error.schema).toBe(STATE_SCHEMA_VERSION - 2);
+      expect(result.error.schema).toBe(UNSUPPORTED_SCHEMA);
     }
   });
 
@@ -84,7 +103,7 @@ describe("migrateState", () => {
     // What a schema-9 save looked like: lines without the field at all.
     const state = playTurns(11, 3);
     const old = {
-      ...JSON.parse(JSON.stringify(state)),
+      ...schema10Save(state),
       schema: 9,
       lines: state.lines.map((line) => {
         const without: Record<string, unknown> = { ...line };
@@ -100,9 +119,32 @@ describe("migrateState", () => {
     if (result.ok) {
       expect(result.state.schema).toBe(STATE_SCHEMA_VERSION);
       expect(result.state.lines.every((line) => line.upgrade === null)).toBe(true);
-      // Nothing else moved: the migration only fills the new field.
-      expect(result.state).toStrictEqual(state);
+      // Nothing else moved: the two migrations only fill the new fields.
+      expect({ ...result.state, history: [] }).toStrictEqual({ ...state, history: [] });
     }
+  });
+
+  test("10 → 11: the day's reports become the turn archive (02 §4.1)", () => {
+    const state = playTurns(11, 3);
+    const result = migrateState(schema10Save(state));
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      // The reports a schema-10 save carried are digested into the archive —
+      // and they digest to exactly what the engine archives live.
+      expect(result.state.history).toStrictEqual([state.history.at(-1)]);
+      expect("dayReports" in result.state).toBe(false);
+    }
+  });
+
+  test("10 → 11: a save with unreadable reports loads with an empty archive", () => {
+    // A hand-edited save stays the player's business (M9 brief §3), but it may
+    // not take the loader down with it.
+    const state = playTurns(11, 3);
+    const result = migrateState({ ...schema10Save(state), dayReports: [{ nonsense: true }, 7] });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.state.history).toStrictEqual([]);
   });
 
   test("a save from the future is rejected", () => {

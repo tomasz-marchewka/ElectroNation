@@ -627,5 +627,6 @@
       "netPln": 7649
     }
   ],
-  "finalStateHash": "f2448c2fce9d774b59b0a8ab4294e5b0be097385f797bb88d751cf85355cecd9"
+  "archiveTurns": 48,
+  "finalStateHash": "26608bc5a93e683a85f701c3c59c03eb9c9d6a0fce03b7cd73e2e4a2e9e45abb"
 }

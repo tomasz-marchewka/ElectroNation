@@ -53,7 +53,11 @@ describe("top bar reads the engine state", () => {
     render(<App />);
 
     expect(screen.getByText(budgetKpi(game))).toBeDefined();
-    expect(screen.getByText(/ROK 1 · STYCZEŃ · DOBA ROBOCZA A/)).toBeDefined();
+    // The ribbon captions the same day below (01 §8 pt 2), so the bar is read
+    // where the bar is.
+    expect(document.querySelector(".en-topbar__ctx")?.textContent).toContain(
+      "ROK 1 · STYCZEŃ · DOBA ROBOCZA A",
+    );
     expect(screen.getByText("PODSTAWOWY · 24 H")).toBeDefined();
   });
 

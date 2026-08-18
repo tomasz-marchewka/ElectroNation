@@ -1,11 +1,23 @@
-// The settlement strip of the last resolved turn (01 §2.3 phase 3–4). Pure
-// model over `GameState.lastTurnReport`: nothing is remembered by the UI, so a
-// loaded save shows the same strip the live session did.
+// The bottom strip: the settlement of a RESOLVED turn, or the forecast of one
+// still ahead (01 §2.3, §8 pt 5). Pure model over the archive and the engine's
+// forecast — nothing is remembered by the UI, so a loaded save shows the same
+// strip the live session did, and a turn read back weeks later shows exactly
+// what it showed when it resolved (02 §4.1).
 //
 // Tile order is cause and effect: weather → delivery → shortfall → money →
 // result (ReportStrip.prompt.md).
 
-import { CONFIG, type GameState, type TurnReport } from "../../engine";
+import {
+  CONFIG,
+  HOURS_PER_TURN,
+  TURNS_PER_DAY,
+  absoluteTurn,
+  digestAt,
+  turnForecast,
+  type GameState,
+  type TurnDigest,
+  type TurnForecast,
+} from "../../engine";
 import type { ReportTile } from "../components/ReportStrip";
 import {
   formatBand,
@@ -15,6 +27,7 @@ import {
   formatSignedMoneyPln,
 } from "../format";
 import { dayTurnAt } from "../labels";
+import { dayContext } from "../store/selectors";
 
 /** Report power is quantized to 0,001 MW — below this a value reads as zero. */
 const ZERO_MW = 0.01;
@@ -23,13 +36,19 @@ const ZERO_MW = 0.01;
 const NAMED_CITIES = 2;
 
 /** "TURA 7 · SZCZYT WIECZ." — which turn the numbers below belong to. */
-export function reportTitle(report: TurnReport): string {
-  return `TURA ${report.turnIndex + 1} · ${dayTurnAt(report.turnIndex).name}`;
+export function reportTitle(turnIndex: number): string {
+  return `TURA ${turnIndex + 1} · ${dayTurnAt(turnIndex).name}`;
+}
+
+/** "STYCZEŃ · DOBA ROBOCZA A" — which day that turn belongs to. */
+export function reportDayNote(dayIndex: number): string {
+  const context = dayContext(dayIndex);
+  return `${context.monthName} · ${context.dayLabel}`;
 }
 
 /** Cities left short this turn, named — the note has to say WHERE it hurt. */
-function shortfallNote(state: GameState, report: TurnReport): string {
-  const names = report.cities
+function shortfallNote(state: GameState, digest: TurnDigest): string {
+  const names = digest.shortfalls
     .filter((city) => city.ensMw > ZERO_MW)
     .map(
       (city) =>
@@ -41,15 +60,15 @@ function shortfallNote(state: GameState, report: TurnReport): string {
   return rest > 0 ? `${head} +${formatNumber(rest)}` : head;
 }
 
-export function reportTiles(state: GameState, report: TurnReport): ReportTile[] {
-  const { totals, finance, forecastMiss } = report;
+export function reportTiles(state: GameState, digest: TurnDigest): ReportTile[] {
+  const { totals, finance, forecastMiss } = digest;
   const revenuePln = finance.revenueEnergyPln + finance.revenueExportPln;
   const costPln = finance.fuelCostPln + finance.importCostPln;
   const penaltyPln = finance.ensPenaltyPln + finance.dumpPenaltyPln;
   const short = totals.ensMw > ZERO_MW;
 
   const revenueNote = [
-    `${formatNumber(CONFIG.tariffPlnPerMwh)} zł/MWh × ${formatNumber(report.dayWeight, 1)}`,
+    `${formatNumber(CONFIG.tariffPlnPerMwh)} zł/MWh × ${formatNumber(digest.dayWeight, 1)}`,
     finance.revenueExportPln > 0 ? `EKSPORT ${formatMoneyPln(finance.revenueExportPln)}` : null,
   ]
     .filter((part) => part !== null)
@@ -78,7 +97,7 @@ export function reportTiles(state: GameState, report: TurnReport): ReportTile[] 
     {
       label: "NIEDOBÓR",
       value: formatMw(totals.ensMw),
-      note: shortfallNote(state, report),
+      note: shortfallNote(state, digest),
       tone: short ? "danger" : "ok",
     },
     {
@@ -107,4 +126,85 @@ export function reportTiles(state: GameState, report: TurnReport): ReportTile[] 
       highlight: finance.netPln > 0,
     },
   ];
+}
+
+/**
+ * The other half of the ribbon: a turn that has not happened yet has no result,
+ * only a bet to be placed (01 §2.5). Bands, never bare numbers (06 §8.6.4) —
+ * and the horizon tile says why this one is as wide as it is.
+ */
+export function forecastTiles(forecast: TurnForecast, aheadTurns: number): ReportTile[] {
+  const band = (point: { mw: number; bandMw: number }): string =>
+    `PASMO ${formatBand(point.mw, point.bandMw)}`;
+  return [
+    {
+      label: "POPYT",
+      value: formatMw(forecast.demand.mw),
+      note: band(forecast.demand),
+      tone: "info",
+    },
+    { label: "WIATR", value: formatMw(forecast.wind.mw), note: band(forecast.wind) },
+    { label: "PV", value: formatMw(forecast.pv.mw), note: band(forecast.pv) },
+    {
+      label: "HORYZONT",
+      value: `+${formatNumber((aheadTurns + 1) * HOURS_PER_TURN)} H`,
+      note: "PASMO ROŚNIE Z HORYZONTEM",
+    },
+  ];
+}
+
+export interface ReportStripModel {
+  /** Over-label: whether these numbers are a result or a bet. */
+  label: string;
+  title: string;
+  note: string;
+  tiles: ReportTile[];
+  /** The turn described, on the ribbon's own axis. */
+  absTurn: number;
+  /**
+   * Turn to scrub to, or null when there is nothing to scrub to. Only future
+   * turns OF THE CURRENT DAY qualify: scrubbing stays inside the daily rhythm
+   * (01 §2.5), and a resolved turn is never replayable.
+   */
+  scrubTurnIndex: number | null;
+}
+
+/**
+ * What the bottom strip shows for the selected turn — the report of a resolved
+ * one, the forecast of one ahead. Null when there is nothing to say yet: a
+ * fresh session before its first resolution.
+ */
+export function buildReportStrip(
+  state: GameState,
+  selected: number | null,
+): ReportStripModel | null {
+  const pending = absoluteTurn(state.calendar.dayIndex, state.calendar.turnIndex);
+  const absTurn = selected ?? pending - 1;
+  const dayIndex = Math.floor(absTurn / TURNS_PER_DAY);
+  const turnIndex = absTurn - dayIndex * TURNS_PER_DAY;
+  const note = reportDayNote(dayIndex);
+
+  if (absTurn < pending) {
+    const digest = digestAt(state.history, absTurn);
+    if (!digest) return null;
+    return {
+      label: "RAPORT TURY",
+      title: reportTitle(turnIndex),
+      note,
+      tiles: reportTiles(state, digest),
+      absTurn,
+      scrubTurnIndex: null,
+    };
+  }
+
+  const forecast = turnForecast(state, dayIndex - state.calendar.dayIndex, turnIndex);
+  if (!forecast) return null;
+  return {
+    label: "PROGNOZA TURY",
+    title: reportTitle(turnIndex),
+    note,
+    tiles: forecastTiles(forecast, absTurn - pending),
+    absTurn,
+    scrubTurnIndex: absTurn > pending && dayIndex === state.calendar.dayIndex ? turnIndex : null,
+  };
 }
