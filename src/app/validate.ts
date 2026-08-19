@@ -20,6 +20,8 @@ import {
   isInsideMap,
   isLineBuilt,
   lineUpgradeCostPln,
+  linesAtHex,
+  routeLinesAtHex,
   type CityState,
   type GameState,
   type HexCoord,
@@ -91,22 +93,25 @@ export interface HexLineCount {
 }
 
 /**
- * How many lines cross every hex of the map. Counted over ALL lines, finished
+ * How many lines meet every hex of the map. Counted over ALL lines, finished
  * or not: a line under construction already holds its corridor and its slots
- * in the engine, so an unfinished route may not be double-booked. A line being
- * raised counts in BOTH type buckets — the old one is still strung up and the
- * target one is reserved (01 §4.2) — but only once in `total`, because the
- * number of lines tapping the object does not change.
+ * in the engine, so an unfinished route may not be double-booked. A route
+ * crossing an object counts TWICE there — it is cut on it into two lines that
+ * both end in the object (01 §3.3, 0.19). A line being raised counts in BOTH
+ * type buckets: the old one is still strung up and the target one is reserved
+ * (01 §4.2).
  */
 export function lineCensus(state: GameState): Map<string, HexLineCount> {
+  const objects = objectHexKeys(state);
   const census = new Map<string, HexLineCount>();
   for (const line of state.lines) {
-    // One line taps a hex once, however often its path revisits it.
+    // The route pays per visit; the key set only keeps it from being added twice.
     for (const key of new Set(line.path.map(hexKey))) {
+      const count = routeLinesAtHex(line.path, key, objects);
       const entry = census.get(key) ?? { total: 0, byType: { lv: 0, mv: 0, hv: 0 } };
-      entry.total += 1;
-      entry.byType[line.type] += 1;
-      if (line.upgrade) entry.byType[line.upgrade.type] += 1;
+      entry.total += count;
+      entry.byType[line.type] += count;
+      if (line.upgrade) entry.byType[line.upgrade.type] += count;
       census.set(key, entry);
     }
   }
@@ -143,7 +148,14 @@ export function siteNote(state: GameState, hex: HexCoord): Diagnosis {
   if (TERRAIN[terrain].object === null) {
     return `${NO} budowa na wodzie niemożliwa (${TERRAIN_NAMES[terrain]})`;
   }
-  if (occupiedHexKeys(state).has(hexKey(hex))) return `${NO} heks zajęty`;
+  const key = hexKey(hex);
+  if (occupiedHexKeys(state).has(key)) return `${NO} heks zajęty`;
+  // 01 §3.3 (0.19): every route crossing the site is cut on the object the day
+  // it stands, and each cut ends in it twice. More ends than slots = no site.
+  const ends = linesAtHex(state, key, new Set([...objectHexKeys(state), key]));
+  if (ends > LINE_SLOTS_PER_OBJECT) {
+    return `${NO} linie przez heks zajmą ${formatNumber(ends)} przyłączy — obiekt ma ${formatNumber(LINE_SLOTS_PER_OBJECT)}`;
+  }
   return null;
 }
 
@@ -189,24 +201,32 @@ export function limitNote(
 
 // --- lines ------------------------------------------------------------------
 
-/** Why a line of this type may not run through a hex (01 §3.3), or null. */
+/**
+ * Why a line of this type may not run through a hex (01 §3.3), or null.
+ * `crossing` says the route passes THROUGH this hex instead of ending on it:
+ * over an object that means two lines, not one, because the route is cut there
+ * (0.19) — and two slots with it.
+ */
 export function hexRouteNote(
   state: GameState,
   hex: HexCoord,
   lineType: LineType,
   census: Map<string, HexLineCount>,
   objects: Set<string>,
+  crossing: boolean,
 ): Diagnosis {
   if (!isInsideMap(state.map, hex)) return `${NO} heks poza mapą`;
   const key = hexKey(hex);
   const counts = linesAt(census, key);
-  if (counts.byType[lineType] + 1 > MAX_LINES_PER_HEX_PER_TYPE) {
+  const adding = crossing && objects.has(key) ? 2 : 1;
+  if (counts.byType[lineType] + adding > MAX_LINES_PER_HEX_PER_TYPE) {
     return `${NO} korytarz pełny — ${formatNumber(MAX_LINES_PER_HEX_PER_TYPE)} linii ${LINE_TYPE_LABELS[lineType]} przez heks`;
   }
   if (objects.has(key)) {
     const slots = lineSlotsAt(state, key);
-    if (counts.total + 1 > slots) {
-      return `${NO} brak wolnego przyłącza — ${formatNumber(counts.total)}/${formatNumber(slots)}`;
+    if (counts.total + adding > slots) {
+      const label = adding > 1 ? "brak wolnych przyłączy" : "brak wolnego przyłącza";
+      return `${NO} ${label} — trasa zajmie ${formatNumber(counts.total + adding)}/${formatNumber(slots)}`;
     }
   }
   return null;
@@ -266,8 +286,9 @@ export function routeNote(
     return `${NO} linia łączy obiekty — wskaż obiekt docelowy`;
   }
   const census = lineCensus(state);
-  for (const hex of path) {
-    const note = hexRouteNote(state, hex, lineType, census, objects);
+  for (const [index, hex] of path.entries()) {
+    const crossing = index > 0 && index + 1 < path.length;
+    const note = hexRouteNote(state, hex, lineType, census, objects, crossing);
     if (note !== null) return note;
   }
   return moneyNote(state, routeCostPln(state, path, lineType));

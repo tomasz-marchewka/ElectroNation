@@ -28,6 +28,7 @@ import {
   isLineBuilt,
   lineUpgradeCostPln,
   lineUpgradeTargets,
+  linesAtHex,
   type Action,
   type BorderState,
   type CityState,
@@ -74,6 +75,7 @@ import {
   lineSlotsAt,
   lineUpgradeNote,
   moneyNote,
+  objectHexKeys,
   pumpedSiteNote,
   siteNote,
   terrainAt,
@@ -261,6 +263,16 @@ function constructionAt(state: GameState, hex: HexCoord) {
     const at = pendingHex(construction.pending);
     return at !== null && hexKey(at) === key;
   });
+}
+
+/**
+ * Line ends meeting this hex — what an object standing here spends its line
+ * slots on (01 §3.3). A finished route crossing an object is already two lines
+ * in the state (0.19); one still under construction books both ends up front.
+ */
+function connectionsAt(state: GameState, hex: HexCoord): number {
+  const key = hexKey(hex);
+  return linesAtHex(state, key, new Set([...objectHexKeys(state), key]));
 }
 
 /** Lines whose route runs through this hex — they all tap the object on it. */
@@ -630,7 +642,7 @@ export interface HexObjectView {
 /** `POPROWADŹ LINIĘ STĄD` — greyed out when the object has no free slot. */
 function routeAction(state: GameState, hex: HexCoord): HexAction {
   const key = hexKey(hex);
-  const used = linesThrough(state, hex).length;
+  const used = connectionsAt(state, hex);
   const slots = lineSlotsAt(state, key);
   return {
     key: "route",
@@ -1019,7 +1031,7 @@ function borderView(
 
 /** `PRZYŁĄCZA 2 / 6` — how many lines already tap this object (01 §3.3). */
 function connectionsLabel(state: GameState, hex: HexCoord): string {
-  const used = linesThrough(state, hex).length;
+  const used = connectionsAt(state, hex);
   return `${formatNumber(used)} / ${formatNumber(lineSlotsAt(state, hexKey(hex)))}`;
 }
 

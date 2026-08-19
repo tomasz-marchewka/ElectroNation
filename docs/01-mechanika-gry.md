@@ -1,8 +1,25 @@
 # ElectroNation — Dokument bazowy mechaniki gry
 
-**Wersja:** 0.18 (dokument koncepcyjny)
-**Data:** 2026-08-18
+**Wersja:** 0.19 (dokument koncepcyjny)
+**Data:** 2026-08-19
 **Status:** obowiązuje **wersja uproszczona** gry; mechaniki odłożone czekają w [90-pomysly-na-przyszlosc.md](90-pomysly-na-przyszlosc.md)
+
+**Zmiany 0.18 → 0.19 (linia przerywana na mijanym obiekcie):**
+
+1. **Gotowa linia nigdy nie mija obiektu — przecina się na nim** (§3.3): trasa przez heks
+   z obiektem to w stanie gry **dwie osobne linie**, obie kończące się w tym obiekcie.
+   Odczep „w przelocie" z 0.13 przestaje być tylko własnością grafu rozpływu (02 §2)
+   i staje się własnością stanu: każdy odcinek ma własne id, własną rozbudowę i własne
+   anulowanie. Suma długości, kosztu i przepustowości bez zmian.
+2. **Przelot kosztuje dwa przyłącza, nie jedno** (§3.3; uchyla „zajmuje to jedno jego
+   przyłącze liniowe" z 0.13). Odpowiada to definicji przyłącza z 0.12 — po jednym
+   z każdego sąsiedniego heksa: linia w przelocie wchodzi z jednej strony i wychodzi
+   drugą. Przy 6 przyłączach obiekt przepuszcza więc najwyżej 3 trasy w przelocie.
+3. **Symetryczna blokada budowy** (§3.3): heks, przez który biegnie tyle linii, że po
+   przecięciu przekroczyłyby przyłącza obiektu, nie jest placem budowy. Wcześniej reguła
+   działała tylko przy prowadzeniu linii przez stojący obiekt.
+4. **Linia w budowie zostaje jednym zleceniem** (§2.6, §3.3) — przecina się dopiero
+   w chwili uruchomienia, więc czas budowy trasy się nie zmienia.
 
 **Zmiany 0.17 → 0.18 (wstęga czasu: przegląd tur wstecz i horyzont kroczący):**
 
@@ -483,10 +500,22 @@ typu park narodowy — 90 §2.)*
   i rozdzielać linie. **Stacja rozdzielcza** pozostaje wyspecjalizowanym węzłem sieci:
   6 przyłączy **+2 za moduł** (do 18) i własna przepustowość MW — buduje się ją tam,
   gdzie korytarze mają się łączyć z dala od istniejących obiektów (§4.3).
-- **Linia przechodząca przez heks z obiektem automatycznie go przyłącza** (0.13):
-  obiekt staje się węzłem na trasie (odgałęzienie w przelocie) i zajmuje to jedno jego
-  przyłącze liniowe. Jeśli mijany obiekt nie ma wolnego przyłącza, trasa przez ten heks
-  jest niedozwolona — trzeba ominąć.
+- **Linia przechodząca przez heks z obiektem automatycznie go przyłącza** (0.13) —
+  **i jest na nim przerywana** (0.19): gotowa linia nigdy nie *mija* obiektu, tylko
+  rozpada się na dwie osobne linie, obie kończące się w nim. Obiekt jest więc węzłem
+  trasy w samym stanie gry, nie tylko w grafie rozpływu (02 §2), a każdy z odcinków
+  można osobno rozbudować i osobno anulować. **Przelot zajmuje dwa przyłącza**
+  (wejście i wyjście — po jednym z każdego sąsiedniego heksa; do 0.18 liczyło się
+  jedno). Jeśli mijany obiekt nie ma tylu wolnych przyłączy, trasa przez ten heks jest
+  niedozwolona — trzeba ominąć.
+- **Przerwanie działa w obie strony** (0.19): postawienie obiektu na heksie, przez który
+  biegną już linie, przecina je wszystkie w dniu ukończenia budowy. Dlatego heks, którego
+  korytarz przyniósłby więcej końców niż obiekt ma przyłączy (np. 4 linie w przelocie =
+  8 końców przy 6 przyłączach), **nie jest placem budowy** — silnik nigdy nie przetrasuje
+  linii, za którą gracz już zapłacił. Linia w budowie zostaje jednym zleceniem z jednym
+  odliczaniem i przecina się dopiero w chwili uruchomienia (§2.6).
+  Suma długości, kosztu stałego i przepustowości nie zmienia się przy przecięciu:
+  heks obiektu kończy jeden odcinek i zaczyna następny.
 - **Limit korytarza:** przez jeden heks może biec **najwyżej 9 linii jednego typu** (0.13).
 - Punkt graniczny wymaga zbudowania przyłącza granicznego, które jest węzłem z własną
   przepustowością (§5.7).
@@ -962,7 +991,7 @@ indeksem ceny.
 |---|---|---|
 | ✅ | **Uproszczony przepływ (0.7/0.8)**: model „wodociągowy" — bilans turowy, przepustowości linii i stacji, straty liniowe od długości; bez praw Kirchhoffa | 4 |
 | ✅ | **W wersji uproszczonej są: PV, wiatr lądowy, magazyny, stacje rozdzielcze, prognozy z błędem** (0.8) | 5, 2.4 |
-| ✅ | **Topologia bezpośrednia (0.11)**: linie łączą obiekty wprost; **6 przyłączy liniowych na obiekt** (0.12; wcześniej 2 i stacja jako jedyny węzeł zbiorczy); stacja rozdzielcza = dedykowany węzeł z rozbudową przyłączy i własną przepustowością; **linia w przelocie przyłącza mijane obiekty, ⩽9 linii jednego typu na heks** (0.13) | 3.3, 4.3 |
+| ✅ | **Topologia bezpośrednia (0.11)**: linie łączą obiekty wprost; **6 przyłączy liniowych na obiekt** (0.12; wcześniej 2 i stacja jako jedyny węzeł zbiorczy); stacja rozdzielcza = dedykowany węzeł z rozbudową przyłączy i własną przepustowością; **linia w przelocie przyłącza mijane obiekty, ⩽9 linii jednego typu na heks** (0.13); **przelot przerywa linię na obiekcie — dwie osobne linie, dwa przyłącza** (0.19; uchyla „jedno przyłącze" z 0.13) | 3.3, 4.3 |
 | ✅ | **Trzy typy linii przesyłowych NN/SN/WN** (0.13; uchyla „jeden typ" z 0.11): 150/500/1500 MW, straty 4/2/1%/100 km, budowa 3/6/12 h/heks | 4.2 |
 | ✅ | **OZE: ręczne sterowanie tylko włącz/wyłącz całą farmę**; przycinanie nadwyżek automatyczne (0.13) | 4.1 |
 | ✅ | **Horyzont prognozy: 24 h bazowo, poziomy wydłużają do 3 / 7 dób** i zwężają pasmo (0.13); **kroczący (0.18)** — liczony od tury bieżącej, nie do końca doby (uchyla „bieżąca doba" z 0.13); lekki buff poziomu podstawowego do weryfikacji w doc 03 | 2.4, 06 §8.6.3 |

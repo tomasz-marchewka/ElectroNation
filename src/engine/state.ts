@@ -23,7 +23,7 @@ import type { MonthRegimes, RegimeId } from "./regimes";
  * by the build before it still loads. A bump without its migration turns every
  * existing save into a load error.
  */
-export const STATE_SCHEMA_VERSION = 11;
+export const STATE_SCHEMA_VERSION = 12;
 
 export const TURNS_PER_DAY = 8;
 export const HOURS_PER_TURN = 3;

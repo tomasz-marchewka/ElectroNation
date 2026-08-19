@@ -147,6 +147,56 @@ describe("migrateState", () => {
     if (result.ok) expect(result.state.history).toStrictEqual([]);
   });
 
+  test("11 → 12: a line running through an object is cut on it (01 §3.3)", () => {
+    // What a schema-11 save could carry: one route drawn straight through an
+    // object, because before 0.19 the tap lived only in the flow graph.
+    const state = playTurns(11, 3);
+    const plant = state.plants[0];
+    const city = state.cities.find((candidate) => candidate.connected);
+    const whole = state.lines[0];
+    expect(plant && city && whole).toBeTruthy();
+    if (!plant || !city || !whole) return;
+    const merged = {
+      ...JSON.parse(JSON.stringify(state)),
+      schema: 11,
+      // plant → junction hex → city, all on one line, as an old save had it.
+      junctions: [
+        {
+          id: "junction-old",
+          name: "junction-old",
+          hex: whole.path[1],
+          throughputMw: 250,
+          lineSlots: 6,
+        },
+      ],
+      lines: [{ ...whole, id: "line-old" }],
+    };
+
+    const result = migrateState(merged);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.state.lines.map((line) => line.id)).toStrictEqual(["line-old", "line-old#2"]);
+      expect(result.state.lines[0]?.path).toStrictEqual(whole.path.slice(0, 2));
+      expect(result.state.lines[1]?.path).toStrictEqual(whole.path.slice(1));
+    }
+  });
+
+  test("11 → 12: a save too broken to cut is handed on untouched", () => {
+    const state = playTurns(11, 3);
+    const result = migrateState({
+      ...JSON.parse(JSON.stringify(state)),
+      schema: 11,
+      lines: [{ id: "line-x", type: "mv", path: "nonsense", builtHours: 0, totalHours: 0 }],
+    });
+
+    // The migration reads nothing it has not checked first, so a line it cannot
+    // make sense of passes through untouched — a hand-edited save stays the
+    // player's business (M9 brief §3) and may not take the loader down.
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.state.lines).toHaveLength(1);
+  });
+
   test("a save from the future is rejected", () => {
     const result = migrateState({ ...newGame(1), schema: STATE_SCHEMA_VERSION + 1 });
 

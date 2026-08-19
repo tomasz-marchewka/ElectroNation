@@ -39,6 +39,7 @@ import {
   lineOccupiesType,
   type GameState,
   type LineState,
+  type LineUpgrade,
   type PendingObject,
 } from "./state";
 
@@ -122,6 +123,15 @@ function queueObject(
   const multiplier = terrainAt(state, hex).object;
   if (multiplier === null) return state;
   if (occupiedHexKeys(state).has(hexKey(hex))) return state;
+  // 01 §3.3 (0.19): the routes crossing this hex are cut on the object the day
+  // it stands, and every cut ends in it twice — once coming in, once going out.
+  // A corridor that brings more ends than the object has line slots makes the
+  // site illegal: the engine never re-draws a route the player has paid for, so
+  // the refusal has to happen here, before the money is taken. Every fresh
+  // object has the base six — a junction only buys extra slots later (01 §5.4).
+  const key = hexKey(hex);
+  const withSite = new Set([...builtObjectHexKeys(state), key]);
+  if (linesAtHex(state, key, withSite) > LINE_SLOTS_PER_OBJECT) return state;
   const cost = Math.round(baseCostPln * multiplier);
   if (state.moneyPln < cost) return state;
   const id = `obj-${state.nextObjectId}`;
@@ -280,19 +290,48 @@ function routeCapexPln(state: GameState, path: readonly HexCoord[], lineType: Li
 }
 
 /**
- * How many lines crossing this hex the corridor limit counts. Passing `type`
- * narrows it to one counter — and a line mid-upgrade answers to both (01 §3.3).
+ * Lines a route leaves on one hex once the topology rule has cut it (01 §3.3,
+ * 0.19): one where the route ends or merely passes, TWO on an object it crosses
+ * — the piece coming in and the piece going out both end in that object. A hex
+ * the route never touches holds none. Counted per visit, so a route that comes
+ * back to a hex pays for it again.
  */
-function linesThroughHex(state: GameState, key: string, type?: LineType): number {
-  return state.lines.filter(
-    (line) =>
-      (type === undefined || lineOccupiesType(line, type)) &&
-      line.path.some((h) => hexKey(h) === key),
-  ).length;
+export function routeLinesAtHex(
+  path: readonly HexCoord[],
+  key: string,
+  objectHexes: ReadonlySet<string>,
+): number {
+  let count = 0;
+  path.forEach((hex, index) => {
+    if (hexKey(hex) !== key) return;
+    const crossing = index > 0 && index + 1 < path.length;
+    count += crossing && objectHexes.has(key) ? 2 : 1;
+  });
+  return count;
+}
+
+/**
+ * Lines already meeting a hex, counted the same way — this is both the corridor
+ * counter (`type` narrows it; a line mid-upgrade answers to both, 01 §4.2) and
+ * the line-slot counter of the object standing there. Lines under construction
+ * count too: their ends are booked the moment the route is paid for.
+ */
+export function linesAtHex(
+  state: GameState,
+  key: string,
+  objectHexes: ReadonlySet<string>,
+  type?: LineType,
+): number {
+  let count = 0;
+  for (const line of state.lines) {
+    if (type !== undefined && !lineOccupiesType(line, type)) continue;
+    count += routeLinesAtHex(line.path, key, objectHexes);
+  }
+  return count;
 }
 
 /** Line slots of the object on this hex — only junctions buy extra (01 §5.4). */
-function lineSlotsAt(state: GameState, key: string): number {
+export function lineSlotsAt(state: GameState, key: string): number {
   return state.junctions.find((j) => hexKey(j.hex) === key)?.lineSlots ?? LINE_SLOTS_PER_OBJECT;
 }
 
@@ -314,13 +353,20 @@ export function buildLine(state: GameState, lineType: LineType, path: HexCoord[]
   if (!first || !last) return state;
   if (!objectHexes.has(hexKey(first)) || !objectHexes.has(hexKey(last))) return state;
 
-  // Topology limits (01 §3.3): ≤9 lines of one type per hex; a line through an
-  // object's hex consumes one of its line slots — 6 for every object except a
-  // junction, which buys extra slots with capacity modules (01 §5.4).
+  // Topology limits (01 §3.3): ≤9 lines of one type per hex; every line end at
+  // an object's hex consumes one of its line slots — 6 for every object except
+  // a junction, which buys extra slots with capacity modules (01 §5.4). A route
+  // crossing an object is cut on it and therefore books TWO of them (0.19).
   for (const hex of path) {
     const key = hexKey(hex);
-    if (linesThroughHex(state, key, lineType) + 1 > MAX_LINES_PER_HEX_PER_TYPE) return state;
-    if (objectHexes.has(key) && linesThroughHex(state, key) + 1 > lineSlotsAt(state, key)) {
+    const adding = routeLinesAtHex(path, key, objectHexes);
+    if (linesAtHex(state, key, objectHexes, lineType) + adding > MAX_LINES_PER_HEX_PER_TYPE) {
+      return state;
+    }
+    if (
+      objectHexes.has(key) &&
+      linesAtHex(state, key, objectHexes) + adding > lineSlotsAt(state, key)
+    ) {
       return state;
     }
   }
@@ -387,8 +433,11 @@ export function upgradeLine(state: GameState, lineId: string, lineType: LineType
   // The target type needs its own room in every corridor along the route. The
   // line's slot in the OLD counter is NOT released yet — it is still strung up —
   // so nothing frees early and nine parallel raises cannot overfill a corridor.
+  const objectHexes = builtObjectHexKeys(state);
   for (const hex of line.path) {
-    if (linesThroughHex(state, hexKey(hex), lineType) + 1 > MAX_LINES_PER_HEX_PER_TYPE) {
+    const key = hexKey(hex);
+    const adding = routeLinesAtHex(line.path, key, objectHexes);
+    if (linesAtHex(state, key, objectHexes, lineType) + adding > MAX_LINES_PER_HEX_PER_TYPE) {
       return state;
     }
   }
@@ -407,6 +456,117 @@ export function upgradeLine(state: GameState, lineId: string, lineType: LineType
         : l,
     ),
   };
+}
+
+// --- Topology normalization (01 §3.3, 0.19) ---------------------------------
+// A finished line never CROSSES an object: it is cut on it into two lines that
+// both end in it. The object is then a node on the route in the state itself,
+// not only in the flow graph (02 §2) — which is what "a passing line connects
+// the object" means once the player can build on a standing corridor.
+
+/** Interior hexes of a route that hold an object — where the line is cut. */
+function cutIndices(path: readonly HexCoord[], objectHexes: ReadonlySet<string>): number[] {
+  const cuts: number[] = [];
+  for (let i = 1; i + 1 < path.length; i++) {
+    const hex = path[i];
+    if (hex && objectHexes.has(hexKey(hex))) cuts.push(i);
+  }
+  return cuts;
+}
+
+/**
+ * A piece's share of a raise in progress: same target type, its own route's
+ * hours, and the same fraction of them worked off — cutting a line neither
+ * finishes nor restarts the job the player is paying for (01 §4.2).
+ */
+function splitUpgrade(upgrade: LineUpgrade, piece: LineState): LineUpgrade {
+  const totalHours = lineUpgradeHours(piece, upgrade.type);
+  const done = upgrade.totalHours > 0 ? upgrade.builtHours / upgrade.totalHours : 1;
+  return {
+    type: upgrade.type,
+    builtHours: Math.min(totalHours, Math.round(totalHours * done)),
+    totalHours,
+  };
+}
+
+/**
+ * Id of a piece cut off a line: the parent's id with a counter, taking the
+ * first number nothing else in the state uses. Cutting a line is bookkeeping,
+ * not a build, so it deliberately does NOT draw from `nextObjectId` — that
+ * counter numbers what the player orders, and an action log that names an
+ * object by id has to keep meaning the same object.
+ */
+function pieceId(baseId: string, taken: Set<string>): string {
+  for (let n = 2; ; n++) {
+    const id = `${baseId}#${n}`;
+    if (!taken.has(id)) return id;
+  }
+}
+
+/**
+ * Cuts one finished line on every object along it. The first piece keeps the
+ * line's id — from the player's side that corridor did not disappear, it only
+ * got shorter — and the rest are numbered after it. Total route length, and
+ * with it the total capex and the fixed cost, is unchanged: the object's hex
+ * ends one piece and starts the next.
+ */
+function splitLine(
+  line: LineState,
+  objectHexes: ReadonlySet<string>,
+  mintId: () => string,
+): LineState[] {
+  const cuts = cutIndices(line.path, objectHexes);
+  if (cuts.length === 0) return [line];
+  const bounds = [0, ...cuts, line.path.length - 1];
+  const pieces: LineState[] = [];
+  for (let i = 0; i + 1 < bounds.length; i++) {
+    const path = line.path.slice(bounds[i], (bounds[i + 1] ?? 0) + 1);
+    // A route that visits the same hex twice would yield an empty piece; it is
+    // not a line, and dropping it keeps every remaining piece a real route.
+    if (path.length < 2) continue;
+    const hours = (path.length - 1) * LINE_TYPES[line.type].buildHoursPerHex;
+    const piece: LineState = {
+      id: pieces.length === 0 ? line.id : mintId(),
+      type: line.type,
+      path,
+      builtHours: hours,
+      totalHours: hours,
+      upgrade: null,
+    };
+    pieces.push(line.upgrade ? { ...piece, upgrade: splitUpgrade(line.upgrade, piece) } : piece);
+  }
+  return pieces;
+}
+
+/**
+ * Restores the invariant over the whole state: no finished line runs through a
+ * built object. Called after every resolved turn — a line that has just gone
+ * live across an old object and an object that has just risen on an old
+ * corridor both land here — and on a state loaded from an older save.
+ *
+ * Lines still under construction are left whole on purpose: they are one job
+ * with one countdown until the day they go live, and cutting them early would
+ * hand the player parallel crews and a shorter route (01 §2.6).
+ */
+export function splitLinesAtObjects(state: GameState): GameState {
+  const objectHexes = builtObjectHexKeys(state);
+  const taken = new Set(state.lines.map((line) => line.id));
+  const lines: LineState[] = [];
+  let cut = false;
+  for (const line of state.lines) {
+    if (!isLineBuilt(line)) {
+      lines.push(line);
+      continue;
+    }
+    const pieces = splitLine(line, objectHexes, () => {
+      const id = pieceId(line.id, taken);
+      taken.add(id);
+      return id;
+    });
+    if (pieces.length !== 1) cut = true;
+    lines.push(...pieces);
+  }
+  return cut ? { ...state, lines } : state;
 }
 
 // --- Expansion (01 §7, 02 §8.4) ---------------------------------------------

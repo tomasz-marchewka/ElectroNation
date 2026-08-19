@@ -103,9 +103,11 @@ export function findRoute(
 ): HexCoord[] | null {
   const census = lineCensus(state);
   const objects = objectHexKeys(state);
-  const passable = (hex: HexCoord): boolean =>
-    hexRouteNote(state, hex, lineType, census, objects) === null;
-  if (!passable(from) || !passable(to)) return null;
+  // A leg ENDS on its two stops and crosses everything between them — and an
+  // object crossed costs two line slots, not one (01 §3.3, 0.19).
+  const passable = (hex: HexCoord, crossing: boolean): boolean =>
+    hexRouteNote(state, hex, lineType, census, objects, crossing) === null;
+  if (!passable(from, false) || !passable(to, false)) return null;
 
   const startKey = hexKey(from);
   const goalKey = hexKey(to);
@@ -129,7 +131,7 @@ export function findRoute(
     const reached = best.get(node.key) ?? 0;
     for (const neighbor of hexNeighbors(node.hex)) {
       const key = hexKey(neighbor);
-      if (settled.has(key) || !passable(neighbor)) continue;
+      if (settled.has(key) || !passable(neighbor, key !== goalKey)) continue;
       const cost = reached + hexEntryCostPln(state, neighbor, lineType);
       const known = best.get(key);
       // Strictly cheaper only: an equally priced detour never replaces the

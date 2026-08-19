@@ -1,10 +1,16 @@
 # ElectroNation — Model symulacji uproszczonej (silnik tury)
 
-**Wersja:** 0.4
-**Data:** 2026-08-18
+**Wersja:** 0.5
+**Data:** 2026-08-19
 **Status:** **obowiązuje** — formalizuje rdzeń mechaniki z dokumentu 01 §4 (graf sieci,
 rozpływ, straty, niedobory) oraz krok rozstrzygnięcia tury. Wprowadzona tu zmiana 01 §4.1
 (nadwyżka sterowalna karana) obowiązuje od 01 v0.16.
+
+**Zmiany 0.4 → 0.5 (linia przerywana na obiekcie):** §2 — rozpad linii na segmenty
+przestaje być wyłącznie operacją grafu: gotowa linia jest **przecięta na mijanym obiekcie
+w samym stanie gry** (01 §3.3 w 0.19), więc segment grafu i linia stanu znów się pokrywają.
+Rachunek rozpływu, strat i przepustowości bez zmian — zmienia się tylko to, co silnik
+zapisuje; nowy test akceptacyjny §9.13.
 
 **Zmiany 0.3 → 0.4 (archiwum tur):** krok rozstrzygnięcia dostaje punkt 9 — **skrót tury**
 dopisywany do trwałego archiwum w stanie gry (§4.1), pod wstęgę czasu i podgląd tur wstecz
@@ -61,7 +67,10 @@ uzupełniające katalogi 01 §5 zebrane w §8 są **baseline'em dla dokumentów 
   01 §4.2). Straty krawędzi: `sprawność = 1 − k_strat × długość_km / 100`.
 - **Obiekt mijany przez linię** (01 §3.3) jest pełnoprawnym węzłem na trasie — linia
   rozpada się w grafie na segmenty między kolejnymi węzłami. Każdy segment dziedziczy
-  typ i przepustowość linii; straty liczone po długości segmentu.
+  typ i przepustowość linii; straty liczone po długości segmentu. Od 01 v0.19 gotowa
+  linia jest **przecięta na obiekcie już w stanie gry** (dwie osobne linie, dwa przyłącza),
+  więc na trasie gotowej linii segment = linia; podział w grafie pozostaje w silniku dla
+  linii dopiero uruchamianych i dla stanów wczytanych ze starszych zapisów.
 - **Tory równoległe** = osobne krawędzie na tej samej trasie (sumują przepustowość).
 - **Źródła** w turze: elektrownie sterowalne (nastawa gracza), farmy OZE (produkcja
   z pogody, o ile farma włączona), magazyny w trybie rozładowania (nastawa), import
@@ -356,6 +365,10 @@ Testy specyfikacyjne cytują sekcje tego dokumentu:
     kalendarza, bez luk; skrót tury `k` jest identyczny z tym, co pasek raportu pokazywał
     na żywo po turze `k`; suma `net` skrótów doby = `WYNIK DOBY`; suma warstw pokrycia =
     dostarczenie + straty; round-trip zapisu nie gubi ani jednego skrótu.
+13. **§2** — przecięcie na obiekcie (01 §3.3): obiekt ukończony na trasie gotowej linii
+    zostawia w stanie dwie linie kończące się w nim, o niezmienionej sumie długości
+    i godzin; oba odcinki przewodzą, a każdy rozbudowuje się osobno. Heks, którego
+    korytarz przyniósłby więcej końców niż obiekt ma przyłączy, odrzuca budowę.
 
 ## 10. Pytania otwarte
 
