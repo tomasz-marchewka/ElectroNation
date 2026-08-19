@@ -18,14 +18,19 @@ import {
 /** Report power is quantized to 0,001 MW — below this a value reads as zero. */
 const ZERO_MW = 0.001;
 
-const PLANT_LAYERS: Record<PlantTech, CoverageLayer> = {
+/**
+ * Which layer a technology's output lands in. Exported because the plan ahead
+ * of TERAZ is stacked into the SAME layers (01 §8 pt 2) — the projection reads
+ * setpoints instead of a report, and both must agree on where a coal block goes.
+ */
+export const PLANT_LAYERS: Record<PlantTech, CoverageLayer> = {
   nuclear: "nuclear",
   coal: "coal",
   ccgt: "gas",
   ocgt: "gas",
 };
 
-const FARM_LAYERS: Record<FarmTech, CoverageLayer> = { wind: "wind", pv: "pv" };
+export const FARM_LAYERS: Record<FarmTech, CoverageLayer> = { wind: "wind", pv: "pv" };
 
 /**
  * Which coverage layer each source belongs to, read off the world as it stands

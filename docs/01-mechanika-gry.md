@@ -1,8 +1,30 @@
 # ElectroNation — Dokument bazowy mechaniki gry
 
-**Wersja:** 0.19 (dokument koncepcyjny)
+**Wersja:** 0.20 (dokument koncepcyjny)
 **Data:** 2026-08-19
 **Status:** obowiązuje **wersja uproszczona** gry; mechaniki odłożone czekają w [90-pomysly-na-przyszlosc.md](90-pomysly-na-przyszlosc.md)
+
+**Zmiany 0.19 → 0.20 (wstęga: plan przed nami zamiast pasma sprzed tury):**
+
+1. **Pasmo prognozy popytu znika z historycznej części wstęgi** (§8 pkt 2; uchyla pasmo
+   „sprzed rozstrzygnięcia" z 0.18). Rozstrzygnięta tura pokazuje na wykresie to, co się
+   stało — prawdę i pokrycie warstwami. Porównanie zakładu z wynikiem zostaje przy
+   liczbach paska raportu, gdzie czyta się je co do MW; na siedmiowarstwowym stosie
+   drugie pasmo dokładało kreski, a nie wiedzy.
+2. **Przed nami wstęga rysuje plan przy obecnych nastawach** (§8 pkt 2): te same warstwy
+   co za nami — nastawy elektrowni, importu i magazynów (moc magazynu ograniczona
+   bieżącym SOC), a wiatr i PV z prognozy produkcji. Wstęga staje się przez to
+   symetryczna także na wykresie: wstecz wynik, w przód zakład.
+3. **Plan rysuje się szrafurą i o krok wyszarzony** (§8 pkt 2): ta sama geometria
+   i te same kolory technologii co za nami, ale tekstura zamiast pełnego wypełnienia,
+   niższa saturacja i słabsze wypełnienie. Kolor mówi, z czego plan jest złożony;
+   szrafura i wyszarzenie — że to zakład, nie pomiar. Wyszarzenie jest **jednym krokiem,
+   nie praniem**: w pełni szary stos przestaje odpowiadać na pytanie „z czego".
+4. **Plan nie jest przycinany do popytu** (§8 pkt 2, §4.1): stos ponad prognozą popytu to
+   zrzut, który tura ukarze, a luka pod nią to niedobór do domknięcia. Skala pionowa
+   obejmuje plan, więc nastawa wzięta z sufitu widać na wykresie od razu. Plan jest
+   **ślepy na sieć** — jak kolumna „bilans przy obecnych nastawach" (§8 pkt 3): bez
+   limitów linii i bez strat, to plan produkcji, a nie zapowiedź rozpływu.
 
 **Zmiany 0.18 → 0.19 (linia przerywana na mijanym obiekcie):**
 
@@ -889,17 +911,31 @@ starzenie majątku i remonty, kolejka przyłączeniowa — 90 §3, §7, §10.)*
    tury (3 h, §2.2). Doba to nadal 8 tur; wstęga pokazuje ich naraz więcej niż osiem,
    z czytelnymi separatorami dób i podpisem doby (miesiąc, typ doby).
    - **Za nami** — zapotrzebowanie (prawda) vs pokrycie warstwami
-     (jądrowa/węgiel/gaz/wiatr/PV/magazyn/import), **plus pasmo prognozy popytu, które
-     obowiązywało przed rozstrzygnięciem tury**: gracz widzi na wykresie to, o co w tej
-     grze chodzi — gdzie prawda wyszła poza pasmo, na które się zakładał. Wiatr i PV
-     zostają przy liczbach na pasku raportu; trzy pasma na wykresie z siedmioma warstwami
-     to ścianka.
-   - **Przed nami** — prognoza popytu z pasmem, do granicy horyzontu (§2.4). Za granicą
-     wstęga się kończy.
+     (jądrowa/węgiel/gaz/wiatr/PV/magazyn/import), **bez pasma prognozy sprzed tury**
+     (0.20; obowiązywało w 0.18–0.19). Rozstrzygnięta tura mówi na wykresie, co się
+     stało; z czym się to rozminęło, mówią liczby paska raportu — tam zakład i wynik
+     stoją obok siebie co do MW, zamiast dokładać kreski do stosu siedmiu warstw.
+   - **Przed nami** — prognoza popytu z pasmem, do granicy horyzontu (§2.4), **plus plan
+     przy obecnych nastawach: te same warstwy co za nami** (0.20). Plan bierze nastawy
+     elektrowni, importu i magazynów (moc magazynu ograniczona bieżącym SOC), a wiatr
+     i PV z prognozy produkcji — i **nie jest przycinany do popytu**: część stosu ponad
+     prognozą popytu to zrzut, który tura ukarze (§4.1), a luka pod nią to niedobór,
+     który gracz ma jeszcze czym domknąć. Jest przy tym **ślepy na sieć**, dokładnie jak
+     kolumna „bilans przy obecnych nastawach" (pkt 3): bez limitów linii i bez strat.
+     Za granicą horyzontu wstęga się kończy.
+   - **Plan rysuje się szrafurą, prawda pełnym wypełnieniem** (0.20): ta sama geometria
+     i te same kolory technologii po obu stronach TERAZ, więc stos przed nami czyta się
+     tak samo jak stos za nami — a tekstura mówi, że to zakład, nie pomiar. Do tego plan
+     stoi **o krok od pełnej saturacji i pełnego wypełnienia** — tyle wyszarzenia, żeby
+     przestał konkurować z prawdą obok, i ani trochę więcej: kolor warstwy jest w tym
+     wykresie informacją (merit order), a stos wyszarzony do końca przestaje odpowiadać
+     na pytanie, z czego plan jest złożony.
    - Prawda za nami jest rysowana blokami tur: wartość tury trzyma poziom przez środek
      swojego bloku, a łagodnie przechodzi w sąsiednią dopiero przy granicy bloku. To
      wyłącznie zabieg wizualny — tura nadal jest **płaską średnią 3 h** (§2.2), silnik
      niczego wewnątrz bloku nie interpoluje, a odczyt wartości bierze się ze środka bloku.
+     Plan przed nami idzie tymi samymi blokami (nastawa jest stała w turze); krzywą
+     godzinową zostaje sama prognoza popytu.
    - **Klik w turę = podgląd** (§2.5). Tura wybrana jest zaznaczona na wstędze; powrót
      do teraz jest jednym kliknięciem i dzieje się sam przy każdym ruchu czasu.
    - **Historia jest trwała**: każda rozstrzygnięta tura zostawia w stanie gry **skrót**
@@ -1018,7 +1054,7 @@ indeksem ceny.
 | ✅ | Import i eksport dostępne od startu | 5.7 |
 | ✅ | Bez auto-nastaw — wszystkie nastawy ręczne | 8 |
 | ✅ | Panel heksa (0.12): klik na dowolny heks = informacje + katalog budowy (jedyna droga budowania) + akcje obiektu; panel dyspozytora stale widoczny, bez zakładki budowy | 8 |
-| ✅ | **Wstęga czasu (0.18)**: oś tur i wykres pokrycia zlane w jeden pas przewijany lewo-prawo, jednostką tura 3 h; wstecz bez ograniczeń, w przód do horyzontu prognozy; za nami dodatkowo pasmo prognozy popytu sprzed rozstrzygnięcia | 8 pkt 2, 2.5 |
+| ✅ | **Wstęga czasu (0.18)**: oś tur i wykres pokrycia zlane w jeden pas przewijany lewo-prawo, jednostką tura 3 h; wstecz bez ograniczeń, w przód do horyzontu prognozy. **Za nami sama prawda, przed nami plan przy obecnych nastawach rysowany szrafurą** (0.20; uchyla pasmo prognozy sprzed rozstrzygnięcia z 0.18) | 8 pkt 2, 2.5 |
 | ✅ | **Raport opisuje turę wybraną (0.18)**, domyślnie ostatnio rozstrzygniętą; dla tury przyszłej pasek pokazuje kartę prognozy. Każdy ruch czasu sprowadza wybór na teraz | 2.3, 8 pkt 5 |
 | ✅ | **Archiwum tur w stanie gry (0.18)**: trwały skrót każdej rozstrzygniętej tury (wynik, pokrycie warstwami, zakład z prognozą, miasta w niedoborze), bez limitu; pełny raport tylko dla tury ostatniej — **mapa nigdy nie cofa się ze wstęgą** | 8 pkt 1–2, 02 §4 |
 | ✅ | Brak twardego stanu przegranej — porażka zawsze miękka | 9 |

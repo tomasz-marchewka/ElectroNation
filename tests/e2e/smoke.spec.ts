@@ -18,7 +18,7 @@ test("dispatcher screen boots without console errors", async ({ page }) => {
   await expect(page.getByText("1 HEKS = 25 KM")).toBeVisible();
   // The time ribbon is a standing part of the view (01 §8 pt 2), with its key.
   await expect(page.locator("[data-region='chart'] svg")).toBeVisible();
-  await expect(page.getByText("OŚ CZASU · POPYT vs POKRYCIE [MW]")).toBeVisible();
+  await expect(page.getByText("OŚ CZASU · POPYT vs POKRYCIE I PLAN [MW]")).toBeVisible();
   await expect(page.locator(".en-chartlegend .en-swatch")).toHaveCount(7);
   await expect(page.locator(".en-timeline__day")).toHaveText(["ROK 1 · STYCZEŃ · DOBA ROBOCZA A"]);
   expect(errors).toEqual([]);

@@ -74,6 +74,7 @@ export {
   forecastHorizonHours,
   forecastHorizonTurns,
   projectBalance,
+  projectTurnCoverage,
   sigmaDemand,
   sigmaPv,
   sigmaWind,
@@ -81,10 +82,13 @@ export {
   type BalanceProjectionPoint,
   type DayForecast,
   type ForecastPoint,
+  type TurnCoverageProjection,
   type TurnForecast,
 } from "./forecast";
 export { evaluateMonthlyGrowth } from "./growth";
 export {
+  FARM_LAYERS,
+  PLANT_LAYERS,
   absoluteTurn,
   buildTurnDigest,
   coverageIndex,

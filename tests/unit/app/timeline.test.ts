@@ -11,6 +11,7 @@ import {
   digestAt,
   forecastHorizonTurns,
   newGame,
+  projectTurnCoverage,
   resolveTurn,
   type GameState,
 } from "../../../src/engine";
@@ -44,10 +45,11 @@ describe("01 §8 pt 2: the window is eight turns, wherever it stands", () => {
     expect(model.cells.map((cell) => cell.absTurn)).toStrictEqual([0, 1, 2, 3, 4, 5, 6, 7]);
     expect(model.cells[0]?.state).toBe("current");
     expect(model.cells.slice(1).every((cell) => cell.state === "future")).toBe(true);
-    // Nothing resolved yet: no coverage, no truth line, forecast alone.
+    // Nothing resolved yet: no coverage, no truth line, forecast alone — and
+    // nothing set either, so the plan draws nothing rather than drawing zero.
     expect(model.areas).toStrictEqual([]);
     expect(model.demandLine).toStrictEqual([]);
-    expect(model.pastForecast).toBeNull();
+    expect(model.plannedAreas).toStrictEqual([]);
     expect(model.forecast).not.toBeNull();
     expect(model.nowX).toBe(0);
   });
@@ -107,7 +109,7 @@ describe("01 §2.5: how far the ribbon may be pushed", () => {
   });
 });
 
-describe("01 §8 pt 2: behind TERAZ the archive, ahead of it the forecast", () => {
+describe("01 §8 pt 2: behind TERAZ the archive, ahead of it the plan", () => {
   test("coverage comes from the digests, layer for layer", () => {
     const state = played(4);
     const model = ribbon(state);
@@ -129,31 +131,40 @@ describe("01 §8 pt 2: behind TERAZ the archive, ahead of it the forecast", () =
     }
   });
 
-  test("the band behind TERAZ is the bet that stood before each turn resolved", () => {
+  test("ahead of TERAZ the same layers carry the plan at the current setpoints", () => {
     const state = played(3);
     const model = ribbon(state);
-    const digest = digestAt(state.history, 0);
-    if (!digest) throw new Error("missing digest");
+    const plan = projectTurnCoverage(state, 0, state.calendar.turnIndex);
+    const gas = model.plannedAreas.find((area) => area.key === "gas");
 
-    expect(digest.forecastMiss.demand.bandMw).toBeGreaterThan(0);
-    expect(model.pastForecast).not.toBeNull();
-    // Its top edge starts at the forecast's own upper bound, on the chart scale.
-    const top = model.pastForecast?.band[0];
-    const expected = digest.forecastMiss.demand.forecastMw + digest.forecastMiss.demand.bandMw;
-    expect(top?.y).toBeCloseTo(130 - (expected / model.scaleMw) * 130, 0);
+    // The plant runs at 300 MW, so the gas layer is what the plan promises —
+    // stacked from the bottom, on the same scale as the truth behind TERAZ.
+    expect(plan?.coverageMw[COVERAGE_LAYERS.indexOf("gas")]).toBe(300);
+    expect(gas).toBeDefined();
+    expect(gas?.color).toBe(TIMELINE_LAYERS.find((layer) => layer.key === "gas")?.color);
+    expect(gas?.points[0]?.y).toBeCloseTo(130 - (300 / model.scaleMw) * 130, 0);
+
+    // A plan never reaches back over a resolved turn: the archive owns those.
+    const nowX = model.nowX;
+    expect(nowX).not.toBeNull();
+    for (const area of model.plannedAreas) {
+      for (const point of area.points) expect(point.x).toBeGreaterThanOrEqual(nowX ?? 0);
+    }
   });
 
   test("a window entirely behind TERAZ has no forecast, and one ahead has no truth", () => {
     const state = played(2 * TURNS_PER_DAY);
     const behind = ribbon(state, 0);
     expect(behind.forecast).toBeNull();
+    expect(behind.plannedAreas).toStrictEqual([]);
     expect(behind.nowX).toBeNull();
     expect(behind.currentBlock).toBeNull();
     expect(behind.areas.length).toBeGreaterThan(0);
 
     const ahead = ribbon(state, state.history.length);
     expect(ahead.areas).toStrictEqual([]);
-    expect(ahead.pastForecast).toBeNull();
+    expect(ahead.demandLine).toStrictEqual([]);
+    expect(ahead.plannedAreas.length).toBeGreaterThan(0);
     expect(ahead.forecast).not.toBeNull();
   });
 
@@ -175,6 +186,10 @@ describe("01 §8 pt 2: behind TERAZ the archive, ahead of it the forecast", () =
 describe("the model is the whole drawing", () => {
   test("a window over resolved turns", () => {
     expect(ribbon(played(TURNS_PER_DAY), 0, 2)).toMatchSnapshot();
+  });
+
+  test("a window straddling TERAZ: truth behind it, the plan ahead of it", () => {
+    expect(ribbon(played(4))).toMatchSnapshot();
   });
 
   test("a fresh day: the forecast alone", () => {

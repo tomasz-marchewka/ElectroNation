@@ -4,7 +4,7 @@ exports[`the model is the whole drawing > a fresh day: the forecast alone 1`] = 
 {
   "areas": [],
   "caption": {
-    "text": "OŚ CZASU · POPYT vs POKRYCIE [MW]",
+    "text": "OŚ CZASU · POPYT vs POKRYCIE I PLAN [MW]",
     "x": 8,
     "y": 14,
   },
@@ -457,14 +457,14 @@ exports[`the model is the whole drawing > a fresh day: the forecast alone 1`] = 
       "label": "IMPORT",
     },
   ],
-  "note": "— PRAWDA · ┄ PROGNOZA (PASMO)",
+  "note": "PEŁNE = PRAWDA · SZRAFURA = PLAN PRZY NASTAWACH · ┄ = PROGNOZA POPYTU",
   "nowLabel": {
     "text": "TERAZ",
     "x": 6,
     "y": 28,
   },
   "nowX": 0,
-  "pastForecast": null,
+  "plannedAreas": [],
   "range": {
     "from": 0,
     "lastTurn": 7,
@@ -626,7 +626,7 @@ exports[`the model is the whole drawing > a window over resolved turns 1`] = `
     },
   ],
   "caption": {
-    "text": "OŚ CZASU · POPYT vs POKRYCIE [MW]",
+    "text": "OŚ CZASU · POPYT vs POKRYCIE I PLAN [MW]",
     "x": 8,
     "y": 14,
   },
@@ -836,211 +836,14 @@ exports[`the model is the whole drawing > a window over resolved turns 1`] = `
       "label": "IMPORT",
     },
   ],
-  "note": "— PRAWDA · ┄ PROGNOZA (PASMO)",
+  "note": "PEŁNE = PRAWDA · SZRAFURA = PLAN PRZY NASTAWACH · ┄ = PROGNOZA POPYTU",
   "nowLabel": {
     "text": "TERAZ",
     "x": 6,
     "y": 28,
   },
   "nowX": null,
-  "pastForecast": {
-    "band": [
-      {
-        "x": 0,
-        "y": 75.7,
-      },
-      {
-        "x": 79.5,
-        "y": 75.7,
-      },
-      {
-        "x": 185.5,
-        "y": 75.3,
-      },
-      {
-        "x": 212,
-        "y": 75.3,
-      },
-      {
-        "x": 318,
-        "y": 47.4,
-      },
-      {
-        "x": 344.5,
-        "y": 47.4,
-      },
-      {
-        "x": 450.5,
-        "y": 37.3,
-      },
-      {
-        "x": 477,
-        "y": 37.3,
-      },
-      {
-        "x": 583,
-        "y": 37.8,
-      },
-      {
-        "x": 609.5,
-        "y": 37.8,
-      },
-      {
-        "x": 715.5,
-        "y": 35.4,
-      },
-      {
-        "x": 742,
-        "y": 35.4,
-      },
-      {
-        "x": 848,
-        "y": 30,
-      },
-      {
-        "x": 874.5,
-        "y": 30,
-      },
-      {
-        "x": 980.5,
-        "y": 55.2,
-      },
-      {
-        "x": 1060,
-        "y": 55.2,
-      },
-      {
-        "x": 1060,
-        "y": 58.8,
-      },
-      {
-        "x": 980.5,
-        "y": 58.8,
-      },
-      {
-        "x": 874.5,
-        "y": 33.7,
-      },
-      {
-        "x": 848,
-        "y": 33.7,
-      },
-      {
-        "x": 742,
-        "y": 39,
-      },
-      {
-        "x": 715.5,
-        "y": 39,
-      },
-      {
-        "x": 609.5,
-        "y": 41.5,
-      },
-      {
-        "x": 583,
-        "y": 41.5,
-      },
-      {
-        "x": 477,
-        "y": 40.9,
-      },
-      {
-        "x": 450.5,
-        "y": 40.9,
-      },
-      {
-        "x": 344.5,
-        "y": 51,
-      },
-      {
-        "x": 318,
-        "y": 51,
-      },
-      {
-        "x": 212,
-        "y": 79,
-      },
-      {
-        "x": 185.5,
-        "y": 79,
-      },
-      {
-        "x": 79.5,
-        "y": 79.3,
-      },
-      {
-        "x": 0,
-        "y": 79.3,
-      },
-    ],
-    "mid": [
-      {
-        "x": 0,
-        "y": 77.5,
-      },
-      {
-        "x": 79.5,
-        "y": 77.5,
-      },
-      {
-        "x": 185.5,
-        "y": 77.1,
-      },
-      {
-        "x": 212,
-        "y": 77.1,
-      },
-      {
-        "x": 318,
-        "y": 49.2,
-      },
-      {
-        "x": 344.5,
-        "y": 49.2,
-      },
-      {
-        "x": 450.5,
-        "y": 39.1,
-      },
-      {
-        "x": 477,
-        "y": 39.1,
-      },
-      {
-        "x": 583,
-        "y": 39.7,
-      },
-      {
-        "x": 609.5,
-        "y": 39.7,
-      },
-      {
-        "x": 715.5,
-        "y": 37.2,
-      },
-      {
-        "x": 742,
-        "y": 37.2,
-      },
-      {
-        "x": 848,
-        "y": 31.9,
-      },
-      {
-        "x": 874.5,
-        "y": 31.9,
-      },
-      {
-        "x": 980.5,
-        "y": 57,
-      },
-      {
-        "x": 1060,
-        "y": 57,
-      },
-    ],
-  },
+  "plannedAreas": [],
   "range": {
     "from": 0,
     "lastTurn": 15,
@@ -1058,6 +861,524 @@ exports[`the model is the whole drawing > a window over resolved turns 1`] = `
   "selectedBlock": {
     "width": 132.5,
     "x": 265,
+  },
+  "width": 1060,
+}
+`;
+
+exports[`the model is the whole drawing > a window straddling TERAZ: truth behind it, the plan ahead of it 1`] = `
+{
+  "areas": [
+    {
+      "color": "var(--en-gas)",
+      "key": "gas",
+      "points": [
+        {
+          "x": 0,
+          "y": 112.4,
+        },
+        {
+          "x": 79.5,
+          "y": 112.4,
+        },
+        {
+          "x": 185.5,
+          "y": 112.3,
+        },
+        {
+          "x": 212,
+          "y": 112.3,
+        },
+        {
+          "x": 318,
+          "y": 102.8,
+        },
+        {
+          "x": 344.5,
+          "y": 102.8,
+        },
+        {
+          "x": 450.5,
+          "y": 99.3,
+        },
+        {
+          "x": 530,
+          "y": 99.3,
+        },
+        {
+          "x": 530,
+          "y": 130,
+        },
+        {
+          "x": 450.5,
+          "y": 130,
+        },
+        {
+          "x": 344.5,
+          "y": 130,
+        },
+        {
+          "x": 318,
+          "y": 130,
+        },
+        {
+          "x": 212,
+          "y": 130,
+        },
+        {
+          "x": 185.5,
+          "y": 130,
+        },
+        {
+          "x": 79.5,
+          "y": 130,
+        },
+        {
+          "x": 0,
+          "y": 130,
+        },
+      ],
+    },
+  ],
+  "caption": {
+    "text": "OŚ CZASU · POPYT vs POKRYCIE I PLAN [MW]",
+    "x": 8,
+    "y": 14,
+  },
+  "cells": [
+    {
+      "absTurn": 0,
+      "dayIndex": 0,
+      "hours": "00–03",
+      "name": "NOC",
+      "selected": false,
+      "state": "past",
+      "turnIndex": 0,
+      "width": 132.5,
+      "x": 0,
+    },
+    {
+      "absTurn": 1,
+      "dayIndex": 0,
+      "hours": "03–06",
+      "name": "PRZEDŚWIT",
+      "selected": false,
+      "state": "past",
+      "turnIndex": 1,
+      "width": 132.5,
+      "x": 132.5,
+    },
+    {
+      "absTurn": 2,
+      "dayIndex": 0,
+      "hours": "06–09",
+      "name": "RANO",
+      "selected": false,
+      "state": "past",
+      "turnIndex": 2,
+      "width": 132.5,
+      "x": 265,
+    },
+    {
+      "absTurn": 3,
+      "dayIndex": 0,
+      "hours": "09–12",
+      "name": "PRZEDPOŁ.",
+      "selected": true,
+      "state": "past",
+      "turnIndex": 3,
+      "width": 132.5,
+      "x": 397.5,
+    },
+    {
+      "absTurn": 4,
+      "dayIndex": 0,
+      "hours": "12–15",
+      "name": "POŁUDNIE",
+      "selected": false,
+      "state": "current",
+      "turnIndex": 4,
+      "width": 132.5,
+      "x": 530,
+    },
+    {
+      "absTurn": 5,
+      "dayIndex": 0,
+      "hours": "15–18",
+      "name": "POPOŁ.",
+      "selected": false,
+      "state": "future",
+      "turnIndex": 5,
+      "width": 132.5,
+      "x": 662.5,
+    },
+    {
+      "absTurn": 6,
+      "dayIndex": 0,
+      "hours": "18–21",
+      "name": "SZCZYT WIECZ.",
+      "selected": false,
+      "state": "future",
+      "turnIndex": 6,
+      "width": 132.5,
+      "x": 795,
+    },
+    {
+      "absTurn": 7,
+      "dayIndex": 0,
+      "hours": "21–24",
+      "name": "PÓŹNY WIECZ.",
+      "selected": false,
+      "state": "future",
+      "turnIndex": 7,
+      "width": 132.5,
+      "x": 927.5,
+    },
+  ],
+  "currentBlock": {
+    "width": 132.5,
+    "x": 530,
+  },
+  "dayGridX": [],
+  "days": [
+    {
+      "columns": 8,
+      "dayIndex": 0,
+      "label": "ROK 1 · STYCZEŃ · DOBA ROBOCZA A",
+    },
+  ],
+  "demandLine": [
+    {
+      "x": 0,
+      "y": 112.7,
+    },
+    {
+      "x": 79.5,
+      "y": 112.7,
+    },
+    {
+      "x": 185.5,
+      "y": 112.6,
+    },
+    {
+      "x": 212,
+      "y": 112.6,
+    },
+    {
+      "x": 318,
+      "y": 103.3,
+    },
+    {
+      "x": 344.5,
+      "y": 103.3,
+    },
+    {
+      "x": 450.5,
+      "y": 99.9,
+    },
+    {
+      "x": 530,
+      "y": 99.9,
+    },
+  ],
+  "forecast": {
+    "band": [
+      {
+        "x": 530,
+        "y": 99.4,
+      },
+      {
+        "x": 574.2,
+        "y": 99.1,
+      },
+      {
+        "x": 618.3,
+        "y": 99.4,
+      },
+      {
+        "x": 662.5,
+        "y": 99.9,
+      },
+      {
+        "x": 706.7,
+        "y": 97.8,
+      },
+      {
+        "x": 750.8,
+        "y": 95.9,
+      },
+      {
+        "x": 795,
+        "y": 94.6,
+      },
+      {
+        "x": 839.2,
+        "y": 94.8,
+      },
+      {
+        "x": 883.3,
+        "y": 97.2,
+      },
+      {
+        "x": 927.5,
+        "y": 100.2,
+      },
+      {
+        "x": 971.7,
+        "y": 104.1,
+      },
+      {
+        "x": 1015.8,
+        "y": 105.8,
+      },
+      {
+        "x": 1060,
+        "y": 105.8,
+      },
+      {
+        "x": 1060,
+        "y": 109.7,
+      },
+      {
+        "x": 1015.8,
+        "y": 109.7,
+      },
+      {
+        "x": 971.7,
+        "y": 107.7,
+      },
+      {
+        "x": 927.5,
+        "y": 103.6,
+      },
+      {
+        "x": 883.3,
+        "y": 100.3,
+      },
+      {
+        "x": 839.2,
+        "y": 97.6,
+      },
+      {
+        "x": 795,
+        "y": 97.2,
+      },
+      {
+        "x": 750.8,
+        "y": 98.2,
+      },
+      {
+        "x": 706.7,
+        "y": 99.8,
+      },
+      {
+        "x": 662.5,
+        "y": 101.7,
+      },
+      {
+        "x": 618.3,
+        "y": 100.8,
+      },
+      {
+        "x": 574.2,
+        "y": 100.3,
+      },
+      {
+        "x": 530,
+        "y": 100.3,
+      },
+    ],
+    "mid": [
+      {
+        "x": 530,
+        "y": 99.8,
+      },
+      {
+        "x": 574.2,
+        "y": 99.7,
+      },
+      {
+        "x": 618.3,
+        "y": 100.1,
+      },
+      {
+        "x": 662.5,
+        "y": 100.8,
+      },
+      {
+        "x": 706.7,
+        "y": 98.8,
+      },
+      {
+        "x": 750.8,
+        "y": 97.1,
+      },
+      {
+        "x": 795,
+        "y": 95.9,
+      },
+      {
+        "x": 839.2,
+        "y": 96.2,
+      },
+      {
+        "x": 883.3,
+        "y": 98.8,
+      },
+      {
+        "x": 927.5,
+        "y": 101.9,
+      },
+      {
+        "x": 971.7,
+        "y": 105.9,
+      },
+      {
+        "x": 1015.8,
+        "y": 107.7,
+      },
+      {
+        "x": 1060,
+        "y": 107.7,
+      },
+    ],
+  },
+  "gridX": [
+    132.5,
+    265,
+    397.5,
+    530,
+    662.5,
+    795,
+    927.5,
+  ],
+  "height": 130,
+  "legend": [
+    {
+      "color": "var(--en-nuclear)",
+      "label": "JĄDROWA",
+    },
+    {
+      "color": "var(--en-coal)",
+      "label": "WĘGIEL",
+    },
+    {
+      "color": "var(--en-gas)",
+      "label": "GAZ",
+    },
+    {
+      "color": "var(--en-wind)",
+      "label": "WIATR",
+    },
+    {
+      "color": "var(--en-pv)",
+      "label": "PV",
+    },
+    {
+      "color": "var(--en-ok)",
+      "label": "MAGAZYN",
+    },
+    {
+      "color": "var(--en-storage)",
+      "label": "IMPORT",
+    },
+  ],
+  "note": "PEŁNE = PRAWDA · SZRAFURA = PLAN PRZY NASTAWACH · ┄ = PROGNOZA POPYTU",
+  "nowLabel": {
+    "text": "TERAZ",
+    "x": 536,
+    "y": 14,
+  },
+  "nowX": 530,
+  "plannedAreas": [
+    {
+      "color": "var(--en-gas)",
+      "key": "gas",
+      "points": [
+        {
+          "x": 530,
+          "y": 0,
+        },
+        {
+          "x": 609.5,
+          "y": 0,
+        },
+        {
+          "x": 715.5,
+          "y": 0,
+        },
+        {
+          "x": 742,
+          "y": 0,
+        },
+        {
+          "x": 848,
+          "y": 0,
+        },
+        {
+          "x": 874.5,
+          "y": 0,
+        },
+        {
+          "x": 980.5,
+          "y": 0,
+        },
+        {
+          "x": 1060,
+          "y": 0,
+        },
+        {
+          "x": 1060,
+          "y": 130,
+        },
+        {
+          "x": 980.5,
+          "y": 130,
+        },
+        {
+          "x": 874.5,
+          "y": 130,
+        },
+        {
+          "x": 848,
+          "y": 130,
+        },
+        {
+          "x": 742,
+          "y": 130,
+        },
+        {
+          "x": 715.5,
+          "y": 130,
+        },
+        {
+          "x": 609.5,
+          "y": 130,
+        },
+        {
+          "x": 530,
+          "y": 130,
+        },
+      ],
+    },
+  ],
+  "range": {
+    "from": 0,
+    "lastTurn": 11,
+    "maxFrom": 4,
+    "minFrom": 0,
+    "pendingTurn": 4,
+    "selectedTurn": 3,
+  },
+  "scaleLabel": {
+    "text": "300 MW",
+    "x": 1052,
+    "y": 14,
+  },
+  "scaleMw": 300,
+  "selectedBlock": {
+    "width": 132.5,
+    "x": 397.5,
   },
   "width": 1060,
 }
