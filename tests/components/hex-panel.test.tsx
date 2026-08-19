@@ -207,6 +207,25 @@ describe("catalogue — prices carry the terrain multiplier (02 §8.1)", () => {
     );
   });
 
+  test("a hex whose corridor eats every line slot is no site (01 §3.3)", () => {
+    // Four finished routes crossing (2,1): the day an object stood there they
+    // would be cut on it, ending eight lines in an object that has six slots.
+    const corridor = [at(1, 1), at(2, 1), at(3, 1)];
+    const crossed = fixture({
+      lines: Array.from({ length: 4 }, (_, index) => finishedLine(`line-${index}`, "mv", corridor)),
+    });
+    const { container } = renderPanel(newGame(7, crossed), at(2, 1));
+
+    expect(entry(container, "Stacja rozdzielcza").disabled).toBe(true);
+    expect(container.textContent).toContain("linie przez heks zajmą 8 przyłączy");
+    // Three of them leave room: 6 ends, 6 slots.
+    const thinner = fixture({
+      lines: Array.from({ length: 3 }, (_, index) => finishedLine(`line-${index}`, "mv", corridor)),
+    });
+    const room = renderPanel(newGame(7, thinner), at(2, 1));
+    expect(entry(room.container, "Stacja rozdzielcza").disabled).toBe(false);
+  });
+
   test("an entry the budget cannot reach says how much is missing", () => {
     const poor = { ...newGame(7, fixture()), moneyPln: 1_000_000_000 };
     const { container } = renderPanel(poor, at(1, 1));

@@ -23,6 +23,7 @@ import {
   expandJunction,
   expandPlant,
   expandPumpedStorage,
+  splitLinesAtObjects,
   upgradeLine,
 } from "./build";
 import {
@@ -81,7 +82,9 @@ export function newGame(seed: number, scenario: Scenario = MAP_V1): GameState {
   const fields = scenarioToStateFields(scenario);
   const forecastLevel: ForecastLevel = "basic";
   const monthRegimes = monthRegimesForDay(seed, 0);
-  return {
+  // A scenario may draw a starting line straight through one of its own
+  // objects; the topology rule holds from turn 0, not from the first resolution.
+  return splitLinesAtObjects({
     schema: STATE_SCHEMA_VERSION,
     seed,
     calendar: { dayIndex: 0, turnIndex: 0 },
@@ -93,7 +96,7 @@ export function newGame(seed: number, scenario: Scenario = MAP_V1): GameState {
     dayTruth: generateDayTruth(seed, 0, fields.cities),
     lastTurnReport: null,
     history: [],
-  };
+  });
 }
 
 export type Action =
@@ -636,7 +639,9 @@ export function resolveTurn(state: GameState): GameState {
   });
 
   if (nextTurn < TURNS_PER_DAY) {
-    return {
+    // A line that has just gone live may cross objects that were already
+    // standing when it was drawn — it goes into the world already cut on them.
+    return splitLinesAtObjects({
       ...state,
       calendar: { ...state.calendar, turnIndex: nextTurn },
       moneyPln,
@@ -645,7 +650,7 @@ export function resolveTurn(state: GameState): GameState {
       lines,
       lastTurnReport: report,
       history,
-    };
+    });
   }
 
   // Day end: month boundary after the free day (05 §6.1), construction
@@ -749,7 +754,10 @@ export function resolveTurn(state: GameState): GameState {
     nextDay % DAYS_PER_MONTH === 0
       ? monthRegimeForecastForDay(state.seed, nextDay, monthRegimes.dominant, state.forecastLevel)
       : state.monthRegimeForecast;
-  return {
+  // Day end cuts the corridors twice over: a line finished this turn lands on
+  // the objects it crosses, and an object finished today cuts the lines running
+  // through its hex (01 §3.3).
+  return splitLinesAtObjects({
     ...done,
     calendar: { dayIndex: nextDay, turnIndex: 0 },
     moneyPln,
@@ -767,5 +775,5 @@ export function resolveTurn(state: GameState): GameState {
     dayTruth: generateDayTruth(state.seed, nextDay, nextCities),
     lastTurnReport: report,
     history,
-  };
+  });
 }

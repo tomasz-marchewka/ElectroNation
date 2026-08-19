@@ -23,16 +23,26 @@ import { panelForecast } from "./forecast";
 import { setpointRowKey, setpointRows, type SetpointRow } from "./setpoints";
 
 /**
- * The three modes as badges, in the order the slider runs: charging left of
- * zero, giving back right of it. Nothing is clickable here — the slider decides
- * which badge lights up (see SetpointSlider on the divergence from the handoff,
- * whose own control was a three-state switch).
+ * The three modes, in the order the slider runs: charging left of zero, giving
+ * back right of it. The buttons and the slider drive the same setpoint — a mode
+ * button is the shortcut (half power in that direction), the slider the fine
+ * adjustment.
  */
 const STORAGE_MODES: readonly SegmentedOption<StorageMode>[] = [
   { value: "charge", label: STORAGE_MODE_LABELS.charge },
   { value: "idle", label: STORAGE_MODE_LABELS.idle },
   { value: "discharge", label: STORAGE_MODE_LABELS.discharge },
 ];
+
+/**
+ * Signed setpoint a mode button dispatches: STOP rests the storage, the other
+ * two run it at half rated power — a starting point the slider then trims.
+ */
+function storageModeMw(mode: StorageMode, maxMw: number): number {
+  if (mode === "idle") return 0;
+  const half = Math.round(maxMw / 2);
+  return mode === "charge" ? -half : half;
+}
 
 /**
  * Signed setpoint → the engine's `{ mode, mw }` pair. The centre of the track
@@ -76,7 +86,12 @@ function SetpointRowView({ row, onAction }: RowProps) {
             onChange={(mw) => onAction(storageAction(row.id, mw))}
           />
           <div className="en-unit__controls">
-            <SegmentedControl options={STORAGE_MODES} value={row.mode} readOnly />
+            <SegmentedControl
+              options={STORAGE_MODES}
+              value={row.mode}
+              ariaLabel={`Tryb magazynu ${row.name}`}
+              onChange={(mode) => onAction(storageAction(row.id, storageModeMw(mode, row.maxMw)))}
+            />
             <span className="en-soc">
               <span className="en-soc__track">
                 <span className="en-soc__fill" style={{ width: `${row.socPercent}%` }} />

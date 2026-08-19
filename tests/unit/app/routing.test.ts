@@ -88,6 +88,20 @@ function occupying(id: string, type: LineType, hex: HexCoord): LineState {
   return { id, type, path: [hex], builtHours: 0, totalHours: 0, upgrade: null };
 }
 
+/** A line that CROSSES a hex — two ends on the object standing there (0.19). */
+function crossing(id: string, type: LineType, path: HexCoord[]): LineState {
+  return { id, type, path, builtHours: 0, totalHours: 0, upgrade: null };
+}
+
+/** A one-row corridor with an object in the middle: plant — junction — city. */
+function corridorWithJunction(lines: LineState[]): GameState {
+  const state = world(["....."], at(0, 0), at(4, 0), lines);
+  return {
+    ...state,
+    junctions: [{ id: "junction-1", name: "J", hex: at(2, 0), throughputMw: 250, lineSlots: 6 }],
+  };
+}
+
 function terrainsOn(state: GameState, path: readonly HexCoord[]): TerrainId[] {
   return path.map((hex) => terrainAt(state, hex));
 }
@@ -177,6 +191,36 @@ describe("routing refusals mirror the engine (01 §3.3)", () => {
     const state = world(CORRIDOR, at(0, 0), at(4, 0), taken);
 
     expect(findRoute(state, at(0, 0), at(4, 0), "mv")).toBeNull();
+  });
+
+  test("crossing an object costs two of its slots, ending on it one (0.19)", () => {
+    // A route through the junction is cut on it and books two slots; four are
+    // already taken, so one crossing still fits and a fifth stub kills it.
+    const stubs = (count: number) =>
+      Array.from({ length: count }, (_, index) => occupying(`mv-${index}`, "mv", at(2, 0)));
+    const through = [at(0, 0), at(1, 0), at(2, 0), at(3, 0), at(4, 0)];
+
+    expect(routeNote(corridorWithJunction(stubs(4)), through, "mv")).toBeNull();
+
+    const full = corridorWithJunction(stubs(5));
+    expect(routeNote(full, through, "mv")).toContain("brak wolnych przyłączy");
+    // Ending on the junction still fits: one end, one slot.
+    expect(routeNote(full, [at(0, 0), at(1, 0), at(2, 0)], "mv")).toBeNull();
+  });
+
+  test("a route already crossing an object holds both of its slots", () => {
+    // Two crossings = four slots, one stub = five; a third crossing would need
+    // two more and is refused, while a route ending on the object takes the last.
+    const state = corridorWithJunction([
+      crossing("mv-cross-1", "mv", [at(1, 0), at(2, 0), at(3, 0)]),
+      crossing("mv-cross-2", "mv", [at(1, 0), at(2, 0), at(3, 0)]),
+      occupying("mv-stub", "mv", at(2, 0)),
+    ]);
+
+    expect(routeNote(state, [at(0, 0), at(1, 0), at(2, 0), at(3, 0), at(4, 0)], "mv")).toContain(
+      "brak wolnych przyłączy",
+    );
+    expect(routeNote(state, [at(0, 0), at(1, 0), at(2, 0)], "mv")).toBeNull();
   });
 });
 

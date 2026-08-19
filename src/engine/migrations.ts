@@ -3,7 +3,8 @@
 // picked off disk. Everything here therefore reports a domain result instead of
 // throwing — a foreign or broken file is a game situation, not a crash.
 
-import type { FarmTech, PlantTech } from "./config";
+import { splitLinesAtObjects } from "./build";
+import { LINE_TYPES, type FarmTech, type PlantTech } from "./config";
 import { buildTurnDigest, coverageIndex } from "./history";
 import { STATE_SCHEMA_VERSION, type GameState, type TurnDigest, type TurnReport } from "./state";
 
@@ -37,7 +38,50 @@ export const MIGRATIONS: MigrationRegistry = {
     const { dayReports, ...rest } = state;
     return { ...rest, history: digestsOfSavedReports(dayReports, state.plants, state.farms) };
   },
+  /**
+   * 11 → 12: a finished line is cut on every object it crosses (01 §3.3, 0.19).
+   * Saves written before the rule can carry a route running straight through an
+   * object the player built on the corridor later — normalizing them on load is
+   * what makes the invariant hold for every state the engine ever sees.
+   */
+  11: (state) => (isSplittable(state) ? splitLinesAtObjects(state) : state),
 };
+
+/** Hex-shaped enough for the split to read it. */
+function isHexLike(value: unknown): boolean {
+  return isRecord(value) && typeof value.q === "number" && typeof value.r === "number";
+}
+
+function hasHex(value: unknown): boolean {
+  return isRecord(value) && isHexLike(value.hex);
+}
+
+function isLineLike(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.type === "string" &&
+    value.type in LINE_TYPES &&
+    typeof value.builtHours === "number" &&
+    typeof value.totalHours === "number" &&
+    Array.isArray(value.path) &&
+    value.path.every(isHexLike)
+  );
+}
+
+/**
+ * Whether the migration may touch this save at all. It runs BEFORE the shape
+ * check, so it reads nothing it has not looked at first — a file too broken to
+ * split is handed on untouched and fails the loader's own check a step later.
+ */
+function isSplittable(state: unknown): state is GameState {
+  if (!isRecord(state) || typeof state.nextObjectId !== "number") return false;
+  for (const key of ["cities", "plants", "farms", "storages", "junctions", "borders"]) {
+    const list = state[key];
+    if (!Array.isArray(list) || !list.every(hasHex)) return false;
+  }
+  return Array.isArray(state.lines) && state.lines.every(isLineLike);
+}
 
 /** Coarse guard: enough to keep a hand-edited save from crashing the loader. */
 function isTechObject(value: unknown): value is { id: string; tech: PlantTech & FarmTech } {

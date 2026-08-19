@@ -11,7 +11,15 @@ export {
   sunsetHour,
   sunsetHourAngleDeg,
 } from "./astronomy";
-export { lineUpgradeCostPln, lineUpgradeHours, lineUpgradeTargets } from "./build";
+export {
+  lineSlotsAt,
+  lineUpgradeCostPln,
+  lineUpgradeHours,
+  lineUpgradeTargets,
+  linesAtHex,
+  routeLinesAtHex,
+  splitLinesAtObjects,
+} from "./build";
 export {
   BATTERY,
   BORDER_SPEC,
