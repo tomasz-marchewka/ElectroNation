@@ -1,7 +1,8 @@
 // The map renderer: a MapScene in, one <svg> out. Adapted from
 // design-system/components/map/HexMap.jsx — same layer order (biome fills →
-// textures → lines → selection → rings → pads → icons → labels → overlays),
-// same tokens, no animation (brand-motion).
+// textures → lines → selection → rings → pads → icons → labels → callouts →
+// overlays), same tokens, no animation (brand-motion). The routing callout is
+// the last world layer: the cost of the line being drawn beats every label.
 //
 // Everything that moves with the board sits in ONE transformed group
 // (CLAUDE.md); the legends and the scale stay outside it, glued to the
@@ -58,6 +59,15 @@ const RING_STROKES: Record<MapObjectRing, string> = {
 };
 
 const RING_WIDTHS: Record<MapObjectRing, number> = { object: 2, city: 3, alert: 3, planned: 2 };
+
+/**
+ * The selected hex is framed just inside its outline, so the frame lands next
+ * to an object's ring instead of on top of it: 0,9 × 34 px leaves the widest
+ * ring (3 px, centered on the outline) untouched. The stroke divides by the
+ * scale to stay 3 px wide on screen.
+ */
+const SELECTION_SCALE = 0.9;
+const SELECTION_WIDTH = 3;
 
 /**
  * The route being drawn (M7): dashed, in the action colour, over the tracks it
@@ -385,35 +395,7 @@ export function HexMapView({ scene, onHexClick, onHexHover }: HexMapViewProps) {
                   fill="var(--en-action)"
                 />
               ))}
-              {scene.route.label && (
-                <text
-                  className="en-map__route-label"
-                  x={scene.route.label.x}
-                  y={scene.route.label.y}
-                  fill={`var(${scene.route.valid ? "--en-action" : "--en-danger"})`}
-                  fontSize={OVERLOAD_FONT_SIZE}
-                  fontFamily="var(--en-font-mono)"
-                  fontWeight="600"
-                  paintOrder="stroke"
-                  stroke="var(--en-bg-map)"
-                  strokeWidth={LABEL_HALO}
-                >
-                  {scene.route.label.text}
-                </text>
-              )}
             </g>
-          )}
-
-          {scene.selection && (
-            <path
-              className="en-map__selection"
-              d={HEX_PATH}
-              transform={`translate(${scene.selection.x} ${scene.selection.y})`}
-              fill="none"
-              stroke="var(--en-action)"
-              strokeWidth="3"
-              pointerEvents="none"
-            />
           )}
 
           <g fill="none" pointerEvents="none">
@@ -443,6 +425,23 @@ export function HexMapView({ scene, onHexClick, onHexHover }: HexMapViewProps) {
               </g>
             ))}
           </g>
+
+          {/* Above the object rings, and a touch inside them: an object hex
+              wears its own ring on the very same outline, so a selection drawn
+              underneath was hidden by the city ring and clipped by the object
+              one. Nested, both stay readable — the ring says what the hex is,
+              the frame says it is the hex the panel is talking about. */}
+          {scene.selection && (
+            <path
+              className="en-map__selection"
+              d={HEX_PATH}
+              transform={`translate(${scene.selection.x} ${scene.selection.y}) scale(${SELECTION_SCALE})`}
+              fill="none"
+              stroke="var(--en-action)"
+              strokeWidth={SELECTION_WIDTH / SELECTION_SCALE}
+              pointerEvents="none"
+            />
+          )}
 
           <g
             fontFamily="var(--en-font-mono)"
@@ -482,6 +481,27 @@ export function HexMapView({ scene, onHexClick, onHexHover }: HexMapViewProps) {
               pointerEvents="none"
             >
               {scene.overload.text}
+            </text>
+          )}
+
+          {/* Last of the world layers: what the line will cost is the one text
+              the player is reading right now, so it covers every other label. */}
+          {scene.route?.label && (
+            <text
+              className="en-map__route-label"
+              x={scene.route.label.x}
+              y={scene.route.label.y}
+              fill={`var(${scene.route.valid ? "--en-action" : "--en-danger"})`}
+              fontSize={OVERLOAD_FONT_SIZE}
+              fontFamily="var(--en-font-mono)"
+              fontWeight="600"
+              textAnchor="middle"
+              paintOrder="stroke"
+              stroke="var(--en-bg-map)"
+              strokeWidth={LABEL_HALO}
+              pointerEvents="none"
+            >
+              {scene.route.label.text}
             </text>
           )}
         </g>

@@ -229,9 +229,16 @@ const LINE_LABEL_DY = -8;
 const OVERLOAD_DX = 15;
 const OVERLOAD_DY = 15;
 
-/** Same offset for the routing callout, measured off the route's last hex. */
-const ROUTE_LABEL_DX = 15;
-const ROUTE_LABEL_DY = -15;
+/**
+ * The routing callout is centered ABOVE the route's last hex, in the free band
+ * between that hex's icon and the caption of the hex above it — captions hang
+ * 48 px below their own center, so anything just above a hex center lands on
+ * the neighbour's name (its baseline sits 11 px above this hex's center).
+ */
+const ROUTE_LABEL_DY = -34;
+
+/** Keeps that callout on the board when the route ends on the top row. */
+const ROUTE_LABEL_MIN_Y = 12;
 
 /** Build progress a line makes per game day: 8 turns × 3 h (01 §2.6). */
 const BUILD_HOURS_PER_DAY = TURNS_PER_DAY * HOURS_PER_TURN;
@@ -369,7 +376,11 @@ function buildRoute(preview: RoutePreview | null | undefined): MapSceneRoute | n
     waypoints: preview.waypoints.map(hexCenterOf),
     label:
       end && preview.label !== ""
-        ? { x: end.x + ROUTE_LABEL_DX, y: end.y + ROUTE_LABEL_DY, text: preview.label }
+        ? {
+            x: end.x,
+            y: Math.max(end.y + ROUTE_LABEL_DY, ROUTE_LABEL_MIN_Y),
+            text: preview.label,
+          }
         : null,
   };
 }
