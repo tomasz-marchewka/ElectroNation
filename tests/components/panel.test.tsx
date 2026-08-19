@@ -142,7 +142,7 @@ describe("setpoints — every unit set by hand (01 §8 pt 4)", () => {
     });
   });
 
-  test("the mode badges are a readout of the slider, not a control", () => {
+  test("the mode buttons follow the slider and mark the current direction", () => {
     const game = applyAction(newGame(7, DISPATCH_SCENARIO), {
       type: "setStorage",
       storageId: "storage-1",
@@ -151,13 +151,42 @@ describe("setpoints — every unit set by hand (01 §8 pt 4)", () => {
     });
     renderPanel(game);
 
-    expect(screen.queryByRole("button", { name: "ODDAWAJ" })).toBeNull();
-    expect(screen.getByText("ŁADUJ").className).toContain("is-active");
-    expect(screen.getByText("ODDAWAJ").className).not.toContain("is-active");
+    expect(screen.getByRole("button", { name: "ŁADUJ" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "ODDAWAJ" }).getAttribute("aria-pressed")).toBe(
+      "false",
+    );
     // The direction is spelled out where the number is, so the slider does not
     // announce a bare "−100" to a screen reader.
     expect(slider("BESS POLANA").getAttribute("aria-valuetext")).toBe("ŁADUJ 100 / 150 MW");
     expect(screen.getByText("ŁADUJ 100 / 150 MW")).toBeDefined();
+  });
+
+  test("a mode button dispatches half rated power, STOP rests the storage", () => {
+    const { onAction } = renderPanel(newGame(7, DISPATCH_SCENARIO));
+
+    fireEvent.click(screen.getByRole("button", { name: "ŁADUJ" }));
+    expect(onAction).toHaveBeenCalledWith({
+      type: "setStorage",
+      storageId: "storage-1",
+      mode: "charge",
+      mw: 75,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "ODDAWAJ" }));
+    expect(onAction).toHaveBeenCalledWith({
+      type: "setStorage",
+      storageId: "storage-1",
+      mode: "discharge",
+      mw: 75,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "STOP" }));
+    expect(onAction).toHaveBeenCalledWith({
+      type: "setStorage",
+      storageId: "storage-1",
+      mode: "idle",
+      mw: 0,
+    });
   });
 
   test("a storage at rest keeps no direction, whatever the state carries", () => {
@@ -169,8 +198,10 @@ describe("setpoints — every unit set by hand (01 §8 pt 4)", () => {
     });
     renderPanel(game);
 
-    expect(screen.getByText("STOP").className).toContain("is-active");
-    expect(screen.getByText("ODDAWAJ").className).not.toContain("is-active");
+    expect(screen.getByRole("button", { name: "STOP" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "ODDAWAJ" }).getAttribute("aria-pressed")).toBe(
+      "false",
+    );
     expect(slider("BESS POLANA").value).toBe("0");
   });
 

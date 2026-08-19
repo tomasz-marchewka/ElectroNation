@@ -76,8 +76,6 @@
   color: var(--en-text-4); background: transparent;
   font: inherit; letter-spacing: 0.5px; transition: color var(--en-dur-ui) var(--en-ease-ui), border-color var(--en-dur-ui) var(--en-ease-ui);
 }
-/* Plakietki trybu magazynu są tylko odczytem — wskaźnik i hover ma wyłącznie
-   segment, który da się kliknąć. */
 button.en-seg { cursor: pointer; }
 button.en-seg:hover { color: var(--en-text-2); border-color: var(--en-border-strong); }
 .en-seg[aria-pressed="true"], .en-seg.is-active { background: var(--en-bg-tint-info); border-color: var(--en-ok); color: var(--en-ok); }
