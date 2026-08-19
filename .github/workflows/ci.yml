@@ -8,6 +8,9 @@ on:
 jobs:
   checks:
     runs-on: ubuntu-latest
+    # The whole job runs in ~2 min; past 15 it is wedged, not slow. Without this
+    # a hung step holds the PR for GitHub's default six hours.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -20,5 +23,17 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      # The browser download is the one step that fetches from outside the npm
+      # registry — and the one that hangs when the runner's apt or the CDN
+      # stalls. Cached per lockfile it stays a no-op; the timeout turns a stall
+      # into a red step with a log instead of a run that never ends.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - run: npx playwright install --with-deps chromium
+        timeout-minutes: 6
+        env:
+          DEBIAN_FRONTEND: noninteractive
       - run: npm run e2e
+        timeout-minutes: 5
