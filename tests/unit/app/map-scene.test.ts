@@ -18,8 +18,18 @@ import {
   type TurnReport,
 } from "../../../src/engine";
 import { biomeLegend } from "../../../src/app/map/biomes";
-import { drawnBounds } from "../../../src/app/map/geometry";
-import { buildMapScene, lineLoad, type MapScene } from "../../../src/app/map/sceneModel";
+import {
+  HEX_R,
+  LABEL_FONT_SIZE,
+  drawnBounds,
+  hexCenterOf,
+} from "../../../src/app/map/geometry";
+import {
+  buildMapScene,
+  lineLoad,
+  type MapScene,
+  type RoutePreview,
+} from "../../../src/app/map/sceneModel";
 
 /** Offset (col, row) → axial, the way a hand-authored map is written down. */
 function at(col: number, row: number): HexCoord {
@@ -447,5 +457,39 @@ describe("02 §8.6: the played map", () => {
     expect(labelOf(scene, "city-modrzyca:label")).toMatch(/^MODRZYCA · \d+ MW$/);
     // The start line feeds nothing, so it stays idle even after a resolution.
     expect(scene.lines[0]?.segments.map((segment) => segment.load)).toEqual(["idle"]);
+  });
+});
+
+describe("01 §3.3: the callout of the route being drawn", () => {
+  const state = newGame(11, FIXTURE);
+
+  function sceneWithRoute(path: HexCoord[]): MapScene {
+    const route: RoutePreview = {
+      path,
+      waypoints: [],
+      lineType: "lv",
+      valid: true,
+      label: "180,0 mln zł · 1 DOBA",
+    };
+    return buildMapScene(state, null, null, { route });
+  }
+
+  test("the cost rides above the target hex, out of the caption rows", () => {
+    // Straight under Jasienica: the row where captions hang, and where the
+    // cost used to be written on top of the city's name.
+    const end = at(4, 2);
+    const scene = sceneWithRoute([at(4, 1), end]);
+    const label = scene.route?.label;
+    const center = hexCenterOf(end);
+    expect(label?.text).toBe("180,0 mln zł · 1 DOBA");
+    expect(label?.x).toBe(center.x);
+    expect(label?.y).toBeLessThan(center.y - HEX_R / 2);
+    const jasienica = scene.labels.find((entry) => entry.key === "city-jasienica:label");
+    expect(Math.abs((label?.y ?? 0) - (jasienica?.y ?? 0))).toBeGreaterThan(2 * LABEL_FONT_SIZE);
+  });
+
+  test("a target on the top row keeps its cost on the board", () => {
+    const scene = sceneWithRoute([at(1, 0), at(0, 0)]);
+    expect(scene.route?.label?.y).toBeGreaterThan(LABEL_FONT_SIZE);
   });
 });
