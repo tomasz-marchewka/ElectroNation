@@ -13,9 +13,12 @@
 
 import { CONFIG, FORECAST_LEVELS, STORAGE_TECHS, type ForecastLevel } from "./config";
 import type { DayType } from "./demand";
+import { FARM_LAYERS, PLANT_LAYERS } from "./history";
 import {
+  COVERAGE_LAYERS,
   HOURS_PER_TURN,
   TURNS_PER_DAY,
+  type CoverageLayer,
   type DayTruth,
   type FarmState,
   type GameState,
@@ -340,29 +343,41 @@ export interface BalanceProjectionPoint {
   worstCaseBalanceMw: number;
 }
 
+/** What the dispatchable half of the plan is worth at the current setpoints. */
+interface SetpointPlan {
+  /** Per COVERAGE_LAYERS, aligned by index; the two RES layers stay at 0. */
+  coverageMw: number[];
+  /** The same numbers summed — plants + import + discharge. */
+  dispatchableMw: number;
+  /** Extra load the plan also has to carry: storage charging + export. */
+  extraLoadMw: number;
+}
+
 /**
- * Projects the system balance for the remaining hours of the current day,
- * holding today's setpoints constant — the "will the plan survive the next
- * hours" column (01 §8 pt 3). Deliberately network-blind: no line limits, no
- * losses; storage power is capped by the CURRENT state of charge. Bands within
- * one quantity share the day's error factor, so summing them is exact; across
- * quantities the worst case is conservative — as a safety check should be.
- * Stays on the current day: the multi-day panel reads `dayForecast` instead.
+ * The dispatchable part of the plan, read straight off the setpoints (01 §8
+ * pt 3). Storage power is capped by the CURRENT state of charge, and held there
+ * for every hour projected: the projection never simulates a turn, so it cannot
+ * know how the charge would actually run down.
  */
-export function projectBalance(state: GameState): BalanceProjectionPoint[] {
-  let dispatchableMw = 0;
+function planAtSetpoints(state: GameState): SetpointPlan {
+  const coverageMw = COVERAGE_LAYERS.map(() => 0);
+  const add = (layer: CoverageLayer, mw: number): void => {
+    const index = COVERAGE_LAYERS.indexOf(layer);
+    coverageMw[index] = (coverageMw[index] ?? 0) + mw;
+  };
   let extraLoadMw = 0;
+
   for (const plant of state.plants) {
-    dispatchableMw += Math.min(plant.setpointMw, plant.capacityMw);
+    add(PLANT_LAYERS[plant.tech], Math.min(plant.setpointMw, plant.capacityMw));
   }
   for (const border of state.borders) {
-    dispatchableMw += border.importSetpointMw;
+    add("import", border.importSetpointMw);
     extraLoadMw += border.exportSetpointMw;
   }
   for (const storage of state.storages) {
     const leg = Math.sqrt(STORAGE_TECHS[storage.tech].cycleEfficiency);
     if (storage.setpoint.mode === "discharge") {
-      dispatchableMw += Math.min(storage.setpoint.mw, (storage.socMwh * leg) / HOURS_PER_TURN);
+      add("storage", Math.min(storage.setpoint.mw, (storage.socMwh * leg) / HOURS_PER_TURN));
     } else if (storage.setpoint.mode === "charge") {
       extraLoadMw += Math.min(
         storage.setpoint.mw,
@@ -370,6 +385,24 @@ export function projectBalance(state: GameState): BalanceProjectionPoint[] {
       );
     }
   }
+  return {
+    coverageMw,
+    dispatchableMw: coverageMw.reduce((sum, mw) => sum + mw, 0),
+    extraLoadMw,
+  };
+}
+
+/**
+ * Projects the system balance for the remaining hours of the current day,
+ * holding today's setpoints constant — the "will the plan survive the next
+ * hours" column (01 §8 pt 3). Deliberately network-blind: no line limits, no
+ * losses. Bands within one quantity share the day's error factor, so summing
+ * them is exact; across quantities the worst case is conservative — as a safety
+ * check should be. Stays on the current day: the multi-day panel reads
+ * `dayForecast` instead.
+ */
+export function projectBalance(state: GameState): BalanceProjectionPoint[] {
+  const { dispatchableMw, extraLoadMw } = planAtSetpoints(state);
 
   const points: BalanceProjectionPoint[] = [];
   for (let hour = state.calendar.turnIndex * HOURS_PER_TURN; hour < HOURS_PER_DAY; hour++) {
@@ -408,4 +441,57 @@ export function projectBalance(state: GameState): BalanceProjectionPoint[] {
     });
   }
   return points;
+}
+
+/**
+ * One future turn drawn the way a resolved one is (01 §8 pt 2): the coverage
+ * the CURRENT setpoints promise, layer for layer, with wind and PV taken from
+ * the forecast instead of from truth.
+ */
+export interface TurnCoverageProjection {
+  dayOffset: number;
+  turnIndex: number;
+  /** Planned power per COVERAGE_LAYERS, aligned by index [MW]. */
+  coverageMw: number[];
+  /** Demand forecast of the same block — what the plan is measured against. */
+  demand: ForecastPoint;
+  /** ±1σ of the RES half of the plan; the setpoints themselves carry no band. */
+  resBandMw: number;
+  /** Storage charging + export at the current setpoints [MW]. */
+  extraLoadMw: number;
+}
+
+/**
+ * The plan for one turn ahead of TERAZ, stacked into the ribbon's own layers.
+ * Same simplifications as `projectBalance` — network-blind, setpoints held
+ * constant, storage capped by today's state of charge — and the same reach as
+ * `turnForecast`: undefined past the rolling horizon and for turns already
+ * resolved, which have an archive entry of their own (02 §4.1).
+ *
+ * It is a PLAN, not a dispatch: nothing here is trimmed to demand, so a stack
+ * that overshoots the demand forecast is exactly the surplus the turn would
+ * dump (01 §4.1), and one that falls short is the deficit the player still has
+ * to cover.
+ */
+export function projectTurnCoverage(
+  state: GameState,
+  dayOffset: number,
+  turnIndex: number,
+): TurnCoverageProjection | undefined {
+  const forecast = turnForecast(state, dayOffset, turnIndex);
+  if (forecast === undefined) return undefined;
+  const plan = planAtSetpoints(state);
+  const coverageMw = [...plan.coverageMw];
+  const windIndex = COVERAGE_LAYERS.indexOf(FARM_LAYERS.wind);
+  const pvIndex = COVERAGE_LAYERS.indexOf(FARM_LAYERS.pv);
+  coverageMw[windIndex] = (coverageMw[windIndex] ?? 0) + forecast.wind.mw;
+  coverageMw[pvIndex] = (coverageMw[pvIndex] ?? 0) + forecast.pv.mw;
+  return {
+    dayOffset,
+    turnIndex,
+    coverageMw,
+    demand: forecast.demand,
+    resBandMw: forecast.wind.bandMw + forecast.pv.bandMw,
+    extraLoadMw: plan.extraLoadMw,
+  };
 }

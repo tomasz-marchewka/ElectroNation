@@ -7,15 +7,48 @@
 // shell/TurnBar.{jsx,d.ts}: same box, same block highlight, same dashed TERAZ
 // line, same cell typography. Three divergences, all from the docs:
 // the coverage is seven separately coloured layers instead of one four-stop
-// gradient (01 §8 pt 2), the band carries on BEHIND TERAZ as the forecast that
-// stood before each resolved turn (01 §8 pt 2, 0.18), and a click on a cell
-// selects a turn to read instead of moving time (01 §2.5).
+// gradient (01 §8 pt 2), the same layers carry on AHEAD of TERAZ as the plan the
+// current setpoints make (01 §8 pt 2, 0.20), and a click on a cell selects a
+// turn to read instead of moving time (01 §2.5).
+//
+// Truth and plan reach the renderer as the same geometry, so the paint is the
+// whole difference between them: truth is filled, the plan is hatched with the
+// chart's own background — colour taken away rather than added, which is what
+// keeps seven layers readable while none of them can be mistaken for measured.
 
 import { useRef, type PointerEvent, type ReactNode, type WheelEvent } from "react";
 import { WINDOW_TURNS, round01, type ChartPoint, type TimelineModel } from "./timeline";
 
 /** Trackpad pixels that make up one turn of scrolling. */
 const WHEEL_STEP_PX = 40;
+
+/**
+ * The hatch that marks the plan: a stripe every `HATCH_TILE` chart units, of
+ * which `HATCH_STRIPE` is background. Just under half the area is taken away —
+ * enough for the texture to read at a glance, little enough for the layer
+ * colour underneath to stay a colour.
+ */
+const HATCH_TILE = 8;
+const HATCH_STRIPE = 3.5;
+
+/**
+ * How far off full saturation the plan's colours sit. The layer colours ARE the
+ * chart's information (merit order), so this is one step, not a wash: enough
+ * for the plan to stop competing with the measured stack next to it, far too
+ * little to leave anyone guessing which layer is which.
+ */
+const PLAN_SATURATION = 0.65;
+
+/** Opacity of the plan's own fill, under the hatch. Truth sits at 0,65. */
+const PLAN_OPACITY = 0.44;
+
+/**
+ * Ids of the two paints that live in `<defs>`. Several ribbons may share a
+ * document — every one of them defines the same two under the same ids, and
+ * the same paint comes out.
+ */
+const HATCH_ID = "en-chart-plan-hatch";
+const FADE_ID = "en-chart-plan-fade";
 
 /** Pointer travel below this is a click, not a drag. */
 const DRAG_SLOP_PX = 4;
@@ -195,6 +228,31 @@ export function TimelineView({
               role="img"
               aria-label="Oś czasu: pokrycie i prognoza popytu"
             >
+              <defs>
+                {/* Rotated on the tile, not on the shape, so the stripes run
+                    unbroken across every layer of the stack at once. */}
+                <pattern
+                  id={HATCH_ID}
+                  width={HATCH_TILE}
+                  height={HATCH_TILE}
+                  patternUnits="userSpaceOnUse"
+                  patternTransform="rotate(45)"
+                >
+                  <rect
+                    width={HATCH_STRIPE}
+                    height={HATCH_TILE}
+                    fill="var(--en-bg-chart)"
+                    opacity="0.85"
+                  />
+                </pattern>
+                {/* Greys the plan toward its own colours' grey, not toward the
+                    background: the same step in both themes, and brightness —
+                    which is what separates one layer from the next — is left
+                    exactly where it was. */}
+                <filter id={FADE_ID} colorInterpolationFilters="sRGB">
+                  <feColorMatrix type="saturate" values={String(PLAN_SATURATION)} />
+                </filter>
+              </defs>
               <g fill="none" stroke="var(--en-border-subtle)" strokeWidth="1">
                 {model.gridX.map((x) => (
                   <path key={x} d={`M${x} 0 V${model.height}`} />
@@ -228,25 +286,6 @@ export function TimelineView({
                   />
                 ))}
               </g>
-              {/* The bet that was standing before each of those turns resolved. */}
-              {model.pastForecast && (
-                <>
-                  <polygon
-                    points={join(model.pastForecast.band)}
-                    fill="var(--en-text)"
-                    opacity="0.14"
-                  />
-                  <polyline
-                    className="en-chart__forecast"
-                    points={join(model.pastForecast.mid)}
-                    fill="none"
-                    stroke="var(--en-text)"
-                    strokeWidth="1.5"
-                    strokeDasharray="5 4"
-                    opacity="0.55"
-                  />
-                </>
-              )}
               {model.demandLine.length > 0 && (
                 <path
                   className="en-chart__demand"
@@ -257,7 +296,30 @@ export function TimelineView({
                 />
               )}
 
-              {/* Ahead of us: the forecast, never without its band. */}
+              {/* Ahead of us: the plan the current setpoints make, layer for
+                  layer as behind TERAZ — and hatched, because it is a bet. */}
+              <g className="en-chart__plan">
+                <g opacity={PLAN_OPACITY} filter={`url(#${FADE_ID})`}>
+                  {model.plannedAreas.map((area) => (
+                    <path
+                      key={area.key}
+                      className="en-chart__area"
+                      d={smoothPath(area.points, true)}
+                      fill={area.color}
+                    />
+                  ))}
+                </g>
+                {model.plannedAreas.map((area) => (
+                  <path
+                    key={area.key}
+                    d={smoothPath(area.points, true)}
+                    fill={`url(#${HATCH_ID})`}
+                  />
+                ))}
+              </g>
+
+              {/* And over the plan: the demand it has to cover, never without
+                  its band. */}
               {model.forecast && (
                 <>
                   <polygon

@@ -4,10 +4,14 @@
 //
 // The ribbon replaces the day axis and the day chart of M8, which were two
 // components over the same eight columns. It shows a WINDOW of turns, not a
-// day: behind TERAZ the archive (02 §4.1), ahead of it the forecast, up to the
-// rolling horizon (§2.4). The window is eight turns wide — a day's worth — and
-// slides over the whole game, so only eight columns are ever built no matter
-// how long the archive is.
+// day: behind TERAZ the archive (02 §4.1), ahead of it the demand forecast and
+// the plan the current setpoints make, up to the rolling horizon (§2.4). The
+// window is eight turns wide — a day's worth — and slides over the whole game,
+// so only eight columns are ever built no matter how long the archive is.
+//
+// Truth and plan come out of it as the SAME kind of geometry (01 §8 pt 2,
+// 0.20): one stack of layers per run, built by one function. Which of them is a
+// measurement and which is a bet is said in paint, by the renderer.
 
 import {
   COVERAGE_LAYERS,
@@ -18,8 +22,10 @@ import {
   digestAt,
   digestTurn,
   forecastHorizonTurns,
+  projectTurnCoverage,
   type CoverageLayer,
   type GameState,
+  type TurnCoverageProjection,
   type TurnDigest,
 } from "../../engine";
 import { formatMw } from "../format";
@@ -174,11 +180,12 @@ export interface TimelineModel {
   /** Revealed demand, one level per resolved column. */
   demandLine: ChartPoint[];
   /**
-   * The demand forecast that stood BEFORE each resolved turn (01 §8 pt 2): the
-   * bet the player made, kept by the archive because a resolved hour has no
-   * band of its own any more.
+   * The plan ahead of TERAZ (01 §8 pt 2, 0.20), stacked into the same layers as
+   * `areas` and built the same way — what the CURRENT setpoints promise, with
+   * wind and PV taken from the forecast. Geometry alone cannot tell the two
+   * apart; saying which one is truth is the renderer's job.
    */
-  pastForecast: TimelineBand | null;
+  plannedAreas: TimelineArea[];
   /** Demand forecast ahead of TERAZ; null when the window is all history. */
   forecast: TimelineBand | null;
   range: TimelineRange;
@@ -220,7 +227,10 @@ interface Column {
   dayIndex: number;
   turnIndex: number;
   state: TimelineCellState;
+  /** What the turn actually did; only resolved columns have one. */
   digest?: TurnDigest;
+  /** What the turn is planned to do; only columns inside the horizon have one. */
+  projection?: TurnCoverageProjection;
   x: number;
   width: number;
 }
@@ -259,21 +269,26 @@ export function buildTimeline(state: GameState, input: TimelineInput): TimelineM
   for (let index = 0; index < WINDOW_TURNS; index++) {
     const absTurn = range.from + index;
     const dayIndex = Math.floor(absTurn / TURNS_PER_DAY);
+    const turnIndex = absTurn - dayIndex * TURNS_PER_DAY;
+    const past = absTurn < range.pendingTurn;
     columns.push({
       absTurn,
       dayIndex,
-      turnIndex: absTurn - dayIndex * TURNS_PER_DAY,
-      state:
-        absTurn < range.pendingTurn ? "past" : absTurn === range.pendingTurn ? "current" : "future",
-      digest: absTurn < range.pendingTurn ? digestAt(state.history, absTurn) : undefined,
+      turnIndex,
+      state: past ? "past" : absTurn === range.pendingTurn ? "current" : "future",
+      digest: past ? digestAt(state.history, absTurn) : undefined,
+      projection: past
+        ? undefined
+        : projectTurnCoverage(state, dayIndex - state.calendar.dayIndex, turnIndex),
       x: columnX(index),
       width: columnWidth,
     });
   }
 
-  // Resolved columns are a prefix of the window and forecast columns a suffix:
-  // both runs are contiguous, which is what lets them be drawn as one line each.
+  // Resolved columns are a prefix of the window and planned ones a suffix: both
+  // runs are contiguous, which is what lets them be drawn as one line each.
   const resolved = columns.filter((column) => column.digest !== undefined);
+  const projected = columns.filter((column) => column.projection !== undefined);
   const hours: ForecastHour[] = [];
   for (const [index, column] of columns.entries()) {
     if (column.state === "past") continue;
@@ -286,14 +301,19 @@ export function buildTimeline(state: GameState, input: TimelineInput): TimelineM
     }
   }
 
+  /** Sum of the first `upTo` layers — a level of the stack, top one included. */
+  const stackedMw = (coverage: readonly number[] | undefined, upTo: number): number =>
+    (coverage ?? []).slice(0, upTo).reduce((sum, mw) => sum + mw, 0);
+  const totalMw = (coverage: readonly number[] | undefined): number =>
+    stackedMw(coverage, COVERAGE_LAYERS.length);
+
   let peak = 0;
   for (const column of resolved) {
     const digest = column.digest;
     if (!digest) continue;
-    const coverage = digest.coverageMw.reduce((sum, mw) => sum + mw, 0);
-    const band = digest.forecastMiss.demand;
-    peak = Math.max(peak, coverage, digest.totals.demandMw, band.forecastMw + band.bandMw);
+    peak = Math.max(peak, totalMw(digest.coverageMw), digest.totals.demandMw);
   }
+  for (const column of projected) peak = Math.max(peak, totalMw(column.projection?.coverageMw));
   for (const hour of hours) peak = Math.max(peak, hour.hi);
   const scaleMw = Math.max(SCALE_STEP_MW, Math.ceil(peak / SCALE_STEP_MW) * SCALE_STEP_MW);
   const y = (mw: number): number => round01(CHART_HEIGHT - (mw / scaleMw) * CHART_HEIGHT);
@@ -302,52 +322,40 @@ export function buildTimeline(state: GameState, input: TimelineInput): TimelineM
   /**
    * Two points per block, both at the turn's own level: the run the value holds
    * flat. What is left between two blocks is the rounding window the renderer
-   * curves through — and the run's own ends stay square, because there is
-   * nothing before the first column to lean toward and past TERAZ there is no
-   * truth yet, only the forecast.
+   * curves through — and each run's own ends stay square, because there is
+   * nothing before the first column to lean toward, and the two runs meet at
+   * TERAZ, where truth stops and the plan takes over.
    */
-  const blockLine = (valueOf: (digest: TurnDigest) => number): ChartPoint[] =>
-    resolved.flatMap((column, index) => {
-      const level = y(column.digest ? valueOf(column.digest) : 0);
+  const blockLine = (run: readonly Column[], valueOf: (column: Column) => number): ChartPoint[] =>
+    run.flatMap((column, index) => {
+      const level = y(valueOf(column));
       const from = column.x;
       const to = round01(column.x + column.width);
       return [
         { x: index === 0 ? from : round01(from + roundX), y: level },
-        { x: index === resolved.length - 1 ? to : round01(to - roundX), y: level },
+        { x: index === run.length - 1 ? to : round01(to - roundX), y: level },
       ];
     });
-  const stackedMw = (digest: TurnDigest, upTo: number): number =>
-    digest.coverageMw.slice(0, upTo).reduce((sum, mw) => sum + mw, 0);
 
-  const areas: TimelineArea[] = [];
-  TIMELINE_LAYERS.forEach((layer, index) => {
-    const energy = resolved.reduce(
-      (sum, column) => sum + (column.digest?.coverageMw[index] ?? 0),
-      0,
-    );
-    if (energy <= 0) return;
-    const top = blockLine((digest) => stackedMw(digest, index + 1));
-    const bottom = blockLine((digest) => stackedMw(digest, index)).reverse();
-    areas.push({ key: layer.key, color: layer.color, points: [...top, ...bottom] });
-  });
-
-  const pastForecast: TimelineBand | null =
-    resolved.length === 0
-      ? null
-      : {
-          band: [
-            ...blockLine(
-              (digest) => digest.forecastMiss.demand.forecastMw + digest.forecastMiss.demand.bandMw,
-            ),
-            ...blockLine((digest) =>
-              Math.max(
-                0,
-                digest.forecastMiss.demand.forecastMw - digest.forecastMiss.demand.bandMw,
-              ),
-            ).reverse(),
-          ],
-          mid: blockLine((digest) => digest.forecastMiss.demand.forecastMw),
-        };
+  /**
+   * One run of columns stacked in merit order. Truth and plan go through it
+   * unchanged — same layer order, same geometry — so a column ahead of TERAZ is
+   * drawn from the projection exactly as a resolved one is from its digest.
+   */
+  const stack = (
+    run: readonly Column[],
+    coverageOf: (column: Column) => readonly number[] | undefined,
+  ): TimelineArea[] => {
+    const areas: TimelineArea[] = [];
+    TIMELINE_LAYERS.forEach((layer, index) => {
+      const energy = run.reduce((sum, column) => sum + (coverageOf(column)?.[index] ?? 0), 0);
+      if (energy <= 0) return;
+      const top = blockLine(run, (column) => stackedMw(coverageOf(column), index + 1));
+      const bottom = blockLine(run, (column) => stackedMw(coverageOf(column), index)).reverse();
+      areas.push({ key: layer.key, color: layer.color, points: [...top, ...bottom] });
+    });
+    return areas;
+  };
 
   // The last hour is held to the right edge: the samples are hourly, the axis
   // runs in 3 h blocks, and a band that stops short would read as certainty.
@@ -414,12 +422,12 @@ export function buildTimeline(state: GameState, input: TimelineInput): TimelineM
       width: column.width,
     })),
     days,
-    areas,
-    demandLine: blockLine((digest) => digest.totals.demandMw),
-    pastForecast,
+    areas: stack(resolved, (column) => column.digest?.coverageMw),
+    demandLine: blockLine(resolved, (column) => column.digest?.totals.demandMw ?? 0),
+    plannedAreas: stack(projected, (column) => column.projection?.coverageMw),
     forecast,
     range,
-    caption: { x: 8, y: 14, text: "OŚ CZASU · POPYT vs POKRYCIE [MW]" },
+    caption: { x: 8, y: 14, text: "OŚ CZASU · POPYT vs POKRYCIE I PLAN [MW]" },
     // The chart has no vertical axis (handoff), so the scale is printed: without
     // it the layers show proportions and hide every absolute number.
     scaleLabel: { x: CHART_WIDTH - 8, y: 14, text: formatMw(scaleMw) },
@@ -427,6 +435,6 @@ export function buildTimeline(state: GameState, input: TimelineInput): TimelineM
     // The full key, always: it is what the colours MEAN, not a summary of the
     // window — and read from the bottom up it is the merit order itself.
     legend: TIMELINE_LAYERS.map((layer) => ({ label: layer.label, color: layer.color })),
-    note: "— PRAWDA · ┄ PROGNOZA (PASMO)",
+    note: "PEŁNE = PRAWDA · SZRAFURA = PLAN PRZY NASTAWACH · ┄ = PROGNOZA POPYTU",
   };
 }

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
   CONFIG,
+  COVERAGE_LAYERS,
   DAY_WEIGHTS,
   TURNS_PER_DAY,
   applyAction,
@@ -8,10 +9,14 @@ import {
   digestTurn,
   farmPowerMwAtHour,
   farmProductionForecast,
+  forecastHorizonTurns,
   lastDayDigests,
   newGame,
   projectBalance,
+  projectTurnCoverage,
   resolveTurn,
+  turnForecast,
+  type CoverageLayer,
   type GameState,
   type TurnReport,
 } from "../../src/engine";
@@ -386,5 +391,130 @@ describe("01 §8 pt 3: balance projection at current setpoints", () => {
     const dispatchable = points[0]?.dispatchableMw ?? 0;
     expect(dispatchable).toBeGreaterThan(0);
     expect(dispatchable).toBeLessThan(100); // 30 MWh cannot sustain 100 MW for 3 h
+  });
+});
+
+describe("01 §8 pt 2: the plan of a turn ahead of TERAZ", () => {
+  const layerMw = (coverage: readonly number[], layer: CoverageLayer): number =>
+    coverage[COVERAGE_LAYERS.indexOf(layer)] ?? 0;
+
+  test("stacks the setpoints, and takes wind and PV from the forecast", () => {
+    const scenario = makeScenario({
+      farms: [
+        {
+          id: "farm-1",
+          name: "F1",
+          hex: { q: 1, r: 0 },
+          tech: "wind",
+          capacityMw: 200,
+          enabled: true,
+          windClass: "open",
+          solarMultiplier: 1,
+        },
+      ],
+      borders: [
+        {
+          id: "border-1",
+          name: "B1",
+          hex: { q: 5, r: 0 },
+          throughputMw: 400,
+          importSetpointMw: 50,
+          exportSetpointMw: 0,
+        },
+      ],
+    });
+    const state = applyAction(newGame(7, scenario), {
+      type: "setPlantSetpoint",
+      plantId: "plant-1",
+      mw: 300,
+    });
+    const plan = projectTurnCoverage(state, 0, 0);
+    const forecast = turnForecast(state, 0, 0);
+    if (!plan || !forecast) throw new Error("the pending turn is always inside the horizon");
+
+    expect(layerMw(plan.coverageMw, "gas")).toBe(300); // CCGT sits in the gas layer
+    expect(layerMw(plan.coverageMw, "import")).toBe(50);
+    expect(layerMw(plan.coverageMw, "wind")).toBe(forecast.wind.mw);
+    expect(layerMw(plan.coverageMw, "wind")).toBeGreaterThan(0);
+    expect(layerMw(plan.coverageMw, "pv")).toBe(0); // no PV farm stands on the map
+    expect(plan.demand.mw).toBe(forecast.demand.mw);
+    expect(plan.resBandMw).toBe(forecast.wind.bandMw + forecast.pv.bandMw);
+  });
+
+  test("a switched-off farm promises nothing, and the setpoint is capped by the block", () => {
+    const scenario = makeScenario({
+      farms: [
+        {
+          id: "farm-1",
+          name: "F1",
+          hex: { q: 1, r: 0 },
+          tech: "wind",
+          capacityMw: 200,
+          enabled: false,
+          windClass: "open",
+          solarMultiplier: 1,
+        },
+      ],
+    });
+    const state = applyAction(newGame(7, scenario), {
+      type: "setPlantSetpoint",
+      plantId: "plant-1",
+      mw: 400,
+    });
+    const plan = projectTurnCoverage(state, 0, 0);
+    expect(layerMw(plan?.coverageMw ?? [], "wind")).toBe(0);
+    // 400 MW is the plant's whole capacity — the plan may not promise more.
+    expect(layerMw(plan?.coverageMw ?? [], "gas")).toBe(400);
+  });
+
+  test("storage discharge is capped by the state of charge, charging is extra load", () => {
+    const scenario = makeScenario({
+      plants: [],
+      storages: [
+        {
+          id: "storage-1",
+          name: "S1",
+          hex: { q: 0, r: 0 },
+          tech: "battery",
+          powerMw: 100,
+          capacityMwh: 400,
+          socMwh: 30,
+          setpoint: { mode: "discharge", mw: 100 },
+        },
+      ],
+    });
+    const discharging = newGame(7, scenario);
+    const planned = layerMw(projectTurnCoverage(discharging, 0, 0)?.coverageMw ?? [], "storage");
+    expect(planned).toBeGreaterThan(0);
+    expect(planned).toBeLessThan(100); // 30 MWh cannot sustain 100 MW for 3 h
+
+    const charging = applyAction(discharging, {
+      type: "setStorage",
+      storageId: "storage-1",
+      mode: "charge",
+      mw: 80,
+    });
+    const plan = projectTurnCoverage(charging, 0, 0);
+    expect(layerMw(plan?.coverageMw ?? [], "storage")).toBe(0);
+    expect(plan?.extraLoadMw).toBe(80);
+  });
+
+  test("reaches exactly as far as the forecast does, and never behind TERAZ", () => {
+    const state = resolveTurn(resolveTurn(newGame(7, makeScenario())));
+    const turns = forecastHorizonTurns(state);
+    const pending = state.calendar.turnIndex;
+
+    // Resolved turns have an archive entry instead of a plan (02 §4.1).
+    expect(projectTurnCoverage(state, 0, pending - 1)).toBeUndefined();
+    expect(projectTurnCoverage(state, 0, pending)).toBeDefined();
+    // The horizon rolls with the turn: `pending + 8·D − 1` is the last one.
+    const last = pending + turns - 1;
+    expect(
+      projectTurnCoverage(state, Math.floor(last / TURNS_PER_DAY), last % TURNS_PER_DAY),
+    ).toBeDefined();
+    const past = last + 1;
+    expect(
+      projectTurnCoverage(state, Math.floor(past / TURNS_PER_DAY), past % TURNS_PER_DAY),
+    ).toBeUndefined();
   });
 });
