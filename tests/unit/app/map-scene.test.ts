@@ -18,12 +18,7 @@ import {
   type TurnReport,
 } from "../../../src/engine";
 import { biomeLegend } from "../../../src/app/map/biomes";
-import {
-  HEX_R,
-  LABEL_FONT_SIZE,
-  drawnBounds,
-  hexCenterOf,
-} from "../../../src/app/map/geometry";
+import { HEX_R, LABEL_FONT_SIZE, drawnBounds, hexCenterOf } from "../../../src/app/map/geometry";
 import {
   buildMapScene,
   lineLoad,
