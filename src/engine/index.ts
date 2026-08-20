@@ -151,7 +151,6 @@ export {
   finishedLine,
   scenarioToStateFields,
   type Scenario,
-  type ScenarioJunction,
   type ScenarioPlant,
 } from "./scenario";
 export {

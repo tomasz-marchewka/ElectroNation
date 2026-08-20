@@ -16,7 +16,6 @@ import {
   FARM_TECHS,
   JUNCTION_SPEC,
   KM_PER_HEX,
-  LINE_SLOTS_PER_OBJECT,
   LINE_TYPES,
   MAX_PLANT_BLOCKS_PER_HEX,
   PLANT_TECHS,
@@ -494,11 +493,15 @@ function entry(
     action: Action;
     extraNote?: Diagnosis;
     steppers?: CatalogStepper[];
+    /** Slot budget of THIS object; only a junction station differs (01 §5.4). */
+    lineSlots?: number;
   },
 ): CatalogEntry {
   const cost = siteCostPln(state, hex, spec.basePln);
   const note =
-    siteNote(state, hex) ?? spec.extraNote ?? (cost === null ? null : moneyNote(state, cost));
+    siteNote(state, hex, spec.lineSlots) ??
+    spec.extraNote ??
+    (cost === null ? null : moneyNote(state, cost));
   return {
     key: spec.key,
     name: spec.name,
@@ -609,9 +612,10 @@ export function buildCatalog(
   const junction = entry(state, hex, {
     key: "junction",
     name: JUNCTION_CATALOG_NAME,
-    size: `${formatMw(JUNCTION_SPEC.throughputMw)} · ${formatNumber(JUNCTION_SPEC.lineSlots)} PRZYŁĄCZY · ${daysLabel(JUNCTION_SPEC.buildDays)} BUDOWY`,
+    size: `${formatNumber(JUNCTION_SPEC.lineSlots)} PRZYŁĄCZY · BEZ LIMITU MOCY · ${daysLabel(JUNCTION_SPEC.buildDays)} BUDOWY`,
     basePln: JUNCTION_SPEC.capexPln,
     action: { type: "buildJunction", hex },
+    lineSlots: JUNCTION_SPEC.lineSlots,
   });
 
   const border = entry(state, hex, {
@@ -680,8 +684,6 @@ function expansionActions(state: GameState, objectId: string): HexAction[] {
       case "batteryExpansion":
       case "pumpedExpansion":
         return pending.storageId;
-      case "junctionExpansion":
-        return pending.junctionId;
       case "borderExpansion":
         return pending.borderId;
       default:
@@ -950,44 +952,17 @@ function junctionView(
   report: TurnReport | null,
   junction: JunctionState,
 ): HexObjectView {
-  const row = report?.nodes.find((candidate) => candidate.nodeId === junction.id);
+  // 0.21: the station passes on whatever its lines bring, so it has no meter of
+  // its own — the only bottleneck it can report is a line running through it.
   const alert = inBottleneck(state, report, junction.hex);
-  const modules = Math.round(
-    (junction.lineSlots - LINE_SLOTS_PER_OBJECT) / JUNCTION_SPEC.moduleLineSlots,
-  );
-  const pending = queued(state, (item) =>
-    item.kind === "junctionExpansion" && item.junctionId === junction.id ? 1 : 0,
-  );
   return {
     kind: JUNCTION_CATALOG_NAME,
     status: alert
       ? { tone: "danger", label: "wąskie gardło" }
       : { tone: "ok", label: "praca normalna" },
     connections: connectionsLabel(state, junction.hex),
-    rows: [
-      {
-        key: "throughput",
-        label: "PRZEPUSTOWOŚĆ",
-        value: row ? formatSetpoint(row.usedMw, row.throughputMw) : formatMw(junction.throughputMw),
-      },
-      {
-        key: "modules",
-        label: "MODUŁY",
-        value: `${formatNumber(modules)} / ${formatNumber(JUNCTION_SPEC.maxModules)}`,
-      },
-    ],
-    actions: [
-      routeAction(state, junction.hex),
-      expansionAction(state, junction.hex, {
-        key: "expand",
-        label: `ROZBUDUJ · +MODUŁ ${formatMw(JUNCTION_SPEC.moduleThroughputMw)} · +${formatNumber(JUNCTION_SPEC.moduleLineSlots)} PRZYŁĄCZA`,
-        basePln: JUNCTION_SPEC.moduleCapexPln,
-        action: { type: "expandJunction", junctionId: junction.id },
-        limit: limitNote(modules, pending, 1, JUNCTION_SPEC.maxModules, "modułów"),
-      }),
-      ...expansionActions(state, junction.id),
-      ...(alert ? bottleneckAction(report) : []),
-    ],
+    rows: [{ key: "throughput", label: "PRZEPUSTOWOŚĆ", value: "bez ograniczeń" }],
+    actions: [routeAction(state, junction.hex), ...(alert ? bottleneckAction(report) : [])],
   };
 }
 
@@ -1054,7 +1029,10 @@ function describeSite(pending: PendingObject): { kind: string; size: string } | 
         size: `${formatMw(pending.storage.powerMw)} / ${formatMwh(pending.storage.capacityMwh)}`,
       };
     case "junction":
-      return { kind: JUNCTION_CATALOG_NAME, size: formatMw(pending.junction.throughputMw) };
+      return {
+        kind: JUNCTION_CATALOG_NAME,
+        size: `${formatNumber(JUNCTION_SPEC.lineSlots)} PRZYŁĄCZY`,
+      };
     case "border":
       return { kind: BORDER_CATALOG_NAME, size: formatMw(pending.border.throughputMw) };
     default:

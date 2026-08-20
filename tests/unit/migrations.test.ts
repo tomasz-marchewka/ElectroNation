@@ -182,6 +182,38 @@ describe("migrateState", () => {
     }
   });
 
+  test("12 → 13: a junction loses its throughput, modules and queued module", () => {
+    // What a schema-12 save carried: a station with its own MW cap and bought
+    // line slots, plus a capacity module still on the build queue (01 §5.4).
+    const state = playTurns(11, 3);
+    const old = {
+      ...JSON.parse(JSON.stringify(state)),
+      schema: 12,
+      junctions: [
+        { id: "j-1", name: "J1", hex: { q: 4, r: 4 }, throughputMw: 1_000, lineSlots: 10 },
+      ],
+      constructions: [
+        {
+          id: "obj-9",
+          remainingDays: 1,
+          pending: { kind: "junctionExpansion", junctionId: "j-1" },
+        },
+      ],
+    };
+
+    const result = migrateState(old);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      // The station keeps standing and now passes whatever its lines bring.
+      expect(result.state.junctions).toStrictEqual([
+        { id: "j-1", name: "J1", hex: { q: 4, r: 4 } },
+      ]);
+      // The module has nothing left to expand: it leaves the queue unrefunded.
+      expect(result.state.constructions).toStrictEqual([]);
+    }
+  });
+
   test("11 → 12: a save too broken to cut is handed on untouched", () => {
     const state = playTurns(11, 3);
     const result = migrateState({

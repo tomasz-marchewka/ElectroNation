@@ -1,8 +1,26 @@
 # ElectroNation — Dokument bazowy mechaniki gry
 
-**Wersja:** 0.20 (dokument koncepcyjny)
+**Wersja:** 0.21 (dokument koncepcyjny)
 **Data:** 2026-08-19
 **Status:** obowiązuje **wersja uproszczona** gry; mechaniki odłożone czekają w [90-pomysly-na-przyszlosc.md](90-pomysly-na-przyszlosc.md)
+
+**Zmiany 0.20 → 0.21 (stacja rozdzielcza bez własnej przepustowości):**
+
+1. **Stacja rozdzielcza nie ma własnej przepustowości** (§4.3, §5.4; uchyla „250 MW
+   +250 za moduł" z 0.12). Przepuszcza wszystko, co przyniosą linie — wąskim gardłem
+   korytarza jest odtąd wyłącznie linia. Powód: limit węzła dublował limit linii i to
+   poniżej jego wartości (stacja 250 MW przy linii SN 500 MW), więc **każda** świeżo
+   postawiona stacja zwężała korytarz SN i WN — narzędzie do łączenia korytarzy
+   psuło korytarz. Lekcja „można mieć dość mocy i nie dostarczyć jej tam, gdzie
+   trzeba" (§4.4) zostaje w całości przy linii: typ, liczba torów i straty.
+   Odpowiednik szyny zbiorczej wymiarowanej pod linie, nie niezależnie od nich.
+2. **Cena stacji 150 → 60 mln zł** (§5.4), czyli mniej więcej **jeden heks linii SN**.
+   Reguła kciuka: stacja zwraca się w chwili, gdy oszczędza jeden heks zdublowanego
+   korytarza SN. Koszt stały spada do 1,2 mln zł/rok (2% CAPEX-u, 02 §8.3).
+3. **Moduł rozbudowy stacji znika; przyłączy jest na sztywno 12** (§5.4; uchyla
+   „6 +2 za moduł, do 18" z 0.12). Bez przepustowości modułowi zostawałyby same
+   przyłącza — po nowej cenie stacji drożej niż postawienie drugiej stacji obok.
+   Stacja ma odtąd jeden parametr: dwa razy tyle przyłączy co zwykły obiekt.
 
 **Zmiany 0.19 → 0.20 (wstęga: plan przed nami zamiast pasma sprzed tury):**
 
@@ -519,9 +537,10 @@ typu park narodowy — 90 §2.)*
   Każdy obiekt jest węzłem sieci; osobnego przyłącza nie ma.
 - Każdy obiekt ma **6 przyłączy liniowych** — po jednym z każdego sąsiedniego heksa
   (0.12; wcześniej 2 — za mało, krępowało topologię). Każdy obiekt może więc zbierać
-  i rozdzielać linie. **Stacja rozdzielcza** pozostaje wyspecjalizowanym węzłem sieci:
-  6 przyłączy **+2 za moduł** (do 18) i własna przepustowość MW — buduje się ją tam,
-  gdzie korytarze mają się łączyć z dala od istniejących obiektów (§4.3).
+  i rozdzielać linie. **Stacja rozdzielcza** pozostaje wyspecjalizowanym węzłem sieci,
+  ale wyróżnia ją już tylko liczba przyłączy: **12, na sztywno** (0.21; wcześniej
+  6 +2 za moduł do 18) i żadnej własnej przepustowości — buduje się ją tam, gdzie
+  korytarze mają się łączyć z dala od istniejących obiektów (§4.3).
 - **Linia przechodząca przez heks z obiektem automatycznie go przyłącza** (0.13) —
   **i jest na nim przerywana** (0.19): gotowa linia nigdy nie *mija* obiektu, tylko
   rozpada się na dwie osobne linie, obie kończące się w nim. Obiekt jest więc węzłem
@@ -533,7 +552,8 @@ typu park narodowy — 90 §2.)*
 - **Przerwanie działa w obie strony** (0.19): postawienie obiektu na heksie, przez który
   biegną już linie, przecina je wszystkie w dniu ukończenia budowy. Dlatego heks, którego
   korytarz przyniósłby więcej końców niż obiekt ma przyłączy (np. 4 linie w przelocie =
-  8 końców przy 6 przyłączach), **nie jest placem budowy** — silnik nigdy nie przetrasuje
+  8 końców przy 6 przyłączach zwykłego obiektu; stacja rozdzielcza ma ich 12 i ten sam
+  korytarz przyjmie), **nie jest placem budowy** — silnik nigdy nie przetrasuje
   linii, za którą gracz już zapłacił. Linia w budowie zostaje jednym zleceniem z jednym
   odliczaniem i przecina się dopiero w chwili uruchomienia (§2.6).
   Suma długości, kosztu stałego i przepustowości nie zmienia się przy przecięciu:
@@ -673,23 +693,31 @@ Wynikające z tego decyzje gracza:
   mocy**. Żeby dostarczyć 300 MW, trzeba nadać 312,5 MW — różnicę gracz opłaca co godzinę.
   Ta sama trasa w NN traci 8%, w WN — 2%.
 
-### 4.3 Stacje rozdzielcze: węzły zbiorczo-rozdzielcze z przepustowością
+### 4.3 Stacje rozdzielcze: węzły zbiorczo-rozdzielcze bez własnej przepustowości
 
 Stacja rozdzielcza to trójnik/rozdzielacz w wodociągu — **dedykowany węzeł sieci** do
 łączenia korytarzy z dala od istniejących obiektów. Od 0.12 rozgałęziać może każdy obiekt
-(6 przyłączy — §3.3); stację wyróżnia rozbudowa przyłączy (+2 za moduł, do 18) oraz
-**własna przepustowość [MW]**: suma mocy przepływającej przez stację nie może jej
-przekroczyć.
+(6 przyłączy — §3.3); stację wyróżnia **12 przyłączy** i tyle.
 
-Klasyczna pułapka projektowa, którą ta jedna liczba tworzy: **grube linie, cienka stacja** —
-gracz zbiera trzy korytarze po 500 MW w stacji o przepustowości 250 MW i to ona zostaje
-wąskim gardłem. Parametry i rozbudowa — §5.4. *(Układy rozdzielni, kompensacja, poziomy
-napięć, dawna topologia stacyjna — 90 §4.)*
+**DECYZJA (0.21, uchyla przepustowość stacji z 0.12): stacja nie ogranicza mocy.**
+Przepuszcza wszystko, co przyniosą do niej linie — jak trójnik, którego średnica nie bywa
+mniejsza od rur, które spina. Dawna pułapka „grube linie, cienka stacja" (trzy korytarze
+po 500 MW zebrane w stacji 250 MW) znika, bo była **dubletem limitu linii ustawionym
+poniżej jego wartości**: stacja startowa 250 MW była węższa niż pojedyncza linia SN, więc
+wstawienie jej w korytarz SN albo WN zawsze go zwężało. Gracz płacił za przepustowość tego
+samego odcinka dwa razy, a narzędzie do łączenia korytarzy działało jak pułapka na
+nieuważnego. Wąskim gardłem sieci zostaje **wyłącznie linia** — jej typ, liczba
+równoległych torów i straty na długości (§4.2); własną przepustowość węzła ma już tylko
+przyłącze graniczne, gdzie limit MW jest zdolnością handlową, a nie dubletem (§5.7).
+
+Parametry — §5.4. *(Układy rozdzielni, kompensacja, poziomy napięć, dawna topologia
+stacyjna — 90 §4; przepustowość węzła jako osobny wymiar wraca razem z DC power flow,
+90 §1.)*
 
 ### 4.4 Model przepływu — transportowy, nie fizyczny
 
 Silnik traktuje sieć jako **graf przepustowości** (obiekty = węzły, linie = krawędzie ze
-stratami; przepustowość węzła mają stacje rozdzielcze i przyłącza graniczne): znajduje
+stratami; własną przepustowość węzła ma od 0.21 już tylko przyłącze graniczne): znajduje
 najtańszy wykonalny rozpływ od źródeł do odbiorów, zamiast liczyć fizyczny
 rozpływ prądu. Gracz nie steruje trasami bezpośrednio — ustawia źródła, a energia „płynie
 sama" najtańszymi dostępnymi drogami, jak woda pod ciśnieniem.
@@ -701,8 +729,8 @@ kosztu; deterministyczne tie-breaki. Formalizacja (reprezentacja grafu, funkcja 
 obsługa strat, priorytety przebiegów) — [dokument 02](02-model-symulacji.md) §2–4.
 
 Kluczowa własność pierwotnej wizji przeżywa uproszczenie w łagodniejszej formie: **można mieć
-dość mocy i mimo to nie dostarczyć jej tam, gdzie trzeba** — bo korytarz albo stacja mają
-za małą przepustowość, albo straty na długiej trasie zjadają nadwyżkę. Planowanie sieci
+dość mocy i mimo to nie dostarczyć jej tam, gdzie trzeba** — bo korytarz ma za małą
+przepustowość, albo straty na długiej trasie zjadają nadwyżkę. Planowanie sieci
 pozostaje grą samą w sobie, tylko bez praw Kirchhoffa.
 
 *(DC power flow — przepływy kołowe i przeciążenia wynikające z fizyki — wraca jako poziom
@@ -791,11 +819,17 @@ oraz **bufor na błąd prognozy** — magazyn z zapasem energii to polisa na dol
 
 Rola w topologii — §3.3, mechanika węzła — §4.3. Parametry (orientacyjne, do strojenia):
 
-| Parametr | Wartość startowa | Rozbudowa | Limit lokalizacji |
-|---|---|---|---|
-| **Przepustowość** | 250 MW | +250 MW za moduł | 6 modułów (1750 MW) |
-| **Przyłącza liniowe** (ile linii można wpiąć) | 6 | +2 za moduł | 18 przyłączy |
-| CAPEX / czas budowy | ~150 mln zł, 1 doba gry | moduł: ~90 mln zł, 1 doba | — |
+| Parametr | Wartość | Rozbudowa |
+|---|---|---|
+| **Przepustowość** | brak limitu (0.21) | — |
+| **Przyłącza liniowe** (ile linii można wpiąć) | 12 | — (bez modułów od 0.21) |
+| CAPEX / czas budowy | ~60 mln zł, 1 doba gry | — |
+
+Cena to mniej więcej **jeden heks linii SN** (62,5 mln zł): stacja zwraca się w chwili,
+gdy oszczędza jeden heks zdublowanego korytarza. Jest więc rutynowym elementem topologii,
+a nie inwestycją — jedyne pytanie brzmi „czy potrzebuję tu rozgałęzienia". Braku limitu
+mocy nie da się nadużyć: przez stację przepłynie tylko tyle, ile wniosą linie, a te są
+droższe od niej.
 
 *(Układy rozdzielni, kompensacja mocy biernej, telemechanika, poziomy napięć i dawna
 topologia stacyjna z przyłączem w promieniu 1 heksa — 90 §4.)*
@@ -827,8 +861,8 @@ liczby jednostek — 05 §5).
 ### 5.7 Punkty graniczne — import i eksport
 
 Na krawędziach mapy leżą **punkty graniczne**. Żeby handlować, gracz buduje **przyłącze
-graniczne** (interkonektor — węzeł z własną przepustowością, jak stacja rozdzielcza)
-i dociąga do niego linię:
+graniczne** (interkonektor — od 0.21 jedyny węzeł z własną przepustowością; limit MW
+jest tu zdolnością handlową, nie dubletem limitu linii) i dociąga do niego linię:
 
 | Parametr | Wartość orientacyjna |
 |---|---|
@@ -883,7 +917,8 @@ LCOE — 90 §5.)*
 - **DECYZJA (bez zmian): istniejące obiekty można rozbudowywać, z twardym limitem lokalizacji:**
   elektrownia do **6 bloków** na heksie (0.16), farma OZE do limitu mocy heksa (**wiatr
   300 MW, PV 200 MW** — 02 §8.4), magazyn do limitu modułów (moc i pojemność osobno —
-  02 §8.2), stacja wg §5.4, przyłącze graniczne o kolejne moduły zdolności. Rozbudowa =
+  02 §8.2), przyłącze graniczne o kolejne moduły zdolności (**stacji rozdzielczej nie
+  rozbudowuje się wcale — od 0.21 nie ma czego, §5.4**). Rozbudowa =
   **70% czasu i 85% CAPEX-u** nowej lokalizacji (0.16, przygważdża widełki z 0.13).
   Po osiągnięciu limitu jedyną drogą jest nowa lokalizacja.
 - **Linia rozbudowuje się przez podmianę typu (0.17):** gotową linię podnosi się do wyższego
@@ -1025,9 +1060,9 @@ indeksem ceny.
 
 | # | Decyzja | Gdzie |
 |---|---|---|
-| ✅ | **Uproszczony przepływ (0.7/0.8)**: model „wodociągowy" — bilans turowy, przepustowości linii i stacji, straty liniowe od długości; bez praw Kirchhoffa | 4 |
+| ✅ | **Uproszczony przepływ (0.7/0.8)**: model „wodociągowy" — bilans turowy, przepustowości linii (od 0.21 tylko ich oraz przyłączy granicznych), straty liniowe od długości; bez praw Kirchhoffa | 4 |
 | ✅ | **W wersji uproszczonej są: PV, wiatr lądowy, magazyny, stacje rozdzielcze, prognozy z błędem** (0.8) | 5, 2.4 |
-| ✅ | **Topologia bezpośrednia (0.11)**: linie łączą obiekty wprost; **6 przyłączy liniowych na obiekt** (0.12; wcześniej 2 i stacja jako jedyny węzeł zbiorczy); stacja rozdzielcza = dedykowany węzeł z rozbudową przyłączy i własną przepustowością; **linia w przelocie przyłącza mijane obiekty, ⩽9 linii jednego typu na heks** (0.13); **przelot przerywa linię na obiekcie — dwie osobne linie, dwa przyłącza** (0.19; uchyla „jedno przyłącze" z 0.13) | 3.3, 4.3 |
+| ✅ | **Topologia bezpośrednia (0.11)**: linie łączą obiekty wprost; **6 przyłączy liniowych na obiekt** (0.12; wcześniej 2 i stacja jako jedyny węzeł zbiorczy); stacja rozdzielcza = dedykowany węzeł, od 0.21 **bez własnej przepustowości, 12 przyłączy na sztywno, 60 mln zł** (uchyla 250 MW + moduły z 0.12); **linia w przelocie przyłącza mijane obiekty, ⩽9 linii jednego typu na heks** (0.13); **przelot przerywa linię na obiekcie — dwie osobne linie, dwa przyłącza** (0.19; uchyla „jedno przyłącze" z 0.13) | 3.3, 4.3 |
 | ✅ | **Trzy typy linii przesyłowych NN/SN/WN** (0.13; uchyla „jeden typ" z 0.11): 150/500/1500 MW, straty 4/2/1%/100 km, budowa 3/6/12 h/heks | 4.2 |
 | ✅ | **OZE: ręczne sterowanie tylko włącz/wyłącz całą farmę**; przycinanie nadwyżek automatyczne (0.13) | 4.1 |
 | ✅ | **Horyzont prognozy: 24 h bazowo, poziomy wydłużają do 3 / 7 dób** i zwężają pasmo (0.13); **kroczący (0.18)** — liczony od tury bieżącej, nie do końca doby (uchyla „bieżąca doba" z 0.13); lekki buff poziomu podstawowego do weryfikacji w doc 03 | 2.4, 06 §8.6.3 |

@@ -23,7 +23,7 @@ import type { MonthRegimes, RegimeId } from "./regimes";
  * by the build before it still loads. A bump without its migration turns every
  * existing save into a load error.
  */
-export const STATE_SCHEMA_VERSION = 12;
+export const STATE_SCHEMA_VERSION = 13;
 
 export const TURNS_PER_DAY = 8;
 export const HOURS_PER_TURN = 3;
@@ -111,17 +111,16 @@ export interface StorageState {
   setpoint: { mode: StorageMode; mw: number };
 }
 
+/**
+ * A junction station (01 §4.3, 0.21): a pure routing node. It carries NO
+ * throughput of its own — whatever the lines bring, it passes on — and its
+ * line-slot count is the fixed `JUNCTION_SPEC.lineSlots`, so the object needs
+ * no state beyond where it stands.
+ */
 export interface JunctionState {
   id: string;
   name: string;
   hex: HexCoord;
-  throughputMw: number;
-  /**
-   * How many lines may be plugged in (01 §5.4): 6 at base, +2 per capacity
-   * module, 18 max. Per-object because only junctions expand — every other
-   * object stays at LINE_SLOTS_PER_OBJECT.
-   */
-  lineSlots: number;
 }
 
 export interface BorderState {
@@ -195,7 +194,6 @@ export type PendingObject =
   | { kind: "farmExpansion"; farmId: string; capacityMw: number }
   | { kind: "batteryExpansion"; storageId: string; powerMw: number; capacityMwh: number }
   | { kind: "pumpedExpansion"; storageId: string }
-  | { kind: "junctionExpansion"; junctionId: string }
   | { kind: "borderExpansion"; borderId: string };
 
 export interface ConstructionState {
@@ -286,7 +284,7 @@ export interface TurnSegmentReport {
   capacityMw: number;
 }
 
-/** Throughput usage of a capped node — junction or border point (01 §4.3). */
+/** Throughput usage of a capped node — border points only since 0.21 (01 §5.7). */
 export interface TurnNodeReport {
   nodeId: string;
   usedMw: number;

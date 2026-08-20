@@ -20,7 +20,6 @@ import {
   expandBattery,
   expandBorder,
   expandFarm,
-  expandJunction,
   expandPlant,
   expandPumpedStorage,
   splitLinesAtObjects,
@@ -117,7 +116,6 @@ export type Action =
   | { type: "expandFarm"; farmId: string; capacityMw: number }
   | { type: "expandBattery"; storageId: string; powerMw: number; capacityMwh: number }
   | { type: "expandPumpedStorage"; storageId: string }
-  | { type: "expandJunction"; junctionId: string }
   | { type: "expandBorder"; borderId: string }
   | { type: "cancelConstruction"; constructionId: string }
   | { type: "cancelLine"; lineId: string }
@@ -199,8 +197,6 @@ export function applyAction(state: GameState, action: Action): GameState {
       return expandBattery(state, action.storageId, action.powerMw, action.capacityMwh);
     case "expandPumpedStorage":
       return expandPumpedStorage(state, action.storageId);
-    case "expandJunction":
-      return expandJunction(state, action.junctionId);
     case "expandBorder":
       return expandBorder(state, action.borderId);
     case "cancelConstruction":
@@ -235,15 +231,9 @@ function yearlyFixedCostsPln(state: GameState): number {
   for (const p of state.plants) yearly += p.capacityMw * PLANT_TECHS[p.tech].fixedPlnPerMwYear;
   for (const f of state.farms) yearly += f.capacityMw * FARM_TECHS[f.tech].fixedPlnPerMwYear;
   for (const s of state.storages) yearly += s.powerMw * STORAGE_TECHS[s.tech].fixedPlnPerMwYear;
-  // 02 §8.3: 2% of the node's CAPEX per year — capacity modules raise both.
-  for (const junction of state.junctions) {
-    const modules = Math.round(
-      (junction.lineSlots - JUNCTION_SPEC.lineSlots) / JUNCTION_SPEC.moduleLineSlots,
-    );
-    yearly +=
-      (JUNCTION_SPEC.capexPln + modules * JUNCTION_SPEC.moduleCapexPln) *
-      NODE_FIXED_CAPEX_SHARE_PER_YEAR;
-  }
+  // 02 §8.3: 2% of the node's CAPEX per year. A junction never expands, so its
+  // share is flat; a border point's capacity modules raise its CAPEX (0.21).
+  yearly += state.junctions.length * JUNCTION_SPEC.capexPln * NODE_FIXED_CAPEX_SHARE_PER_YEAR;
   for (const border of state.borders) {
     const modules = Math.round(
       (border.throughputMw - BORDER_SPEC.throughputMw) / BORDER_SPEC.moduleThroughputMw,
@@ -290,13 +280,13 @@ export function resolveTurn(state: GameState): GameState {
     farmBlockMw.set(farm.id, sum / HOURS_PER_TURN);
   }
 
-  // Network graph: every object is a node; junctions and borders carry caps.
+  // Network graph: every object is a node; only border points carry a cap.
   const nodes: NetworkNode[] = [
     ...state.cities.map((c) => ({ id: c.id, hex: c.hex })),
     ...state.plants.map((p) => ({ id: p.id, hex: p.hex })),
     ...state.farms.map((f) => ({ id: f.id, hex: f.hex })),
     ...state.storages.map((s) => ({ id: s.id, hex: s.hex })),
-    ...state.junctions.map((j) => ({ id: j.id, hex: j.hex, throughputMw: j.throughputMw })),
+    ...state.junctions.map((j) => ({ id: j.id, hex: j.hex })),
     ...state.borders.map((b) => ({ id: b.id, hex: b.hex, throughputMw: b.throughputMw })),
   ];
   const segments = buildSegments(nodes, state.lines.filter(isLineBuilt));
@@ -601,7 +591,7 @@ export function resolveTurn(state: GameState): GameState {
       usedMw: quantize001(residual.segmentUsedMw[segment.id] ?? 0),
       capacityMw: segment.capacityMw,
     })),
-    nodes: [...state.junctions, ...state.borders].map((node) => ({
+    nodes: state.borders.map((node) => ({
       nodeId: node.id,
       usedMw: quantize001(residual.nodeUsedMw[node.id] ?? 0),
       throughputMw: node.throughputMw,
@@ -728,13 +718,6 @@ export function resolveTurn(state: GameState): GameState {
           ...storage,
           powerMw: storage.powerMw + PUMPED_BLOCK.powerMw,
           capacityMwh: storage.capacityMwh + PUMPED_BLOCK.capacityMwh,
-        }));
-        break;
-      case "junctionExpansion":
-        spawned.junctions = upgrade(spawned.junctions, pending.junctionId, (junction) => ({
-          ...junction,
-          throughputMw: junction.throughputMw + JUNCTION_SPEC.moduleThroughputMw,
-          lineSlots: junction.lineSlots + JUNCTION_SPEC.moduleLineSlots,
         }));
         break;
       case "borderExpansion":

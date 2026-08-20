@@ -504,7 +504,7 @@ exports[`scene of a resolved turn > the whole scene model 1`] = `
     },
     {
       "key": "junction-1:label",
-      "text": "WĘZEŁ CENTRALNY · 870/1 000",
+      "text": "WĘZEŁ CENTRALNY",
       "tone": "default",
       "x": 136,
       "y": 136.5,

@@ -117,11 +117,13 @@ describe("doc 02 §9.4–9.5: nearest city first, tap in passing", () => {
   });
 });
 
-describe("doc 02 §9.6: thick lines, thin junction", () => {
-  // Two 500 MW corridors meet in a 250 MW junction (01 §4.3 trap).
+describe("doc 02 §9.6: thick lines, thin node", () => {
+  // Two 500 MW corridors meet in a 250 MW node. Since 0.21 a junction station
+  // carries no throughput at all — a border point is the only capped node
+  // left (01 §5.7), and this is the flow layer's rule for every one of them.
   const nodes: NetworkNode[] = [
     { id: "plant", hex: { q: 0, r: 0 } },
-    { id: "junction", hex: { q: 1, r: 0 }, throughputMw: 250 },
+    { id: "border", hex: { q: 1, r: 0 }, throughputMw: 250 },
     { id: "city", hex: { q: 2, r: 0 } },
   ];
   const lines: NetworkLine[] = [
@@ -144,14 +146,14 @@ describe("doc 02 §9.6: thick lines, thin junction", () => {
   ];
   const segments = buildSegments(nodes, lines);
 
-  test("junction throughput caps the corridor", () => {
+  test("node throughput caps the corridor", () => {
     const sources: FlowSource[] = [
       { id: "plant", nodeId: "plant", availableMw: 500, costPlnPerMwh: 250 },
     ];
     const sinks: FlowSink[] = [{ id: "city", nodeId: "city", demandMw: 400 }];
     const result = runFlowPass(segments, nodes, sources, sinks, emptyResidual());
     const delivered = result.deliveredMwBySink["city"] ?? 0;
-    // ≤ 250 MW enters the junction; the last 25 km of MV losses follow.
+    // ≤ 250 MW enters the node; the last 25 km of MV losses follow.
     expect(delivered).toBeLessThanOrEqual(250);
     expect(delivered).toBeCloseTo(250 * (1 - 0.02 * 0.25), 6);
   });

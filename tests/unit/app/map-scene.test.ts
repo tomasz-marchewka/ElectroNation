@@ -127,7 +127,7 @@ const FIXTURE: Scenario = {
       setpoint: { mode: "charge", mw: 100 },
     },
   ],
-  junctions: [{ id: "junction-1", name: "Węzeł Centralny", hex: at(2, 1), throughputMw: 1000 }],
+  junctions: [{ id: "junction-1", name: "Węzeł Centralny", hex: at(2, 1) }],
   borders: [
     {
       id: "border-1",
@@ -375,8 +375,9 @@ describe("scene of a resolved turn", () => {
 
   test("measured labels follow the report", () => {
     expect(labelOf(scene, "farm-1:label")).toBe("FW GRZBIET WIATR · ~320");
-    // Thousands take the copy rules' space separator, here and everywhere.
-    expect(labelOf(scene, "junction-1:label")).toBe("WĘZEŁ CENTRALNY · 870/1 000");
+    expect(labelOf(scene, "plant-1:label")).toBe("EW WSCHODNIA WĘGIEL · 800/900");
+    // 0.21: a junction station has no throughput, so its label has no meter.
+    expect(labelOf(scene, "junction-1:label")).toBe("WĘZEŁ CENTRALNY");
   });
 
   test("01 §2.6: work in progress is drawn, never hidden", () => {
