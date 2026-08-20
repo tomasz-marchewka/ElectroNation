@@ -25,10 +25,12 @@ import {
   PUMPED_BLOCK,
   STORAGE_TECHS,
   TERRAIN,
+  farmSiting,
   type FarmTech,
   type ForecastLevel,
   type LineType,
   type PlantTech,
+  type TerrainId,
 } from "./config";
 import { areNeighbors, hexNeighbors, isInsideMap } from "./map";
 import { hexKey, type HexCoord } from "./network";
@@ -43,8 +45,12 @@ import {
   type PendingObject,
 } from "./state";
 
+function terrainIdAt(state: GameState, hex: HexCoord): TerrainId {
+  return state.terrain[hexKey(hex)] ?? "plains";
+}
+
 function terrainAt(state: GameState, hex: HexCoord) {
-  return TERRAIN[state.terrain[hexKey(hex)] ?? "plains"];
+  return TERRAIN[terrainIdAt(state, hex)];
 }
 
 /** Whether one of the six neighbors is a lake or sea hex of this map. */
@@ -119,10 +125,15 @@ function queueObject(
   hex: HexCoord,
   makePending: (id: string) => PendingObject,
   lineSlots: number = LINE_SLOTS_PER_OBJECT,
+  /**
+   * CAPEX multiplier of the site. Defaults to the terrain's object column —
+   * only a wind farm passes its own, because the sea carries turbines and
+   * nothing else (01 §3.2, 02 §8.1 in 0.22).
+   */
+  siteMultiplier: number | null = terrainAt(state, hex).object,
 ): GameState {
   if (!isInsideMap(state.map, hex)) return state;
-  const multiplier = terrainAt(state, hex).object;
-  if (multiplier === null) return state;
+  if (siteMultiplier === null) return state;
   if (occupiedHexKeys(state).has(hexKey(hex))) return state;
   // 01 §3.3 (0.19): the routes crossing this hex are cut on the object the day
   // it stands, and every cut ends in it twice — once coming in, once going out.
@@ -133,7 +144,7 @@ function queueObject(
   const key = hexKey(hex);
   const withSite = new Set([...builtObjectHexKeys(state), key]);
   if (linesAtHex(state, key, withSite) > lineSlots) return state;
-  const cost = Math.round(baseCostPln * multiplier);
+  const cost = Math.round(baseCostPln * siteMultiplier);
   if (state.moneyPln < cost) return state;
   const id = `obj-${state.nextObjectId}`;
   return {
@@ -169,26 +180,37 @@ export function buildFarm(
   capacityMw: number,
   hex: HexCoord,
 ): GameState {
-  const spec = FARM_TECHS[tech];
-  if (!Number.isFinite(capacityMw) || capacityMw <= 0 || capacityMw > spec.maxMwPerHex) {
+  // 01 §5.2, 02 §8.1, §8.4 (0.22): the SITE sets the price, the hex cap and the
+  // countdown. A wind farm at sea is the same technology as on land — the water
+  // just fits twice as much of it and takes twice as long to build on.
+  const site = farmSiting(tech, terrainIdAt(state, hex));
+  if (!Number.isFinite(capacityMw) || capacityMw <= 0 || capacityMw > site.maxMwPerHex) {
     return state;
   }
   // Location properties are frozen at build time (01 §3.2), like the wind class.
   const windClass = state.windClasses[hexKey(hex)] ?? "open";
   const solarMultiplier = state.solarMultipliers[hexKey(hex)] ?? 1;
-  return queueObject(state, capacityMw * spec.capexPlnPerMw, spec.buildDays, hex, (id) => ({
-    kind: "farm",
-    farm: {
-      id,
-      name: id,
-      hex,
-      tech,
-      capacityMw,
-      enabled: true,
-      windClass,
-      solarMultiplier,
-    },
-  }));
+  return queueObject(
+    state,
+    capacityMw * FARM_TECHS[tech].capexPlnPerMw,
+    site.buildDays,
+    hex,
+    (id) => ({
+      kind: "farm",
+      farm: {
+        id,
+        name: id,
+        hex,
+        tech,
+        capacityMw,
+        enabled: true,
+        windClass,
+        solarMultiplier,
+      },
+    }),
+    LINE_SLOTS_PER_OBJECT,
+    site.multiplier,
+  );
 }
 
 export function buildBattery(
@@ -601,10 +623,10 @@ function queueExpansion(
   buildDays: number,
   hex: HexCoord,
   pending: PendingObject,
+  siteMultiplier: number | null = terrainAt(state, hex).object,
 ): GameState {
-  const multiplier = terrainAt(state, hex).object;
-  if (multiplier === null) return state;
-  const cost = Math.round(baseCostPln * multiplier);
+  if (siteMultiplier === null) return state;
+  const cost = Math.round(baseCostPln * siteMultiplier);
   if (state.moneyPln < cost) return state;
   const id = `obj-${state.nextObjectId}`;
   return {
@@ -636,22 +658,28 @@ export function expandPlant(state: GameState, plantId: string, capacityMw: numbe
   );
 }
 
-/** Adds capacity to a farm, up to the hex limit (wind 300 / PV 200 MW — 02 §8.4). */
+/**
+ * Adds capacity to a farm, up to the hex limit (02 §8.4: wind 300 MW on land,
+ * 600 MW at sea, PV 200 MW). Cap, price and countdown are all read from the hex
+ * the farm already stands on — expanding offshore is 85%/70% of an offshore
+ * site, not of a land one (01 §7 in 0.22).
+ */
 export function expandFarm(state: GameState, farmId: string, capacityMw: number): GameState {
   const farm = state.farms.find((f) => f.id === farmId);
   if (!farm) return state;
-  const spec = FARM_TECHS[farm.tech];
+  const site = farmSiting(farm.tech, terrainIdAt(state, farm.hex));
   if (!Number.isFinite(capacityMw) || capacityMw <= 0) return state;
   const queued = pendingSum(state, (p) =>
     p.kind === "farmExpansion" && p.farmId === farmId ? p.capacityMw : 0,
   );
-  if (farm.capacityMw + queued + capacityMw > spec.maxMwPerHex) return state;
+  if (farm.capacityMw + queued + capacityMw > site.maxMwPerHex) return state;
   return queueExpansion(
     state,
-    capacityMw * spec.capexPlnPerMw * EXPANSION.capexShare,
-    expansionDays(spec.buildDays),
+    capacityMw * FARM_TECHS[farm.tech].capexPlnPerMw * EXPANSION.capexShare,
+    expansionDays(site.buildDays),
     farm.hex,
     { kind: "farmExpansion", farmId, capacityMw },
+    site.multiplier,
   );
 }
 

@@ -145,15 +145,18 @@ export function moneyNote(state: GameState, costPln: number): Diagnosis {
  * Site rules every point object shares (01 §3.2, 02 §8.1, engine queueObject).
  * `lineSlots` is the slot budget of the object being placed — six for every
  * one of them except a junction station, which has twelve (01 §5.4).
+ * `siteMultiplier` is that object's own terrain price; only a wind farm passes
+ * its own, because the sea carries turbines and nothing else (0.22).
  */
 export function siteNote(
   state: GameState,
   hex: HexCoord,
   lineSlots: number = LINE_SLOTS_PER_OBJECT,
+  siteMultiplier: number | null = TERRAIN[terrainAt(state, hex)].object,
 ): Diagnosis {
   if (!isInsideMap(state.map, hex)) return `${NO} heks poza mapą`;
   const terrain = terrainAt(state, hex);
-  if (TERRAIN[terrain].object === null) {
+  if (siteMultiplier === null) {
     return `${NO} budowa na wodzie niemożliwa (${TERRAIN_NAMES[terrain]})`;
   }
   const key = hexKey(hex);

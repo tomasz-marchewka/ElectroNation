@@ -51,8 +51,16 @@ interface DunkelflauteStats {
   atLeast3PerYear: number;
 }
 
+/**
+ * §12.14: wind CF split by the regime of the day, for the two classes the test
+ * compares. `all` repeats the annual figure so the ratio is read off one object.
+ */
+type RegimeGroup = "all" | "dunkelflaute" | "storm";
+type RegimeCf = Record<RegimeGroup, { open: number; baltic: number }>;
+
 interface SimStats {
   windCf: Record<WindClass, number>;
+  regimeCf: RegimeCf;
   pvCf: number;
   /** CF of a farm on a 1.0 hex and of the same farm on a 0.8 hex. */
   pvFarmCf: number;
@@ -88,6 +96,12 @@ function simulate(seed: number): SimStats {
   };
 
   const windSum: Record<WindClass, number> = { sheltered: 0, open: 0, coastal: 0, baltic: 0 };
+  /** §12.14: the same sums, but bucketed by the regime that produced the day. */
+  const regimeSum: Record<RegimeGroup, { open: number; baltic: number; hours: number }> = {
+    all: { open: 0, baltic: 0, hours: 0 },
+    dunkelflaute: { open: 0, baltic: 0, hours: 0 },
+    storm: { open: 0, baltic: 0, hours: 0 },
+  };
   const fullFarm = referencePvFarm(1);
   const dimFarm = referencePvFarm(0.8);
   let pvSum = 0;
@@ -108,10 +122,21 @@ function simulate(seed: number): SimStats {
         const regime = day === 2 ? regimes.lastDay : regimes.dominant;
         const gen = generateWeatherDay(rng, DAY_OF_YEAR[month] ?? 21, month, regime);
         rng = gen.rng;
+        // §12.14: a winter high is Dunkelflaute by regime alone here — the
+        // portfolio threshold below is the game-calendar definition (§12.12).
+        const buckets: RegimeGroup[] = ["all"];
+        if (regime === "frostHigh" || regime === "fogHigh") buckets.push("dunkelflaute");
+        if (regime === "storm") buckets.push("storm");
         let dayResEnergy = 0;
         for (let hour = 0; hour < 24; hour++) {
           for (const windClass of ["sheltered", "open", "coastal", "baltic"] as WindClass[]) {
             windSum[windClass] += turbinePowerFraction(gen.weather.windMs[windClass][hour] ?? 0);
+          }
+          for (const bucket of buckets) {
+            const sums = regimeSum[bucket];
+            sums.open += turbinePowerFraction(gen.weather.windMs.open[hour] ?? 0);
+            sums.baltic += turbinePowerFraction(gen.weather.windMs.baltic[hour] ?? 0);
+            sums.hours += 1;
           }
           const pv = pvPowerMw(1, gen.weather.ghiW[hour] ?? 0, gen.weather.tempC[hour] ?? 15);
           pvSum += pv;
@@ -141,6 +166,13 @@ function simulate(seed: number): SimStats {
       coastal: windSum.coastal / hours,
       baltic: windSum.baltic / hours,
     },
+    regimeCf: Object.fromEntries(
+      (Object.keys(regimeSum) as RegimeGroup[]).map((group) => {
+        const sums = regimeSum[group];
+        const span = sums.hours || 1;
+        return [group, { open: sums.open / span, baltic: sums.baltic / span }];
+      }),
+    ) as RegimeCf,
     pvCf: pvSum / hours,
     pvFarmCf: pvFarmSum / hours,
     pvDimFarmCf: pvDimFarmSum / hours,
@@ -181,6 +213,25 @@ describe("doc 06 §12.8: annual Baltic wind capacity factor 45–50%", () => {
   test("baltic class", () => {
     expect(stats.windCf.baltic).toBeGreaterThanOrEqual(0.45);
     expect(stats.windCf.baltic).toBeLessThanOrEqual(0.5);
+  });
+});
+
+describe("doc 06 §12.14: the baltic class conditioned on the weather regime", () => {
+  // Test 8 says how MUCH the sea yields over a year; this one says WHEN it does
+  // not — the basis on which 01 §5.2 (0.22) admitted offshore wind to the game.
+  test("Dunkelflaute stops the sea just like the land", () => {
+    expect(stats.regimeCf.dunkelflaute.baltic).toBeLessThanOrEqual(0.01);
+    expect(stats.regimeCf.dunkelflaute.open).toBeLessThanOrEqual(0.01);
+  });
+
+  test("a storm cuts the sea out BEFORE the land — it is already past rated", () => {
+    expect(stats.regimeCf.storm.baltic).toBeLessThan(stats.regimeCf.storm.open);
+  });
+
+  test("over the year the sea still yields at least 1.6× open terrain", () => {
+    expect(stats.regimeCf.all.baltic).toBeGreaterThanOrEqual(1.6 * stats.regimeCf.all.open);
+    // The annual bucket must be the annual figure, or the split means nothing.
+    expect(stats.regimeCf.all.baltic).toBeCloseTo(stats.windCf.baltic, 12);
   });
 });
 

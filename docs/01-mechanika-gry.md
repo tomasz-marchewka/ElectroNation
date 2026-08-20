@@ -1,8 +1,38 @@
 # ElectroNation — Dokument bazowy mechaniki gry
 
-**Wersja:** 0.21 (dokument koncepcyjny)
-**Data:** 2026-08-19
+**Wersja:** 0.22 (dokument koncepcyjny)
+**Data:** 2026-08-20
 **Status:** obowiązuje **wersja uproszczona** gry; mechaniki odłożone czekają w [90-pomysly-na-przyszlosc.md](90-pomysly-na-przyszlosc.md)
+
+**Zmiany 0.21 → 0.22 (wiatr morski wchodzi do gry):**
+
+1. **Farmy wiatrowe wolno stawiać na morzu** (§3.2, §5.2; uchyla „obiektów na wodzie
+   budować nie można" w części dotyczącej wiatru). To **te same turbiny co na lądzie** —
+   jedna technologia, jedna krzywa mocy §5.2, to samo sterowanie włącz/wyłącz. Różni je
+   wyłącznie lokalizacja: heks morski ma klasę wiatrową **morską** (06 §6.1: λ = 10,2,
+   CF ~47%), czyli **1,8× produkcji terenu otwartego**. Wszystko inne — elektrownie, PV,
+   magazyny, stacje rozdzielcze, przyłącza graniczne — na wodzie nadal **nie stoi**
+   (02 §8.1: „bez stacji pośrednich na wodzie").
+2. **Mnożnik kosztu obiektu na morzu = ×2,5** (02 §8.1, nowa kolumna tabeli terenu).
+   Świadomie **nie** ×3,5 od kabla podwodnego: tamten mnożnik strojono dla linii, a nie
+   dla fundamentu. Przy ×3,5 morze kosztuje 93% więcej za roczną MWh niż ląd i — skoro
+   miejsca na lądzie nie brakuje (332 heksy zabudowywalne wobec 47 morskich) — nikt by
+   go nie kupił. ×2,5 daje +38%: morze jest **premią za jakość zasobu**, nie tanią
+   energią. Zwrot ~3,5 roku, między wiatrem lądowym (~2,7) a flotą cieplną (4,1–5,1).
+3. **Heks morski mieści 600 MW, lądowy nadal 300** (§7, 02 §8.4) i **budowa trwa 2 doby
+   zamiast 1**. Limit lokalizacji i czas budowy przestają być stałą technologii, a stają
+   się funkcją terenu. Pełny heks morski to **5,4 mld zł** — ponad połowa kapitału
+   startowego — i **nie mieści się w linii SN** (500 MW), więc wymusza WN albo drugi tor:
+   wyprowadzenie mocy na ląd jest osobną decyzją inwestycyjną, nie dodatkiem.
+4. **Czego morze NIE zmienia — i to jest powód, dla którego wchodzi.** Zmierzone na 60
+   symulowanych latach: w **Dunkelflaute** klasa morska daje CF **0,001** (ląd 0,000) —
+   reżimowy mnożnik wiatru (0,25 / 0,20) ścina λ = 10,2 poniżej prędkości startowej
+   turbiny tak samo jak λ = 7,3. W **sztormie** morze wypada **gorzej** od lądu (0,78 vs
+   0,87), bo szybciej przebija wyłączenie przy 25 m/s. Cała przewaga siedzi w reżimach
+   zwyczajnych. Morze dokłada więc **taniej energii bazowej, a nie mocy w kryzysie** —
+   gaz, magazyn i import zostają dokładnie tak samo potrzebne, a najtrudniejszy test gry
+   pozostaje nietknięty. Zysk rozgrywkowy: **znika letnia zapaść wiatru** (CF VI–VIII
+   0,29–0,34 wobec 0,10–0,13 na lądzie).
 
 **Zmiany 0.20 → 0.21 (stacja rozdzielcza bez własnej przepustowości):**
 
@@ -515,7 +545,13 @@ Scenariusze z ustalonym horyzontem i celami — 90 §11.
 | **Zawartość** | miasto, elektrownia, farma OZE, magazyn, stacja, punkt graniczny |
 
 Mnożniki kosztu terenu — tabela w 02 §8.1 (0.16). Linie mogą przechodzić przez wodę:
-jezioro ×2,5, morze ×3,5 (kabel podwodny); obiektów na wodzie budować nie można.
+jezioro ×2,5, morze ×3,5 (kabel podwodny).
+
+**Budowa na wodzie — DECYZJA (0.22):** na morzu wolno postawić **wyłącznie farmę
+wiatrową** (mnożnik ×2,5, §5.2). Każdy inny obiekt — elektrownia, PV, magazyn, stacja
+rozdzielcza, przyłącze graniczne — na wodzie nie stoi, a na **jeziorze nie stoi nic**
+(zbyt małe, a w grze to woda dla szczytowo-pompowej). Klasa wiatrowa heksa morskiego jest
+morska (06 §6.1), więc różnicę robi sam teren — turbina jest ta sama co na lądzie.
 
 *(Odłożone właściwości: cieki wodne i chłodzenie bloków, złoża paliw, ograniczenia terenowe
 typu park narodowy — 90 §2.)*
@@ -781,8 +817,15 @@ wyznaczanej przez [dokument 06](06-model-astronomiczny-i-pogodowy.md) (krzywa mo
 
 | Technologia | Typowa farma | CAPEX | Czas budowy (doby gry) | Roczny CF (kontrola: 06 §12) | Charakter |
 |---|---|---|---|---|---|
-| **Wiatr lądowy** | 50–300 MW | ~3,6 mln zł/MW | 1 | ~24–30% (zależnie od heksa) | najmocniej wieje zimą; **wyłączenie sztormowe przy 25 m/s** |
+| **Wiatr lądowy** | 50–300 MW | ~3,6 mln zł/MW | 1 | ~15–30% (zależnie od heksa) | najmocniej wieje zimą; **wyłączenie sztormowe przy 25 m/s** |
+| **Wiatr morski** (0.22) | 100–600 MW | ~9,0 mln zł/MW (×2,5 za teren) | 2 | ~47% | ta sama turbina, klasa wiatrowa morska; **płaska sezonowość**, ale sztorm gasi ją pierwszą |
 | **PV** | 10–200 MW | ~1,8 mln zł/MW | 1 | ~11–12% | szczyt w letnie południe, **zero w nocy**; grudzień = ~8–10% czerwca |
+
+**Wiatr morski to nie osobna technologia (0.22)** — to ta sama farma postawiona na heksie
+morskim (§3.2). Silnik nie zna „turbiny morskiej": zna jedną technologię `wiatr`, a różnicę
+robią trzy właściwości terenu — mnożnik CAPEX-u ×2,5, limit heksa 600 zamiast 300 MW
+i 2 doby budowy zamiast 1 (§7, 02 §8.1, §8.4). Produktywność bierze się skądinąd: heks
+morski ma klasę wiatrową morską (06 §6.1) i to ona daje CF ~47% zamiast ~26%.
 
 Dwa wpisane w fizykę zjawiska, które są rdzeniem trudności (nie wymagają osobnych mechanik
 „zdarzeń" — wynikają z reżimów pogodowych 06 §8.2):
@@ -794,7 +837,10 @@ Dwa wpisane w fizykę zjawiska, które są rdzeniem trudności (nie wymagają os
 
 Tanie MWh z OZE są kuszące (koszt zmienny ~0 przy taryfie 650 zł/MWh), ale niepewne
 i wymagają zabezpieczenia mocą sterowalną, magazynem lub importem — to jest właściwa decyzja
-portfelowa gry. *(Wiatr morski — 90 §2.)*
+portfelowa gry. **Morze tego nie zmienia** (0.22): daje więcej energii bazowej i zasypuje
+letnią zapaść wiatru, ale w Dunkelflaute stoi tak samo jak ląd, a w sztormie gaśnie przed
+nim — pomiar i test w 06 §12.14. *(Dalsze poziomy oddalenia od brzegu, HVDC, wiatr na
+jeziorach — 90 §2.)*
 
 ### 5.3 Magazyny energii
 
@@ -916,11 +962,16 @@ LCOE — 90 §5.)*
   terenowa.
 - **DECYZJA (bez zmian): istniejące obiekty można rozbudowywać, z twardym limitem lokalizacji:**
   elektrownia do **6 bloków** na heksie (0.16), farma OZE do limitu mocy heksa (**wiatr
-  300 MW, PV 200 MW** — 02 §8.4), magazyn do limitu modułów (moc i pojemność osobno —
-  02 §8.2), przyłącze graniczne o kolejne moduły zdolności (**stacji rozdzielczej nie
-  rozbudowuje się wcale — od 0.21 nie ma czego, §5.4**). Rozbudowa =
-  **70% czasu i 85% CAPEX-u** nowej lokalizacji (0.16, przygważdża widełki z 0.13).
-  Po osiągnięciu limitu jedyną drogą jest nowa lokalizacja.
+  300 MW na lądzie i 600 MW na morzu — 0.22, PV 200 MW** — 02 §8.4), magazyn do limitu
+  modułów (moc i pojemność osobno — 02 §8.2), przyłącze graniczne o kolejne moduły
+  zdolności (**stacji rozdzielczej nie rozbudowuje się wcale — od 0.21 nie ma czego,
+  §5.4**). Rozbudowa = **70% czasu i 85% CAPEX-u** nowej lokalizacji (0.16, przygważdża
+  widełki z 0.13). Po osiągnięciu limitu jedyną drogą jest nowa lokalizacja.
+- **Limit i czas budowy zależą od terenu, nie tylko od technologii (0.22):** farma wiatrowa
+  mieści na heksie morskim 600 MW zamiast 300 i stawia się 2 doby zamiast 1 (§5.2). Baza
+  rozbudowy jest ta sama co przy nowej lokalizacji — 85% CAPEX-u i 70% czasu **liczonego
+  od terenu heksa, na którym farma już stoi**, więc dostawienie 300 MW na morzu kosztuje
+  85% z 2,7 mld zł i trwa 70% z 2 dób.
 - **Linia rozbudowuje się przez podmianę typu (0.17):** gotową linię podnosi się do wyższego
   typu na tej samej trasie za **85% CAPEX-u i 70% czasu** nowej linii tego typu (§4.2); przez
   całe roboty przesyła dalej na starym typie. Trasy ani długości rozbudowa nie zmienia — to
@@ -1031,7 +1082,7 @@ Wersja uproszczona jest **piaskownicą z celami**:
 | Mechanika | Gdzie |
 |---|---|
 | DC power flow, częstotliwość, inercja, rezerwy, N-1, kaskady/SCO/blackout | 90 §1 |
-| OZE pozostałe: wiatr morski, wodna, biomasa; hydrologia, złoża, strefy klimatyczne | 90 §2 |
+| OZE pozostałe: wodna, biomasa; hydrologia, złoża, strefy klimatyczne (**wiatr morski wszedł do gry w 0.22** — §5.2) | 90 §2 |
 | Unit commitment: minima, rozruchy, remonty, starzenie majątku | 90 §3 |
 | Stacje zaawansowane: układy rozdzielni, kompensacja, poziomy napięć, typy linii, topologia stacyjna | 90 §4 |
 | Merit order, cena krańcowa, PPA, kredyty, LCOE | 90 §5 |
@@ -1061,7 +1112,8 @@ indeksem ceny.
 | # | Decyzja | Gdzie |
 |---|---|---|
 | ✅ | **Uproszczony przepływ (0.7/0.8)**: model „wodociągowy" — bilans turowy, przepustowości linii (od 0.21 tylko ich oraz przyłączy granicznych), straty liniowe od długości; bez praw Kirchhoffa | 4 |
-| ✅ | **W wersji uproszczonej są: PV, wiatr lądowy, magazyny, stacje rozdzielcze, prognozy z błędem** (0.8) | 5, 2.4 |
+| ✅ | **W wersji uproszczonej są: PV, wiatr lądowy, magazyny, stacje rozdzielcze, prognozy z błędem** (0.8); **od 0.22 także wiatr morski** — nie jako osobna technologia, lecz jako ta sama farma na heksie morskim | 5, 2.4 |
+| ✅ | **Wiatr morski (0.22)**: farma wiatrowa wolno stawiać na morzu — mnożnik terenu **×2,5**, limit heksa **600 MW**, budowa **2 doby**, klasa wiatrowa morska (CF ~47%). Reszta obiektów na wodzie nadal niemożliwa, na jeziorze nic. Uzasadnienie ×2,5 zamiast ×3,5 od kabla i dowód, że morze nie rozbraja Dunkelflaute ani sztormu — nagłówek 0.22 oraz 06 §12.14 | 3.2, 5.2, 7, 02 §8.1 |
 | ✅ | **Topologia bezpośrednia (0.11)**: linie łączą obiekty wprost; **6 przyłączy liniowych na obiekt** (0.12; wcześniej 2 i stacja jako jedyny węzeł zbiorczy); stacja rozdzielcza = dedykowany węzeł, od 0.21 **bez własnej przepustowości, 12 przyłączy na sztywno, 60 mln zł** (uchyla 250 MW + moduły z 0.12); **linia w przelocie przyłącza mijane obiekty, ⩽9 linii jednego typu na heks** (0.13); **przelot przerywa linię na obiekcie — dwie osobne linie, dwa przyłącza** (0.19; uchyla „jedno przyłącze" z 0.13) | 3.3, 4.3 |
 | ✅ | **Trzy typy linii przesyłowych NN/SN/WN** (0.13; uchyla „jeden typ" z 0.11): 150/500/1500 MW, straty 4/2/1%/100 km, budowa 3/6/12 h/heks | 4.2 |
 | ✅ | **OZE: ręczne sterowanie tylko włącz/wyłącz całą farmę**; przycinanie nadwyżek automatyczne (0.13) | 4.1 |

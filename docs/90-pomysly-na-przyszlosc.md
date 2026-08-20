@@ -1,9 +1,15 @@
 # ElectroNation — Pomysły na przyszłość (mechaniki odłożone)
 
-**Wersja:** 0.3
-**Data:** 2026-08-07
+**Wersja:** 0.4
+**Data:** 2026-08-20
 **Status:** magazyn projektowy — nic z tego dokumentu **nie wchodzi** do wersji uproszczonej gry
 **Dokument nadrzędny:** [01-mechanika-gry.md](01-mechanika-gry.md) (od wersji 0.7)
+
+**Zmiany 0.3 → 0.4:** **wiatr morski wraca do gry** (01 v0.22 §5.2) i znika z §2 — nie
+wymagał niczego z tego magazynu, bo klasa wiatrowa „Morze — Bałtyk" siedziała w modelu 06
+§6.1 od jego wersji 0.4, a jedyną brakującą częścią była zgoda na budowę obiektu na wodzie.
+W §2 zostaje to, co przy tej okazji świadomie **odłożono**: poziomy oddalenia od brzegu,
+HVDC i wiatr na jeziorach.
 
 **Zmiany 0.2 → 0.3:** po uproszczeniach 01 v0.11 doszły do magazynu: **topologia stacyjna**
 (obiekty przyłączane do stacji w promieniu 1 heksa, linie tylko między stacjami) oraz
@@ -143,11 +149,17 @@ Dunkelflaute — **trudność bierze się z wariancji, nie z poziomu**.
 
 ## 2. OZE i pogoda — elementy nadal odłożone
 
-*(PV, wiatr lądowy, reżimy pogodowe i prognozy z błędem są w grze — dokument 06 obowiązuje.
-Tu zostaje reszta.)*
+*(PV, wiatr lądowy, **wiatr morski** (01 v0.22), reżimy pogodowe i prognozy z błędem są
+w grze — dokument 06 obowiązuje. Tu zostaje reszta.)*
 
-- **Wiatr morski** — wyższy CF (~45–50%, Bałtyk: 06 §6.1), droższy CAPEX, dłuższa budowa,
-  wymaga heksów morskich i wyprowadzenia mocy na ląd.
+- **Poziomy oddalenia od brzegu** — w grze morze jest jednym terenem o jednej cenie
+  (02 §8.1: ×2,5) i jednej klasie wiatrowej. Wariant rozwinięty: strefa przybrzeżna
+  i pełnomorska jako osobne typy terenu — głębsza woda to droższy fundament (pływające zamiast
+  posadowionych), ale i wyższe λ. Naturalnie łączy się z HVDC (§10) jako sposobem na
+  wyprowadzenie mocy z daleka bez strat linii AC.
+- **Wiatr na jeziorach** — dziś jezioro nie przyjmuje żadnego obiektu (02 §8.1). Wymagałoby
+  najpierw jezior większych niż kilka heksów i własnej klasy wiatrowej (06 §6.2 daje im ten
+  sam wykładnik profilu pionowego co morzu).
 - **Wodna przepływowa** — wymaga cieku na heksie, sezonowość hydrologiczna, ~0 kosztu
   zmiennego, szybka regulacja.
 - **Biomasa / biogaz** — sterowalne OZE o wysokim koszcie zmiennym.

@@ -55,12 +55,25 @@ export const PLANT_TECHS = {
 } as const;
 export type PlantTech = keyof typeof PLANT_TECHS;
 
-/** 01 §5.2, 02 §8.3–8.4: weather-dependent farm technologies. */
+/**
+ * 01 §5.2, 02 §8.3–8.4: weather-dependent farm technologies. The wind row is
+ * the ONSHORE site; offshore is the same technology on a sea hex and overrides
+ * these two numbers through {@link OFFSHORE_WIND} (01 §5.2, 0.22).
+ */
 export const FARM_TECHS = {
   wind: { fixedPlnPerMwYear: 130_000, capexPlnPerMw: 3_600_000, buildDays: 1, maxMwPerHex: 300 },
   pv: { fixedPlnPerMwYear: 50_000, capexPlnPerMw: 1_800_000, buildDays: 1, maxMwPerHex: 200 },
 } as const;
 export type FarmTech = keyof typeof FARM_TECHS;
+
+/**
+ * 01 §5.2, §7, 02 §8.4 (0.22): what a sea hex changes for a wind farm. There is
+ * no offshore TECHNOLOGY — the turbine, its power curve and its fixed cost are
+ * the onshore ones; the sea only fits twice as much of it and takes twice as
+ * long to build on. CAPEX comes from the terrain multiplier (`TERRAIN.sea.windFarm`),
+ * productivity from the hex's wind class (06 §6.1, "baltic").
+ */
+export const OFFSHORE_WIND = { maxMwPerHex: 600, buildDays: 2 } as const;
 
 /** 01 §5.3, 02 §8.2: storage technologies (cycle efficiency split half per leg). */
 export const STORAGE_TECHS = {
@@ -155,18 +168,51 @@ export const EXPANSION = { capexShare: 0.85, timeShare: 0.7 } as const;
 /** 01 §7, 02 §8.4: hard site limit for dispatchable plants. */
 export const MAX_PLANT_BLOCKS_PER_HEX = 6;
 
-/** 02 §8.1: terrain cost multipliers; `object: null` = building impossible. */
+/** One row of the 02 §8.1 table; a `null` multiplier means "cannot be built here". */
+interface TerrainCost {
+  /** Multiplier on a line's CAPEX per km — water is crossable, just expensive. */
+  line: number;
+  /** Multiplier on a point object's CAPEX. */
+  object: number | null;
+  /**
+   * Same, for wind farms alone. Repeats `object` everywhere but on water: the
+   * sea carries turbines and nothing else (01 §3.2, 0.22), a lake still carries
+   * nothing at all. ×2,5 and not the cable's ×3,5 — reasoning in 02 §8.1.
+   */
+  windFarm: number | null;
+}
+
+/** 02 §8.1: terrain cost multipliers; `null` = building impossible. */
+// One line per doc row — reflowing the table would hide it.
+// prettier-ignore
 export const TERRAIN = {
-  plains: { line: 1.0, object: 1.0 as number | null },
-  forest: { line: 1.3, object: 1.3 as number | null },
-  highlands: { line: 1.5, object: 1.5 as number | null },
-  swamp: { line: 2.0, object: 2.0 as number | null },
-  urban: { line: 2.0, object: 2.0 as number | null },
-  mountains: { line: 2.5, object: 2.5 as number | null },
-  lake: { line: 2.5, object: null as number | null },
-  sea: { line: 3.5, object: null as number | null },
-} as const;
+  plains:    { line: 1.0, object: 1.0,  windFarm: 1.0 },
+  forest:    { line: 1.3, object: 1.3,  windFarm: 1.3 },
+  highlands: { line: 1.5, object: 1.5,  windFarm: 1.5 },
+  swamp:     { line: 2.0, object: 2.0,  windFarm: 2.0 },
+  urban:     { line: 2.0, object: 2.0,  windFarm: 2.0 },
+  mountains: { line: 2.5, object: 2.5,  windFarm: 2.5 },
+  lake:      { line: 2.5, object: null, windFarm: null },
+  sea:       { line: 3.5, object: null, windFarm: 2.5 },
+} as const satisfies Record<string, TerrainCost>;
 export type TerrainId = keyof typeof TERRAIN;
+
+/**
+ * Where a farm of this technology may stand on this terrain, what its CAPEX is
+ * multiplied by and how the site bounds it (01 §3.2, §5.2, §7; 02 §8.1, §8.4).
+ * One entry point for the engine and the UI, so the offshore exception is
+ * written down once. `multiplier === null` = no farm of this kind stands here.
+ */
+export function farmSiting(
+  tech: FarmTech,
+  terrain: TerrainId,
+): { multiplier: number | null; maxMwPerHex: number; buildDays: number } {
+  const spec = FARM_TECHS[tech];
+  const site = { maxMwPerHex: spec.maxMwPerHex, buildDays: spec.buildDays };
+  if (tech !== "wind") return { multiplier: TERRAIN[terrain].object, ...site };
+  if (terrain === "sea") return { multiplier: TERRAIN.sea.windFarm, ...OFFSHORE_WIND };
+  return { multiplier: TERRAIN[terrain].windFarm, ...site };
+}
 
 /**
  * 06 §6.1: Weibull parameters per wind location class (@100 m). λ is the
