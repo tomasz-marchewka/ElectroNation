@@ -11,6 +11,11 @@ src/app/styles/tokens/
 src/app/styles/css/base.css
 src/app/styles/css/components.css
 
+# Scratch git worktrees: a second checkout of this very source, already out of
+# ESLint's reach for the same reason — formatting them here would rewrite files
+# that belong to another session's branch.
+.claude/worktrees/
+
 dist/
 coverage/
 playwright-report/
