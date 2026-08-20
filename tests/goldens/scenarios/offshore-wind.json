@@ -1,0 +1,348 @@
+{
+  "name": "offshore-wind",
+  "description": "600 MW of offshore wind on a Baltic hex two steps off Nadmorze (01 §5.2, 02 §8.1 in 0.22): 2.5x CAPEX for the site, 2 game days to build, and an HV spur ashore because 600 MW does not fit an MV line (500 MW). Days 0-1: the corridor Modrzyca - Turow - Nadmorze goes up and the start CCGT alone carries all three cities to a 310 MW evening peak. Day 2: the farm stands but its spur is still being laid, so everything it makes is curtailed for free (02 §5.1) - and the curtailed figure already flickers 600 - 200 - 0 - 400 - 600 as the gusts of the storm month cross the 25 m/s cutout inside single blocks (06 §6.3). Day 3: the spur goes live into the worst of it and 600 MW reads zero for the whole day; the gas plant carries the north alone, which is what it is for. Days 4-5: the sea comes back near rated power, the plant sits at zero for two days and 300-440 MW per turn is curtailed - the MV corridor south caps what the north can pass on. Money still falls over the six days: an offshore farm pays back in years, not in a week. The run is 06 §12.14 played out - offshore is base energy, not firm capacity.",
+  "map": "mapV1",
+  "seed": 20261130,
+  "days": 6,
+  "actions": [
+    {
+      "beforeTurn": 0,
+      "note": "600 MW offshore, on the sea hex two steps off Nadmorze (02 §8.1: 2.5x, 2 game days)",
+      "action": {
+        "type": "buildFarm",
+        "tech": "wind",
+        "capacityMw": 600,
+        "hex": {
+          "q": 2,
+          "r": 0
+        }
+      }
+    },
+    {
+      "beforeTurn": 0,
+      "note": "corridor south: Nadmorze - Turow - Modrzyca, where the start CCGT already stands",
+      "action": {
+        "type": "buildLine",
+        "lineType": "mv",
+        "path": [
+          {
+            "q": 4,
+            "r": 7
+          },
+          {
+            "q": 3,
+            "r": 7
+          },
+          {
+            "q": 3,
+            "r": 6
+          },
+          {
+            "q": 2,
+            "r": 6
+          },
+          {
+            "q": 2,
+            "r": 5
+          }
+        ]
+      }
+    },
+    {
+      "beforeTurn": 0,
+      "action": {
+        "type": "buildLine",
+        "lineType": "mv",
+        "path": [
+          {
+            "q": 2,
+            "r": 5
+          },
+          {
+            "q": 2,
+            "r": 4
+          },
+          {
+            "q": 2,
+            "r": 3
+          },
+          {
+            "q": 3,
+            "r": 2
+          },
+          {
+            "q": 3,
+            "r": 1
+          }
+        ]
+      }
+    },
+    {
+      "beforeTurn": 0,
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 32
+      },
+      "note": "day 0 - only Modrzyca on the wire, the plant follows its 31-57 MW"
+    },
+    {
+      "beforeTurn": 2,
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 48
+      }
+    },
+    {
+      "beforeTurn": 3,
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 54
+      }
+    },
+    {
+      "beforeTurn": 6,
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 58
+      }
+    },
+    {
+      "beforeTurn": 7,
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 44
+      }
+    },
+    {
+      "beforeTurn": 8,
+      "note": "corridor stands - both northern cities become customers",
+      "action": {
+        "type": "connectCity",
+        "cityId": "city-turow"
+      }
+    },
+    {
+      "beforeTurn": 8,
+      "action": {
+        "type": "connectCity",
+        "cityId": "city-nadmorze"
+      }
+    },
+    {
+      "beforeTurn": 8,
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 173
+      },
+      "note": "day 1 - two more cities: the CCGT alone carries the whole north"
+    },
+    {
+      "beforeTurn": 10,
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 267
+      }
+    },
+    {
+      "beforeTurn": 11,
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 300
+      }
+    },
+    {
+      "beforeTurn": 13,
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 306
+      }
+    },
+    {
+      "beforeTurn": 14,
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 324
+      }
+    },
+    {
+      "beforeTurn": 15,
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 241
+      }
+    },
+    {
+      "beforeTurn": 16,
+      "note": "farm live on day 2 - now the HV spur ashore, because 600 MW does not fit an MV line",
+      "action": {
+        "type": "buildLine",
+        "lineType": "hv",
+        "path": [
+          {
+            "q": 2,
+            "r": 0
+          },
+          {
+            "q": 3,
+            "r": 0
+          },
+          {
+            "q": 3,
+            "r": 1
+          }
+        ]
+      }
+    },
+    {
+      "beforeTurn": 16,
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 166
+      },
+      "note": "day 2 - the farm stands but its spur is still being laid: every MWh it makes is curtailed"
+    },
+    {
+      "beforeTurn": 17,
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 147
+      }
+    },
+    {
+      "beforeTurn": 18,
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 189
+      }
+    },
+    {
+      "beforeTurn": 19,
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 233
+      }
+    },
+    {
+      "beforeTurn": 20,
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 227
+      }
+    },
+    {
+      "beforeTurn": 21,
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 238
+      }
+    },
+    {
+      "beforeTurn": 22,
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 290
+      }
+    },
+    {
+      "beforeTurn": 23,
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 220
+      }
+    },
+    {
+      "beforeTurn": 24,
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 175
+      },
+      "note": "day 3 - the spur goes live into a storm and 600 MW reads zero; the plant carries it alone"
+    },
+    {
+      "beforeTurn": 26,
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 264
+      }
+    },
+    {
+      "beforeTurn": 27,
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 296
+      }
+    },
+    {
+      "beforeTurn": 29,
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 303
+      }
+    },
+    {
+      "beforeTurn": 30,
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 320
+      }
+    },
+    {
+      "beforeTurn": 31,
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 240
+      }
+    },
+    {
+      "beforeTurn": 32,
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 0
+      },
+      "note": "day 4 - the sea comes back at rated power and the plant goes to zero for two days"
+    },
+    {
+      "beforeTurn": 45,
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 30
+      },
+      "note": "one block where the wind dips below the evening peak"
+    },
+    {
+      "beforeTurn": 46,
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 0
+      }
+    }
+  ]
+}

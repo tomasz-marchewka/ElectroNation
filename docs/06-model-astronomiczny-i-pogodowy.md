@@ -1,11 +1,18 @@
 # ElectroNation — Model astronomiczny, klimatyczny i pogodowy
 
-**Wersja:** 0.7
-**Data:** 2026-08-18
+**Wersja:** 0.8
+**Data:** 2026-08-20
 **Status:** **obowiązujący** — źródłowy model pogody, produkcji OZE (PV, wiatr) i błędu
 prognozy dla uproszczonej wersji gry (01 v0.8, §2.4 i §5.2). Uproszczenie dotyczy silnika
 przepływu energii w sieci (01 §4) i nie zmienia niczego w tym modelu. Elementy „na przyszłość"
 wymienione w §10 pozostają odłożone ([90-pomysly-na-przyszlosc.md §2](90-pomysly-na-przyszlosc.md)).
+
+**Zmiany 0.7 → 0.8 (klasa morska wychodzi z parkingu):** model bez zmian — klasa
+**Morze — Bałtyk** z §6.1 była w nim od 0.4, a od 0.22 dokumentu 01 obsługuje realną
+technologię (farma wiatrowa na heksie morskim). Dochodzi **test §12.14**: CF klasy morskiej
+liczony warunkowo na reżim §8.2, który pilnuje, że morze **nie rozbraja Dunkelflaute**
+(CF ≤1%) i **gaśnie w sztormie przed lądem**. To jedyna zmiana; λ, k i sezonowość
+zostają nietknięte.
 
 **Zmiany 0.6 → 0.7 (horyzont kroczący):** §8.6.3 rozstrzyga, że horyzont systemu prognostycznego
 liczy się **od tury bieżącej**, a nie do końca bieżącej doby (01 v0.18 §2.4) — z formalną granicą
@@ -655,8 +662,9 @@ Implementacja jest poprawna, jeśli spełnia poniższe kontrole:
 | 11 | Suma godzin z v ≥ 25 m/s w roku | 10–40 h (wyłączenia sztormowe) |
 | 12 | Epizody Dunkelflaute w kalendarzu gry, na rok gry (definicja niżej) | doby: 4–6; epizody ≥2 dób: 1,0–1,5; epizody ≥3 dób: 0,8–1,4 |
 | 13 | Roczny CF wiatru w terenie osłoniętym (klasa z 0.5; por. test 7) | 13–18% |
+| 14 | CF klasy morskiej **warunkowo na reżim** (0.8; definicja niżej) | Dunkelflaute ≤1%; sztorm **niżej niż klasa otwarta**; cały rok ≥1,6 × klasy otwartej |
 
-Testy 1–5 są **deterministyczne** i muszą przechodzić dokładnie. Testy 6–13 są statystyczne — weryfikować na symulacji 20+ lat.
+Testy 1–5 są **deterministyczne** i muszą przechodzić dokładnie. Testy 6–14 są statystyczne — weryfikować na symulacji 20+ lat.
 
 ### 12.12 — definicja epizodu Dunkelflaute w kalendarzu gry
 
@@ -685,6 +693,31 @@ generacji (100 lat symulacji, 6 ziaren: doby 4,56–4,98; epizody ≥2 dób 1,19
 warunków Dunkelflaute rocznie — górna część tego, co daje pasmo z 0.5 (2–5 epizodów
 po 3–10 dni). Jeśli strojenie ekonomii uzna to za zbyt częste, właściwym miejscem
 korekty są miesięczne wagi reżimów (§8.3), a nie ten test.
+
+### 12.14 — klasa morska warunkowo na reżim (0.8)
+
+Test 8 mówi tylko, **ile** energii daje Bałtyk w skali roku. Odkąd wiatr morski jest
+w grze (01 §5.2 w 0.22), potrzebny jest test na to, **kiedy** jej nie daje — bo na tym
+opiera się cała ocena wpływu tej technologii na rozgrywkę. CF liczy się jak w teście 8
+(średnia `turbinePowerFraction` po godzinach), ale osobno dla dób każdego reżimu §8.2:
+
+| Warunek | Pasmo | Pomiar (60 lat, ziarno 20260820) |
+|---|---|---|
+| doby wyżu zimowego (`frostHigh`, `fogHigh`) | ≤ 1% | **0,1%** (klasa otwarta 0,0%) |
+| doby sztormowe (`storm`) | **poniżej** klasy otwartej | **78,1%** wobec 87,1% |
+| cały rok | ≥ 1,6 × klasy otwartej | **47,4%** wobec 26,1% (1,82×) |
+
+**Co ten test pilnuje.** Reżimowy mnożnik wiatru (§8.2: 0,25 dla mroźnego wyżu, 0,20 dla
+mglistego) ścina λ = 10,2 poniżej prędkości startowej turbiny (§6.3: 3 m/s) tak samo jak
+λ = 7,3 — więc **morze nie rozbraja Dunkelflaute**. W sztormie jest odwrotnie: morze
+siedzi już na plateau i szybciej przebija wyłączenie przy 25 m/s, więc **gaśnie przed
+lądem** (godziny z v ≥ 25 m/s: 1,45% wobec 0,08%). Cała przewaga klasy morskiej pochodzi
+z reżimów zwyczajnych — niżu atlantyckiego, letniego i pogody przejściowej.
+
+Konsekwencja dla dokumentu 01: wiatr morski dokłada **energii bazowej, nie mocy
+w kryzysie**, a najbardziej zmienia lato (CF VI–VIII 0,29–0,34 wobec 0,10–0,13 na lądzie
+otwartym). Gdyby strojenie reżimów kiedyś przepuściło morze przez Dunkelflaute, ten test
+zapali się jako pierwszy — i to jest jego właściwa rola.
 
 ---
 

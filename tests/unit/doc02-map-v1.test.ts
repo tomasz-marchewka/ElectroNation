@@ -6,6 +6,7 @@ import {
   areNeighbors,
   axialToOffset,
   hexKey,
+  hexNeighbors,
   isInsideMap,
   newGame,
   offsetToAxial,
@@ -108,6 +109,33 @@ describe("doc 02 §8.6: the v1 map is a complete 24×16 country", () => {
     );
     expect(buildable.some((hex) => classOf(hex) === "sheltered")).toBe(true);
     expect(buildable.some((hex) => classOf(hex) === "open")).toBe(true);
+  });
+
+  // 02 §8.6 (0.7): the sea is a playing field of its own since 01 §5.2 in 0.22.
+  test("01 §5.2: the sea is a baltic wind field, and part of it touches the shore", () => {
+    const sea = allHexes.filter((hex) => terrainAt(hex) === "sea");
+    expect(sea.length).toBeGreaterThanOrEqual(20);
+    for (const hex of sea) expect(state.windClasses[hexKey(hex)]).toBe("baltic");
+
+    // Near-shore hexes reach land with one hex of line; the rest need a cable
+    // across the sea at 3.5× — two tiers of difficulty out of the geography.
+    const nearShore = sea.filter((hex) =>
+      hexNeighbors(hex).some(
+        (neighbor) => isInsideMap(state.map, neighbor) && terrainAt(neighbor) !== "sea",
+      ),
+    );
+    expect(nearShore.length).toBeGreaterThanOrEqual(10);
+    expect(nearShore.length).toBeLessThan(sea.length);
+  });
+
+  test("01 §5.2: a wind farm is buildable at sea, a PV farm is not", () => {
+    const seaHex = allHexes.find((hex) => terrainAt(hex) === "sea");
+    expect(seaHex).toBeDefined();
+    const hex = seaHex ?? { q: 0, r: 0 };
+    expect(
+      applyAction(state, { type: "buildFarm", tech: "wind", capacityMw: 300, hex }).constructions,
+    ).toHaveLength(1);
+    expect(applyAction(state, { type: "buildFarm", tech: "pv", capacityMw: 100, hex })).toBe(state);
   });
 
   test("01 §3.2: insolation varies between 0.95 and 1.05", () => {

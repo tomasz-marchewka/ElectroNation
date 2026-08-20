@@ -1,11 +1,17 @@
 import { describe, expect, test } from "vitest";
 import {
+  EXPANSION,
+  FARM_TECHS,
   KM_PER_HEX,
   LINE_TYPES,
+  OFFSHORE_WIND,
+  TERRAIN,
+  TURNS_PER_DAY,
   applyAction,
   hexKey,
   newGame,
   offsetToAxial,
+  resolveTurn,
   type Action,
   type GameState,
   type Scenario,
@@ -60,6 +66,13 @@ function makeScenario(overrides: Partial<Scenario> = {}): Scenario {
 
 const apply = (state: GameState, action: Action) => applyAction(state, action);
 
+/** Resolves whole game days, so a build countdown can actually run out. */
+function runDays(state: GameState, days: number): GameState {
+  let next = state;
+  for (let turn = 0; turn < days * TURNS_PER_DAY; turn++) next = resolveTurn(next);
+  return next;
+}
+
 /** plant (0,0) → (1,0) → city (2,0): the middle hex is the one under test. */
 const CROSSING: Action = {
   type: "buildLine",
@@ -97,6 +110,103 @@ describe("doc 02 §8.1: terrain multiplies what a route costs", () => {
         state,
       );
     }
+  });
+});
+
+// 02 §9.14 (01 §3.2, §5.2 in 0.22): the sea is the one piece of water that
+// carries something — a wind farm, and nothing else. It is not a separate
+// technology: the same `buildFarm` action, priced, capped and timed by the site.
+describe("doc 02 §8.1, §8.4: offshore wind", () => {
+  const SITE = at(1, 0);
+  const seaScenario = () => makeScenario({ terrain: { [key(1, 0)]: "sea" } });
+  const lakeScenario = () => makeScenario({ terrain: { [key(1, 0)]: "lake" } });
+  const windAt = (capacityMw: number): Action => ({
+    type: "buildFarm",
+    tech: "wind",
+    capacityMw,
+    hex: SITE,
+  });
+
+  test("a wind farm stands on the sea and costs 2.5× the base CAPEX", () => {
+    const state = newGame(5, seaScenario());
+    const built = apply(state, windAt(300));
+    expect(built.constructions).toHaveLength(1);
+    expect(state.moneyPln - built.moneyPln).toBe(
+      Math.round(300 * FARM_TECHS.wind.capexPlnPerMw * TERRAIN.sea.windFarm),
+    );
+
+    // The land reference: same farm, same action, plain multiplier.
+    const onLand = newGame(5, makeScenario());
+    const ashore = apply(onLand, windAt(300));
+    expect(onLand.moneyPln - ashore.moneyPln).toBe(300 * FARM_TECHS.wind.capexPlnPerMw);
+  });
+
+  test("a lake carries no turbines either", () => {
+    const state = newGame(5, lakeScenario());
+    expect(apply(state, windAt(100))).toBe(state);
+  });
+
+  test("everything except a wind farm is still refused at sea", () => {
+    const state = newGame(5, seaScenario());
+    const refused: Action[] = [
+      { type: "buildFarm", tech: "pv", capacityMw: 50, hex: SITE },
+      { type: "buildPlant", tech: "ocgt", capacityMw: 50, hex: SITE },
+      { type: "buildBattery", powerMw: 50, capacityMwh: 100, hex: SITE },
+      { type: "buildPumpedStorage", hex: SITE },
+      { type: "buildJunction", hex: SITE },
+      { type: "buildBorder", hex: SITE },
+    ];
+    for (const action of refused) expect(apply(state, action)).toBe(state);
+  });
+
+  test("the sea hex holds 600 MW, the land hex 300", () => {
+    const sea = newGame(5, seaScenario());
+    expect(apply(sea, windAt(600)).constructions).toHaveLength(1);
+    expect(apply(sea, windAt(601))).toBe(sea);
+
+    const land = newGame(5, makeScenario());
+    expect(apply(land, windAt(300)).constructions).toHaveLength(1);
+    expect(apply(land, windAt(301))).toBe(land);
+  });
+
+  test("building at sea takes 2 game days, on land 1", () => {
+    const sea = apply(newGame(5, seaScenario()), windAt(100));
+    expect(sea.constructions[0]?.remainingDays).toBe(OFFSHORE_WIND.buildDays);
+
+    const land = apply(newGame(5, makeScenario()), windAt(100));
+    expect(land.constructions[0]?.remainingDays).toBe(FARM_TECHS.wind.buildDays);
+  });
+
+  test("the farm freezes the hex's baltic wind class at build time", () => {
+    const scenario = seaScenario();
+    const state = newGame(5, { ...scenario, windClasses: { [key(1, 0)]: "baltic" } });
+    const pending = apply(state, windAt(300)).constructions[0]?.pending;
+    expect(pending?.kind).toBe("farm");
+    expect(pending?.kind === "farm" ? pending.farm.windClass : null).toBe("baltic");
+  });
+
+  test("expansion reads the cap, the price and the clock off the farm's own hex", () => {
+    let state = newGame(5, seaScenario());
+    state = apply(state, windAt(300));
+    state = runDays(state, OFFSHORE_WIND.buildDays);
+    const farm = state.farms[0];
+    expect(farm?.capacityMw).toBe(300);
+
+    // 02 §8.4: 85% of an OFFSHORE site, and ceil(70% × 2 days) = 2 days.
+    const expanded = apply(state, {
+      type: "expandFarm",
+      farmId: farm?.id ?? "",
+      capacityMw: 300,
+    });
+    expect(state.moneyPln - expanded.moneyPln).toBe(
+      Math.round(300 * FARM_TECHS.wind.capexPlnPerMw * EXPANSION.capexShare * TERRAIN.sea.windFarm),
+    );
+    expect(expanded.constructions[0]?.remainingDays).toBe(2);
+
+    // 600 MW is still the ceiling of the hex, queued capacity included.
+    expect(apply(expanded, { type: "expandFarm", farmId: farm?.id ?? "", capacityMw: 1 })).toBe(
+      expanded,
+    );
   });
 });
 

@@ -1,10 +1,17 @@
 # ElectroNation — Model symulacji uproszczonej (silnik tury)
 
-**Wersja:** 0.6
-**Data:** 2026-08-19
+**Wersja:** 0.7
+**Data:** 2026-08-20
 **Status:** **obowiązuje** — formalizuje rdzeń mechaniki z dokumentu 01 §4 (graf sieci,
 rozpływ, straty, niedobory) oraz krok rozstrzygnięcia tury. Wprowadzona tu zmiana 01 §4.1
 (nadwyżka sterowalna karana) obowiązuje od 01 v0.16.
+
+**Zmiany 0.6 → 0.7 (wiatr morski):** §8.1 — tabela terenu dostaje **trzecią kolumnę**:
+morze przyjmuje **farmę wiatrową za ×2,5**, a odmowa `budowa niemożliwa` przestaje
+dotyczyć całej wody i całego katalogu naraz (01 §3.2, §5.2 w 0.22). §8.4 — limit mocy
+heksa i czas budowy farmy wiatrowej **zależą od terenu**: 300 MW / 1 doba na lądzie,
+600 MW / 2 doby na morzu. Rozpływ, straty i rachunek tury bez zmian — morska farma jest
+w grafie zwykłym źródłem OZE; nowy test akceptacyjny §9.14.
 
 **Zmiany 0.5 → 0.6 (stacja rozdzielcza bez przepustowości):** §2 — jedynym węzłem
 z własną przepustowością zostaje **przyłącze graniczne**; stacja rozdzielcza przepuszcza
@@ -43,10 +50,11 @@ alokacja niedoboru w §4.5, uzupełnione parametry §3.2, §5–§7, tabela decy
 4. **Priorytet zaspokajania: miasta → ładowanie magazynów → eksport** (§4).
 5. **Mapa v1 = jedna ręcznie zaprojektowana mapa** (dane scenariusza): mała **24×16**,
    **8–12 miast**; generator proceduralny — dokument 07 (§8.6).
-6. **Linie mogą przechodzić przez jezioro i morze** — mnożniki terenu w §8.1.
+6. **Linie mogą przechodzić przez jezioro i morze** — mnożniki terenu w §8.1; **na morzu
+   stoi też farma wiatrowa** (0.7; 01 §3.2 w 0.22).
 7. **CAPEX magazynów** — §8.2. 8. **Koszty stałe wszystkich obiektów** — §8.3.
-9. **Rozbudowa: 70% czasu, 85% CAPEX-u, limit 6 bloków; OZE: wiatr ≤300 MW/heks,
-   PV ≤200 MW/heks** (§8.4).
+9. **Rozbudowa: 70% czasu, 85% CAPEX-u, limit 6 bloków; OZE: wiatr ≤300 MW/heks na lądzie
+   i ≤600 MW/heks na morzu (0.7), PV ≤200 MW/heks** (§8.4).
 10. **Błąd prognozy popytu: jeden czynnik systemowy** (nie per miasto) (§7).
 11. **Prawda pogodowa: jedna dla całego kraju**; heks różnicuje ją tylko parametrami
     lokalizacji (klasa wiatru, nasłonecznienie) (§7).
@@ -269,19 +277,36 @@ sterujące wzrostem i kurczeniem miast. UI: miasto w niedoborze gaśnie/miga (01
 
 ### 8.1 Mnożniki kosztu terenu (budowa linii i obiektów)
 
-| Teren | Linie | Obiekty punktowe |
-|---|---|---|
-| nizina | ×1,0 | ×1,0 |
-| las | ×1,3 | ×1,3 |
-| wyżyna | ×1,5 | ×1,5 |
-| bagno | ×2,0 | ×2,0 |
-| teren zurbanizowany | ×2,0 | ×2,0 |
-| góry | ×2,5 | ×2,5 |
-| jezioro | **×2,5** | budowa niemożliwa |
-| morze | **×3,5** | budowa niemożliwa |
+| Teren | Linie | Obiekty punktowe | Farma wiatrowa |
+|---|---|---|---|
+| nizina | ×1,0 | ×1,0 | ×1,0 |
+| las | ×1,3 | ×1,3 | ×1,3 |
+| wyżyna | ×1,5 | ×1,5 | ×1,5 |
+| bagno | ×2,0 | ×2,0 | ×2,0 |
+| teren zurbanizowany | ×2,0 | ×2,0 | ×2,0 |
+| góry | ×2,5 | ×2,5 | ×2,5 |
+| jezioro | **×2,5** | budowa niemożliwa | budowa niemożliwa |
+| morze | **×3,5** | budowa niemożliwa | **×2,5** |
 
 **DECYZJA (6):** linie mogą przechodzić przez wodę (kabel podwodny — drogo, bez stacji
 pośrednich na wodzie). Szczytowo-pompowa tylko góry/wyżyna + woda (01 §3.2).
+
+**DECYZJA (12, 0.7): morze przyjmuje farmę wiatrową i nic poza nią** (01 §3.2, §5.2
+w 0.22). Kolumna „Farma wiatrowa" pokrywa się z kolumną obiektów wszędzie poza wodą —
+istnieje wyłącznie po to, żeby morze mogło mieć własną cenę. Elektrownie, PV, magazyny,
+stacje rozdzielcze i przyłącza graniczne na wodzie nadal nie stoją, a **jezioro nie
+przyjmuje niczego**: w grze jest zbyt małe, a jego rolą jest woda dla szczytowo-pompowej.
+
+**Dlaczego ×2,5, a nie ×3,5 od kabla.** Mnożnik ×3,5 strojono dla **linii** — kabla
+podwodnego, nie fundamentu turbiny. Przeniesiony na obiekt dałby CAPEX 12,6 mln zł/MW,
+czyli **93% więcej za roczną MWh** niż farma na nizinie (3 038 vs 1 577 zł), a mapa v1
+oferuje 332 heksy lądowe wobec 47 morskich (§8.6) — przy braku deficytu miejsca nikt by
+tego nie kupił i morze byłoby opcją martwą. ×2,5 daje 9,0 mln zł/MW, 2 170 zł za roczną
+MWh (+38%) i **zwrot ~3,5 roku** przy taryfie 650 zł/MWh — między wiatrem lądowym (~2,7)
+a flotą cieplną (węgiel 4,1 / CCGT 4,6 / jądrowa 5,1). Morze jest więc **premią za jakość
+zasobu** (CF ~47%, płaska sezonowość, o ⅓ mniej godzin zerowych), nie tanią energią.
+Koszt stały pozostaje lądowy — 130 tys. zł/MW/rok (§8.3): podwojenie przesuwa zwrot
+o 0,18 roku, więc nie kupuje tyle, ile kosztuje w komplikacji. Knob do strojenia w doc 03.
 
 ### 8.2 Magazyny — CAPEX i moduły (uzupełnia 01 §5.3)
 
@@ -300,7 +325,7 @@ Przykład: bateria 100 MW / 200 MWh = 160 + 220 = **380 mln zł**, budowa 1 doba
 | Węgiel | 260 tys. zł/MW/rok |
 | Gaz CCGT | 120 tys. zł/MW/rok |
 | Gaz OCGT | 70 tys. zł/MW/rok |
-| Wiatr lądowy | 130 tys. zł/MW/rok |
+| Wiatr (lądowy i morski — 0.7) | 130 tys. zł/MW/rok |
 | PV | 50 tys. zł/MW/rok |
 | Bateria | 40 tys. zł/MW/rok (od mocy) |
 | Szczytowo-pompowa | 80 tys. zł/MW/rok |
@@ -313,8 +338,23 @@ Naliczanie dobowe: roczne / 365 × liczba reprezentowanych dni doby (01 §6).
 
 **DECYZJA (9):** rozbudowa = **70% czasu** i **85% CAPEX-u** nowej lokalizacji
 (jednakowo dla wszystkich technologii). Limity: elektrownie sterowalne **6 bloków
-na heks**; farmy OZE do limitu mocy heksa: **wiatr 300 MW, PV 200 MW**; magazyny
-wg tabel (§8.2). Stacji rozdzielczej nie rozbudowuje się w ogóle (01 §5.4 w 0.21).
+na heks**; farmy OZE do limitu mocy heksa: **wiatr 300 MW na lądzie i 600 MW na morzu
+(0.7), PV 200 MW**; magazyny wg tabel (§8.2). Stacji rozdzielczej nie rozbudowuje się
+w ogóle (01 §5.4 w 0.21).
+
+**Rozszerzenie (01 §5.2, §7 w 0.22): limit mocy heksa i czas budowy farmy wiatrowej są
+funkcją terenu**, nie samej technologii.
+
+| Teren farmy wiatrowej | Limit mocy heksa | Czas budowy | CAPEX pełnego heksa |
+|---|---|---|---|
+| ląd (dowolny zabudowywalny) | 300 MW | 1 doba gry | 1,08 mld zł (nizina) |
+| **morze** | **600 MW** | **2 doby gry** | **5,4 mld zł** |
+
+Rozbudowa liczy 85% CAPEX-u i 70% czasu **od terenu heksa, na którym farma stoi** — na
+morzu dostawienie 300 MW to 85% z 2,7 mld zł i 70% z 2 dób. Konsekwencja projektowa
+600 MW: pełna farma morska **nie mieści się w linii SN** (500 MW — 01 §4.2), więc wymusza
+WN albo drugi tor. Wyprowadzenie mocy na ląd jest przez to osobną decyzją inwestycyjną,
+a nie dodatkiem do farmy — i to ono, a nie sam CAPEX turbin, hamuje zabudowę morza.
 
 **Rozszerzenie (01 §4.2 w 0.17): reguła obejmuje też linie.** Rozbudowa gotowej linii do
 wyższego typu (NN→SN→WN, tylko w górę) kosztuje **85% CAPEX-u** i trwa **70% czasu** nowej
@@ -335,6 +375,13 @@ Zrzut energii sterowalnej: **400 zł/MWh** (§5.2; parametr, strojenie w doc 03)
 co najmniej po jednej lokalizacji klasy wiatrowej dobrej/złej i jednej lokalizacji
 szczytowo-pompowej. Mapa jest częścią danych scenariusza (razem z minimalnym stanem
 posiadania i kapitałem). Generator proceduralny — dokument 07.
+
+**Bilans heksów mapy v1 (0.7):** 384 heksy — **332 zabudowywalne lądowe** (272 otwarte,
+26 nadmorskich, 34 osłonięte) i **47 morskich**, z czego 26 sąsiaduje z lądem, a 21 leży
+dalej. Dwa poziomy trudności wychodzą więc z samej geografii, bez osobnej mechaniki:
+farma przybrzeżna wymaga jednego heksa linii, farma na dalekim morzu — kabla przez heks
+morski za ×3,5. Morze daje 28,2 GW mocy zainstalowanej wobec 99,6 GW na lądzie: to nie
+jest zawór na brak miejsca, tylko lepszy zasób (§8.1).
 
 ## 9. Determinizm i testy akceptacyjne
 
@@ -377,6 +424,12 @@ Testy specyfikacyjne cytują sekcje tego dokumentu:
     zostawia w stanie dwie linie kończące się w nim, o niezmienionej sumie długości
     i godzin; oba odcinki przewodzą, a każdy rozbudowuje się osobno. Heks, którego
     korytarz przyniósłby więcej końców niż obiekt ma przyłączy, odrzuca budowę.
+14. **§8.1, §8.4** — wiatr morski (01 §3.2, §5.2 w 0.22): na heksie morskim farma wiatrowa
+    przechodzi i kosztuje **2,5 × CAPEX bazowy**, a elektrownia, PV, magazyn, stacja
+    rozdzielcza i przyłącze graniczne są odrzucane; na jeziorze odrzucana jest także
+    farma wiatrowa. Limit heksa morskiego to 600 MW (lądowego 300), budowa trwa 2 doby
+    (na lądzie 1), a rozbudowa liczy 85%/70% od terenu heksa farmy. Farma morska dostaje
+    klasę wiatrową morską z danych mapy i wchodzi do rozpływu jak każde inne źródło OZE.
 
 ## 10. Pytania otwarte
 

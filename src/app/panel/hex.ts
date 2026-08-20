@@ -23,6 +23,7 @@ import {
   STORAGE_TECHS,
   TERRAIN,
   WIND_CLASSES,
+  farmSiting,
   hexKey,
   isLineBuilt,
   lineUpgradeCostPln,
@@ -41,6 +42,7 @@ import {
   type PlantState,
   type PlantTech,
   type StorageState,
+  type TerrainId,
   type TurnReport,
 } from "../../engine";
 import type { StatusTone } from "../components/StatusDot";
@@ -202,9 +204,17 @@ export interface CatalogEntry {
 
 // --- helpers ----------------------------------------------------------------
 
-/** What a base CAPEX costs on this hex, or null where building is impossible. */
-function siteCostPln(state: GameState, hex: HexCoord, basePln: number): number | null {
-  const multiplier = TERRAIN[terrainAt(state, hex)].object;
+/**
+ * What a base CAPEX costs on this hex, or null where building is impossible.
+ * `multiplier` defaults to the terrain's object column; a wind farm passes its
+ * own, because the sea carries turbines and nothing else (02 §8.1 in 0.22).
+ */
+function siteCostPln(
+  state: GameState,
+  hex: HexCoord,
+  basePln: number,
+  multiplier: number | null = TERRAIN[terrainAt(state, hex)].object,
+): number | null {
   return multiplier === null ? null : Math.round(basePln * multiplier);
 }
 
@@ -334,6 +344,23 @@ export function hexPanelTitle(
   };
 }
 
+/**
+ * The wind-farm column of 02 §8.1 as its own row — but only where it disagrees
+ * with the object column, which happens on water alone (0.22). Everywhere else
+ * repeating it would be noise.
+ */
+function windFarmRows(cost: (typeof TERRAIN)[TerrainId]): InfoRow[] {
+  if (cost.windFarm === cost.object) return [];
+  return [
+    {
+      key: "wind-farm",
+      label: "MNOŻNIK — FARMA WIATROWA",
+      value: cost.windFarm === null ? "budowa niemożliwa" : formatMultiplier(cost.windFarm),
+      tone: cost.windFarm === null ? "idle" : "ok",
+    },
+  ];
+}
+
 /** TEREN: what the hex is worth building on (01 §3.2, 02 §8.1, 06 §6.1). */
 export function terrainRows(state: GameState, hex: HexCoord): InfoRow[] {
   const terrain = terrainAt(state, hex);
@@ -350,6 +377,9 @@ export function terrainRows(state: GameState, hex: HexCoord): InfoRow[] {
       value: cost.object === null ? "budowa niemożliwa" : formatMultiplier(cost.object),
       tone: cost.object === null ? "idle" : undefined,
     },
+    // 02 §8.1 (0.22): the sea prices turbines and refuses everything else, so
+    // the wind column only earns a row where it differs from the object one.
+    ...windFarmRows(cost),
     { key: "lines", label: "MNOŻNIK — LINIE", value: formatMultiplier(cost.line) },
     {
       key: "wind",
@@ -495,11 +525,15 @@ function entry(
     steppers?: CatalogStepper[];
     /** Slot budget of THIS object; only a junction station differs (01 §5.4). */
     lineSlots?: number;
+    /** Terrain price of THIS object; only a wind farm differs (02 §8.1, 0.22). */
+    siteMultiplier?: number | null;
   },
 ): CatalogEntry {
-  const cost = siteCostPln(state, hex, spec.basePln);
+  const multiplier =
+    spec.siteMultiplier === undefined ? TERRAIN[terrainAt(state, hex)].object : spec.siteMultiplier;
+  const cost = siteCostPln(state, hex, spec.basePln, multiplier);
   const note =
-    siteNote(state, hex, spec.lineSlots) ??
+    siteNote(state, hex, spec.lineSlots, multiplier) ??
     spec.extraNote ??
     (cost === null ? null : moneyNote(state, cost));
   return {
@@ -547,15 +581,18 @@ export function buildCatalog(
     });
   });
 
+  // 02 §8.1, §8.4 (0.22): a wind farm's price, hex cap and countdown come from
+  // the SITE — at sea it is the same turbine, priced and bounded differently.
   const farms = (["wind", "pv"] as const).map((tech) => {
-    const spec = FARM_TECHS[tech];
-    const capacityMw = sizes.farmMw[tech];
+    const site = farmSiting(tech, terrainAt(state, hex));
+    const capacityMw = Math.min(sizes.farmMw[tech], site.maxMwPerHex);
     return entry(state, hex, {
       key: `farm:${tech}`,
       name: FARM_CATALOG_NAMES[tech],
-      size: `${formatMw(capacityMw)} · ${daysLabel(spec.buildDays)} BUDOWY`,
-      basePln: capacityMw * spec.capexPlnPerMw,
+      size: `${formatMw(capacityMw)} · ${daysLabel(site.buildDays)} BUDOWY`,
+      basePln: capacityMw * FARM_TECHS[tech].capexPlnPerMw,
       action: { type: "buildFarm", tech, capacityMw, hex },
+      siteMultiplier: site.multiplier,
       steppers: [
         {
           target: { kind: "farm", tech },
@@ -563,7 +600,7 @@ export function buildCatalog(
           value: capacityMw,
           unit: "MW",
           min: FARM_BLOCKS[tech].stepMw,
-          max: spec.maxMwPerHex,
+          max: site.maxMwPerHex,
           step: FARM_BLOCKS[tech].stepMw,
         },
       ],
@@ -707,9 +744,20 @@ function expansionActions(state: GameState, objectId: string): HexAction[] {
 function expansionAction(
   state: GameState,
   hex: HexCoord,
-  spec: { key: string; label: string; basePln: number; action: Action; limit: Diagnosis },
+  spec: {
+    key: string;
+    label: string;
+    basePln: number;
+    action: Action;
+    limit: Diagnosis;
+    /** Terrain price of THIS object; only a wind farm differs (02 §8.1, 0.22). */
+    siteMultiplier?: number | null;
+  },
 ): HexAction {
-  const cost = siteCostPln(state, hex, spec.basePln);
+  const cost =
+    spec.siteMultiplier === undefined
+      ? siteCostPln(state, hex, spec.basePln)
+      : siteCostPln(state, hex, spec.basePln, spec.siteMultiplier);
   return {
     key: spec.key,
     label: `${spec.label} — ${cost === null ? "—" : formatMoneyPln(cost)}`,
@@ -803,6 +851,9 @@ function plantView(state: GameState, report: TurnReport | null, plant: PlantStat
 
 function farmView(state: GameState, report: TurnReport | null, farm: FarmState): HexObjectView {
   const spec = FARM_TECHS[farm.tech];
+  // 02 §8.1, §8.4 (0.22): an offshore farm expands at ITS hex's price and up to
+  // ITS hex's cap — 600 MW at 2.5×, not 300 MW at the land multiplier.
+  const site = farmSiting(farm.tech, terrainAt(state, farm.hex));
   const produced = report?.sources.find((source) => source.sourceId === farm.id);
   const alert = inBottleneck(state, report, farm.hex);
   const stepMw = FARM_BLOCKS[farm.tech].stepMw;
@@ -821,7 +872,7 @@ function farmView(state: GameState, report: TurnReport | null, farm: FarmState):
       {
         key: "power",
         label: "MOC ZAINSTALOWANA",
-        value: formatSetpoint(farm.capacityMw, spec.maxMwPerHex),
+        value: formatSetpoint(farm.capacityMw, site.maxMwPerHex),
       },
       ...(produced
         ? [
@@ -841,7 +892,8 @@ function farmView(state: GameState, report: TurnReport | null, farm: FarmState):
         label: `ROZBUDUJ · +${formatMw(stepMw)}`,
         basePln: stepMw * spec.capexPlnPerMw * EXPANSION.capexShare,
         action: { type: "expandFarm", farmId: farm.id, capacityMw: stepMw },
-        limit: limitNote(farm.capacityMw, pending, stepMw, spec.maxMwPerHex, "MW"),
+        limit: limitNote(farm.capacityMw, pending, stepMw, site.maxMwPerHex, "MW"),
+        siteMultiplier: site.multiplier,
       }),
       ...expansionActions(state, farm.id),
       ...(alert ? bottleneckAction(report) : []),

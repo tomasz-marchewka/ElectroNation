@@ -13,7 +13,9 @@ import {
   JUNCTION_SPEC,
   KM_PER_HEX,
   LINE_TYPES,
+  FARM_TECHS,
   MAX_PLANT_BLOCKS_PER_HEX,
+  OFFSHORE_WIND,
   PLANT_TECHS,
   TERRAIN,
   applyAction,
@@ -30,6 +32,7 @@ import {
 import { App } from "../../src/app/App";
 import { HexPanel } from "../../src/app/components/HexPanel";
 import { formatMoneyPln } from "../../src/app/format";
+import { DEFAULT_CATALOG_SIZES } from "../../src/app/panel/hex";
 import { DEFAULT_SEED, useGameStore } from "../../src/app/store/gameStore";
 import { useThemeStore } from "../../src/app/store/themeStore";
 import { makeScenario } from "../helpers/scenario";
@@ -39,8 +42,13 @@ function at(col: number, row: number): HexCoord {
 }
 
 /** Terrain picture of the fixture, one string per offset row. */
-const TERRAIN_ROWS = ["..m..l", "......", "......"] as const;
-const TERRAIN_LETTERS: Record<string, TerrainId> = { ".": "plains", m: "mountains", l: "lake" };
+const TERRAIN_ROWS = ["..m.~l", "......", "......"] as const;
+const TERRAIN_LETTERS: Record<string, TerrainId> = {
+  ".": "plains",
+  m: "mountains",
+  l: "lake",
+  "~": "sea",
+};
 
 function terrain(): Record<string, TerrainId> {
   const out: Record<string, TerrainId> = {};
@@ -207,6 +215,50 @@ describe("catalogue — prices carry the terrain multiplier (02 §8.1)", () => {
     );
   });
 
+  // 01 §5.2, 02 §8.1 (0.22): the sea is the one water that carries something.
+  test("the sea prices a wind farm at 2.5× and refuses the rest of the catalogue", () => {
+    const { container } = renderPanel(newGame(7, fixture()), at(4, 0));
+
+    expect(value(container, "MNOŻNIK — OBIEKTY")).toBe("budowa niemożliwa");
+    expect(value(container, "MNOŻNIK — FARMA WIATROWA")).toBe("×2,5");
+
+    const wind = entry(container, "Farma wiatrowa");
+    expect(wind.disabled).toBe(false);
+    const capacityMw = Math.min(DEFAULT_CATALOG_SIZES.farmMw.wind, OFFSHORE_WIND.maxMwPerHex);
+    expect(priceOf(container, "Farma wiatrowa")).toBe(
+      formatMoneyPln(capacityMw * FARM_TECHS.wind.capexPlnPerMw * (TERRAIN.sea.windFarm ?? 0)),
+    );
+    expect(wind.textContent).toContain(`${OFFSHORE_WIND.buildDays} DOBY BUDOWY`);
+
+    for (const name of ["CCGT", "Farma PV", "Bateria BESS", "Stacja rozdzielcza"]) {
+      expect(entry(container, name).disabled).toBe(true);
+      expect(priceOf(container, name)).toBe("—");
+    }
+  });
+
+  test("the sea hex stretches the wind stepper to 600 MW, the land hex stops at 300", async () => {
+    const user = userEvent.setup();
+    const plus = (container: HTMLElement) =>
+      [...container.querySelectorAll<HTMLButtonElement>("button")].find((button) =>
+        button.getAttribute("aria-label")?.startsWith("Farma wiatrowa · MOC +"),
+      );
+
+    for (const [hex, cap] of [
+      [at(4, 0), OFFSHORE_WIND.maxMwPerHex],
+      [at(1, 1), FARM_TECHS.wind.maxMwPerHex],
+    ] as const) {
+      const { container, unmount } = renderPanel(newGame(7, fixture()), hex);
+      for (let click = 0; click < 20; click++) {
+        const button = plus(container);
+        if (!button || button.disabled) break;
+        await user.click(button);
+      }
+      expect(entry(container, "Farma wiatrowa").textContent).toContain(`${cap} MW`);
+      expect(plus(container)?.disabled).toBe(true);
+      unmount();
+    }
+  });
+
   test("a hex whose corridor eats every line slot is no site (01 §3.3)", () => {
     // Four finished routes crossing (2,1): the day an object stood there they
     // would be cut on it, ending eight lines in an object that has six slots.
@@ -299,6 +351,42 @@ describe("object — parameters and contextual actions (01 §8 pt 6)", () => {
       type: "expandPlant",
       plantId: "plant-1",
       capacityMw: 400,
+    });
+  });
+
+  // 01 §7, 02 §8.4 (0.22): the hex the farm STANDS on sets the expansion, so an
+  // offshore farm grows toward 600 MW at 2.5×, not toward 300 MW at the land price.
+  test("an offshore farm expands against its own hex, not against the land rule", async () => {
+    const game = newGame(
+      7,
+      fixture({
+        farms: [
+          {
+            id: "farm-sea",
+            name: "Farma morska",
+            hex: at(4, 0),
+            tech: "wind",
+            capacityMw: 300,
+            enabled: true,
+            windClass: "baltic",
+            solarMultiplier: 1,
+          },
+        ],
+      }),
+    );
+    const { container, onAction } = renderPanel(game, at(4, 0));
+
+    expect(value(container, "MOC ZAINSTALOWANA")).toBe(`300 / ${OFFSHORE_WIND.maxMwPerHex} MW`);
+
+    const stepMw = 50;
+    const expected = Math.round(
+      stepMw * FARM_TECHS.wind.capexPlnPerMw * EXPANSION.capexShare * (TERRAIN.sea.windFarm ?? 0),
+    );
+    await userEvent.click(action(`ROZBUDUJ · +${stepMw} MW — ${formatMoneyPln(expected)}`));
+    expect(onAction).toHaveBeenCalledWith({
+      type: "expandFarm",
+      farmId: "farm-sea",
+      capacityMw: stepMw,
     });
   });
 
