@@ -193,8 +193,13 @@ Powiązane mechaniki cyklu życia:
 
 ## 4. Stacje, typy linii i topologia sieci — elementy zaawansowane
 
-*(Stacja rozdzielcza jako węzeł z przepustowością i przyłączami liniowymi jest w grze —
-01 §4.3, §5.4. Tu zostaje głębia oraz mechaniki uchylone w 01 v0.11.)*
+*(Stacja rozdzielcza jako węzeł z przyłączami liniowymi jest w grze — 01 §4.3, §5.4.
+Tu zostaje głębia oraz mechaniki uchylone w 01 v0.11.)*
+
+**Przepustowość stacji [MW]** *(w grze 01 v0.12–0.20; zdjęta w 0.21 jako dublet limitu
+linii)*: własny limit mocy węzła i pułapka „grube linie, cienka stacja". Wraca sensownie
+dopiero razem z DC power flow (§1) i poziomami napięć, gdzie ograniczenie szyny wynika
+z wymiarowania pól i transformacji, a nie jest drugą liczbą obok przepustowości linii.
 
 **Typy linii wg poziomów napięć** *(→ **wróciły do gry w 01 v0.13**, §4.2, jako umowne
 NN/SN/WN — 150/500/1500 MW)*: tu zostaje reszta głębi — realna hierarchia napięć,

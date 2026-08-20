@@ -161,11 +161,13 @@ describe("doc 01 §3.3: an object on a corridor cuts the line in two", () => {
 });
 
 describe("doc 01 §3.3: a cut route spends two line slots, one per direction", () => {
+  const buildFarm = { type: "buildFarm", tech: "pv", capacityMw: 50, hex: { q: 2, r: 0 } } as const;
+
   test("three routes crossing an object fill its six slots", () => {
-    // The city and the plant are the endpoints, so every route crosses the
-    // junction hex — 2 slots each, 6 in total, and the fourth is refused.
+    // The city and the plant are the endpoints, so every route crosses the farm
+    // hex — 2 slots each, 6 in total, and the fourth is refused.
     let state = newGame(3, makeScenario({ junctions: [] }));
-    state = run(apply(state, { type: "buildJunction", hex: { q: 2, r: 0 } }), TURNS_PER_DAY);
+    state = run(apply(state, buildFarm), TURNS_PER_DAY);
     for (let i = 0; i < 4; i++) {
       state = apply(state, { type: "buildLine", lineType: "mv", path: CORRIDOR });
     }
@@ -181,11 +183,13 @@ describe("doc 01 §3.3: a cut route spends two line slots, one per direction", (
     expect(state.lines).toHaveLength(4);
 
     // Four routes cross (2,0): cutting them would end eight lines in the object
-    // and it has six slots. The build is refused before the money is taken.
-    const refused = apply(state, { type: "buildJunction", hex: { q: 2, r: 0 } });
-    expect(refused).toBe(state);
+    // and an ordinary one has six slots. The build is refused before the money
+    // is taken.
+    expect(apply(state, buildFarm)).toBe(state);
     // Three of them fit — the fourth route is what makes the site illegal.
     const thinner = { ...state, lines: state.lines.slice(0, 3) };
-    expect(apply(thinner, { type: "buildJunction", hex: { q: 2, r: 0 } })).not.toBe(thinner);
+    expect(apply(thinner, buildFarm)).not.toBe(thinner);
+    // A junction station has 12 slots, so the same corridor takes it (0.21).
+    expect(apply(state, { type: "buildJunction", hex: { q: 2, r: 0 } })).not.toBe(state);
   });
 });

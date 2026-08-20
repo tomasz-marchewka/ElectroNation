@@ -317,8 +317,6 @@ function expansionSite(pending: PendingObject, state: GameState): HexCoord | nul
     case "batteryExpansion":
     case "pumpedExpansion":
       return find(state.storages, pending.storageId);
-    case "junctionExpansion":
-      return find(state.junctions, pending.junctionId);
     case "borderExpansion":
       return find(state.borders, pending.borderId);
     default:
@@ -486,7 +484,6 @@ export function buildMapScene(
   // --- objects -------------------------------------------------------------
   const cityRows = new Map((report?.cities ?? []).map((row) => [row.cityId, row]));
   const sourceRows = new Map((report?.sources ?? []).map((row) => [row.sourceId, row]));
-  const nodeRows = new Map((report?.nodes ?? []).map((row) => [row.nodeId, row]));
 
   const addObject = (
     id: string,
@@ -565,15 +562,9 @@ export function buildMapScene(
     );
   }
 
+  // A junction has no throughput of its own (0.21), hence no load to label.
   for (const junction of state.junctions) {
-    const row = nodeRows.get(junction.id);
-    addObject(
-      junction.id,
-      junction.hex,
-      "node",
-      "object",
-      objectLabel(junction.name, null, row ? ratioLabel(row.usedMw, row.throughputMw) : null),
-    );
+    addObject(junction.id, junction.hex, "node", "object", objectLabel(junction.name, null, null));
   }
 
   for (const border of state.borders) {

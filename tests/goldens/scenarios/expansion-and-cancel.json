@@ -1,29 +1,42 @@
 {
   "name": "expansion-and-cancel",
   "map": "minimal",
-  "description": "Four days exercising the M3 mechanics: a plant block expanded in place (the last day's 500 MW setpoint only holds because the block landed — the plant started at 400), a junction dropped onto the existing line and then expanded, a farm order cancelled mid-build, a line cancelled mid-build, and the advanced forecast system bought.",
+  "description": "Four days exercising the M3 mechanics: a plant block expanded in place (the last day's 500 MW setpoint only holds because the block landed — the plant started at 400), a junction station dropped onto the existing line (0.21: it takes no throughput and has nothing to expand), a farm order cancelled mid-build, a line cancelled mid-build, and the advanced forecast system bought.",
   "seed": 20260814,
   "days": 4,
   "actions": [
     {
       "beforeTurn": 0,
-      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 80 }
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 80
+      }
     },
     {
       "beforeTurn": 0,
-      "action": { "type": "buyForecastSystem", "level": "advanced" }
+      "action": {
+        "type": "buyForecastSystem",
+        "level": "advanced"
+      }
     },
     {
       "beforeTurn": 0,
-      "action": { "type": "expandPlant", "plantId": "plant-start-ccgt", "capacityMw": 200 }
+      "action": {
+        "type": "expandPlant",
+        "plantId": "plant-start-ccgt",
+        "capacityMw": 200
+      }
     },
     {
       "beforeTurn": 1,
-      "action": { "type": "buildJunction", "hex": { "q": 4, "r": 4 } }
-    },
-    {
-      "beforeTurn": 8,
-      "action": { "type": "expandJunction", "junctionId": "obj-2" }
+      "action": {
+        "type": "buildJunction",
+        "hex": {
+          "q": 4,
+          "r": 4
+        }
+      }
     },
     {
       "beforeTurn": 9,
@@ -31,12 +44,18 @@
         "type": "buildFarm",
         "tech": "wind",
         "capacityMw": 100,
-        "hex": { "q": 2, "r": 4 }
+        "hex": {
+          "q": 2,
+          "r": 4
+        }
       }
     },
     {
       "beforeTurn": 10,
-      "action": { "type": "cancelConstruction", "constructionId": "obj-4" }
+      "action": {
+        "type": "cancelConstruction",
+        "constructionId": "obj-3"
+      }
     },
     {
       "beforeTurn": 16,
@@ -44,18 +63,31 @@
         "type": "buildLine",
         "lineType": "lv",
         "path": [
-          { "q": 4, "r": 4 },
-          { "q": 3, "r": 4 }
+          {
+            "q": 4,
+            "r": 4
+          },
+          {
+            "q": 3,
+            "r": 4
+          }
         ]
       }
     },
     {
       "beforeTurn": 17,
-      "action": { "type": "cancelLine", "lineId": "obj-5" }
+      "action": {
+        "type": "cancelLine",
+        "lineId": "obj-4"
+      }
     },
     {
       "beforeTurn": 24,
-      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 500 }
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 500
+      }
     }
   ]
 }

@@ -110,15 +110,7 @@ function midGameScenario(): Scenario {
         setpoint: { mode: "idle", mw: 0 },
       },
     ],
-    junctions: [
-      {
-        id: "junction-1",
-        name: "SR",
-        hex: { q: 7, r: 6 },
-        throughputMw: 750,
-        lineSlots: 10,
-      },
-    ],
+    junctions: [{ id: "junction-1", name: "SR", hex: { q: 7, r: 6 } }],
     borders: [
       {
         id: "border-west",

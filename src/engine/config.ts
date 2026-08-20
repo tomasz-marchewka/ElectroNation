@@ -106,29 +106,24 @@ export const LINE_TYPE_ORDER = ["lv", "mv", "hv"] as const;
 export const KM_PER_HEX = 25; // 01 §3.1
 
 /**
- * 01 §3.3 (0.13): topology hard limits. `LINE_SLOTS_PER_OBJECT` is the BASE
- * slot count of an object; junctions carry their own (expandable) limit in
- * state, so `buildLine` reads the per-object value, not this constant.
+ * 01 §3.3 (0.13): topology hard limits. `LINE_SLOTS_PER_OBJECT` is the slot
+ * count of an ordinary object; a junction station carries twice as many
+ * (`JUNCTION_SPEC.lineSlots`), so `buildLine` asks the hex, not this constant.
  */
 export const MAX_LINES_PER_HEX_PER_TYPE = 9;
 export const LINE_SLOTS_PER_OBJECT = 6;
 
 /**
- * 01 §5.4, §5.7, §3.4: node objects and the city connection act. Module prices
- * and times come straight from the docs' tables (see EXPANSION for why they are
- * NOT discounted by the 85%/70% rule).
+ * 01 §5.4, §5.7, §3.4: node objects and the city connection act. Border module
+ * prices and times come straight from the doc's table (see EXPANSION for why
+ * they are NOT discounted by the 85%/70% rule). A junction station has no
+ * module at all (0.21): it carries no throughput and its slot count is fixed.
  */
 export const JUNCTION_SPEC = {
-  capexPln: 150_000_000,
+  capexPln: 60_000_000,
   buildDays: 1,
-  throughputMw: 250,
-  lineSlots: LINE_SLOTS_PER_OBJECT,
-  moduleCapexPln: 90_000_000,
-  moduleBuildDays: 1,
-  moduleThroughputMw: 250,
-  moduleLineSlots: 2,
-  /** 6 modules → 1750 MW and 18 line slots. */
-  maxModules: 6,
+  /** Double an ordinary object's slots (01 §5.4, 0.21) — the station's only parameter. */
+  lineSlots: 2 * LINE_SLOTS_PER_OBJECT,
 } as const;
 export const BORDER_SPEC = {
   capexPln: 1_000_000_000,
@@ -141,9 +136,9 @@ export const BORDER_SPEC = {
 export const CITY_CONNECTION_COST_PLN = 30_000_000;
 
 /**
- * 02 §8.3: junctions and border points pay 2% of their CAPEX yearly. Capacity
- * modules raise that CAPEX, so an expanded node also costs more to maintain;
- * an unexpanded one keeps the doc's 3 mln / 20 mln zł per year.
+ * 02 §8.3: junctions and border points pay 2% of their CAPEX yearly. Border
+ * capacity modules raise that CAPEX, so an expanded interconnector also costs
+ * more to maintain; a junction is flat 1,2 mln zł per year (0.21).
  */
 export const NODE_FIXED_CAPEX_SHARE_PER_YEAR = 0.02;
 
@@ -151,9 +146,9 @@ export const NODE_FIXED_CAPEX_SHARE_PER_YEAR = 0.02;
  * 01 §7, 02 §8.4: expanding an existing object costs 85% of a new site's CAPEX
  * and takes 70% of its build time. The rule applies to plants, farms and — since
  * 01 v0.17 — line upgrades, where the base is a new line of the TARGET type on
- * the same route. Where a doc prints a module price directly (junction, border
- * module, storage modules of 02 §8.2) that price is already modular and is used
- * as printed. Doc 03/04 may revisit this split.
+ * the same route. Where a doc prints a module price directly (border module,
+ * storage modules of 02 §8.2) that price is already modular and is used as
+ * printed. Doc 03/04 may revisit this split.
  */
 export const EXPANSION = { capexShare: 0.85, timeShare: 0.7 } as const;
 

@@ -1,0 +1,17 @@
+#!/bin/sh
+# Pre-push gate: the two checks that fail CI fastest and cost seconds locally
+# (.github/workflows/ci.yml runs both before anything else). Typecheck, tests
+# and build stay out on purpose — they take minutes and belong to CI.
+#
+# Installed by the `prepare` script in package.json, which points
+# core.hooksPath at this directory. Bypass with `git push --no-verify`.
+
+set -e
+
+echo "pre-push: eslint"
+npm run --silent lint
+
+echo "pre-push: prettier"
+npm run --silent format:check
+
+echo "pre-push: ok"

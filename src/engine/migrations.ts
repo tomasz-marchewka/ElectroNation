@@ -45,6 +45,35 @@ export const MIGRATIONS: MigrationRegistry = {
    * what makes the invariant hold for every state the engine ever sees.
    */
   11: (state) => (isSplittable(state) ? splitLinesAtObjects(state) : state),
+  /**
+   * 12 → 13: a junction station carries no throughput and buys no modules
+   * (01 §4.3, §5.4, 0.21). Old saves drop both node fields — the station keeps
+   * standing and now passes whatever its lines bring — and any capacity module
+   * still in the build queue is dropped: the object it was ordered for no
+   * longer has anything to expand. The money paid for it is gone, exactly as
+   * for a cancelled construction (01 §2.6).
+   */
+  12: (state) => {
+    if (!isRecord(state)) return state;
+    const junctions = Array.isArray(state.junctions)
+      ? state.junctions.map((junction) =>
+          isRecord(junction)
+            ? { id: junction.id, name: junction.name, hex: junction.hex }
+            : junction,
+        )
+      : state.junctions;
+    const constructions = Array.isArray(state.constructions)
+      ? state.constructions.filter(
+          (construction) =>
+            !(
+              isRecord(construction) &&
+              isRecord(construction.pending) &&
+              construction.pending.kind === "junctionExpansion"
+            ),
+        )
+      : state.constructions;
+    return { ...state, junctions, constructions };
+  },
 };
 
 /** Hex-shaped enough for the split to read it. */

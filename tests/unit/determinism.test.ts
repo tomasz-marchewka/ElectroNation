@@ -3,7 +3,6 @@ import { expect, test } from "vitest";
 import {
   BATTERY,
   FARM_TECHS,
-  JUNCTION_SPEC,
   MAX_PLANT_BLOCKS_PER_HEX,
   PUMPED_BLOCK,
   applyAction,
@@ -101,7 +100,6 @@ const actionArb: fc.Arbitrary<Action> = fc.oneof(
     capacityMwh: fc.integer({ min: 0, max: 2_500 }),
   }),
   fc.record({ type: fc.constant("expandPumpedStorage" as const), storageId: idArb }),
-  fc.record({ type: fc.constant("expandJunction" as const), junctionId: idArb }),
   fc.record({ type: fc.constant("expandBorder" as const), borderId: idArb }),
   fc.record({ type: fc.constant("cancelConstruction" as const), constructionId: idArb }),
   fc.record({ type: fc.constant("cancelLine" as const), lineId: idArb }),
@@ -141,10 +139,9 @@ function expectWithinSiteLimits(state: GameState): void {
       expect(storage.powerMw).toBeLessThanOrEqual(PUMPED_BLOCK.maxBlocks * PUMPED_BLOCK.powerMw);
     }
   }
+  // 0.21: a junction station is nothing but a site — no throughput, no modules.
   for (const junction of state.junctions) {
-    expect(junction.lineSlots).toBeLessThanOrEqual(
-      JUNCTION_SPEC.lineSlots + JUNCTION_SPEC.maxModules * JUNCTION_SPEC.moduleLineSlots,
-    );
+    expect(Object.keys(junction).sort()).toStrictEqual(["hex", "id", "name"]);
   }
 }
 

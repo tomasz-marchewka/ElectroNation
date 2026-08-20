@@ -118,6 +118,7 @@ function queueObject(
   buildDays: number,
   hex: HexCoord,
   makePending: (id: string) => PendingObject,
+  lineSlots: number = LINE_SLOTS_PER_OBJECT,
 ): GameState {
   if (!isInsideMap(state.map, hex)) return state;
   const multiplier = terrainAt(state, hex).object;
@@ -127,11 +128,11 @@ function queueObject(
   // it stands, and every cut ends in it twice — once coming in, once going out.
   // A corridor that brings more ends than the object has line slots makes the
   // site illegal: the engine never re-draws a route the player has paid for, so
-  // the refusal has to happen here, before the money is taken. Every fresh
-  // object has the base six — a junction only buys extra slots later (01 §5.4).
+  // the refusal has to happen here, before the money is taken. An ordinary
+  // object has six slots, a junction station twice that (01 §5.4).
   const key = hexKey(hex);
   const withSite = new Set([...builtObjectHexKeys(state), key]);
-  if (linesAtHex(state, key, withSite) > LINE_SLOTS_PER_OBJECT) return state;
+  if (linesAtHex(state, key, withSite) > lineSlots) return state;
   const cost = Math.round(baseCostPln * multiplier);
   if (state.moneyPln < cost) return state;
   const id = `obj-${state.nextObjectId}`;
@@ -244,16 +245,14 @@ export function buildPumpedStorage(state: GameState, hex: HexCoord): GameState {
 }
 
 export function buildJunction(state: GameState, hex: HexCoord): GameState {
-  return queueObject(state, JUNCTION_SPEC.capexPln, JUNCTION_SPEC.buildDays, hex, (id) => ({
-    kind: "junction",
-    junction: {
-      id,
-      name: id,
-      hex,
-      throughputMw: JUNCTION_SPEC.throughputMw,
-      lineSlots: JUNCTION_SPEC.lineSlots,
-    },
-  }));
+  return queueObject(
+    state,
+    JUNCTION_SPEC.capexPln,
+    JUNCTION_SPEC.buildDays,
+    hex,
+    (id) => ({ kind: "junction", junction: { id, name: id, hex } }),
+    JUNCTION_SPEC.lineSlots,
+  );
 }
 
 export function buildBorder(state: GameState, hex: HexCoord): GameState {
@@ -330,9 +329,11 @@ export function linesAtHex(
   return count;
 }
 
-/** Line slots of the object on this hex — only junctions buy extra (01 §5.4). */
+/** Line slots of the object on this hex — a junction station has double (01 §5.4). */
 export function lineSlotsAt(state: GameState, key: string): number {
-  return state.junctions.find((j) => hexKey(j.hex) === key)?.lineSlots ?? LINE_SLOTS_PER_OBJECT;
+  return state.junctions.some((j) => hexKey(j.hex) === key)
+    ? JUNCTION_SPEC.lineSlots
+    : LINE_SLOTS_PER_OBJECT;
 }
 
 export function buildLine(state: GameState, lineType: LineType, path: HexCoord[]): GameState {
@@ -355,8 +356,8 @@ export function buildLine(state: GameState, lineType: LineType, path: HexCoord[]
 
   // Topology limits (01 §3.3): ≤9 lines of one type per hex; every line end at
   // an object's hex consumes one of its line slots — 6 for every object except
-  // a junction, which buys extra slots with capacity modules (01 §5.4). A route
-  // crossing an object is cut on it and therefore books TWO of them (0.19).
+  // a junction station, which has 12 (01 §5.4). A route crossing an object is
+  // cut on it and therefore books TWO of them (0.19).
   for (const hex of path) {
     const key = hexKey(hex);
     const adding = routeLinesAtHex(path, key, objectHexes);
@@ -705,30 +706,6 @@ export function expandPumpedStorage(state: GameState, storageId: string): GameSt
     kind: "pumpedExpansion",
     storageId,
   });
-}
-
-/** Modules bought on a junction so far, read off its line-slot count (01 §5.4). */
-function junctionModules(lineSlots: number): number {
-  return Math.round((lineSlots - JUNCTION_SPEC.lineSlots) / JUNCTION_SPEC.moduleLineSlots);
-}
-
-/** +250 MW throughput and +2 line slots per module, 6 modules max (01 §5.4). */
-export function expandJunction(state: GameState, junctionId: string): GameState {
-  const junction = state.junctions.find((j) => j.id === junctionId);
-  if (!junction) return state;
-  const queued = pendingSum(state, (p) =>
-    p.kind === "junctionExpansion" && p.junctionId === junctionId ? 1 : 0,
-  );
-  if (junctionModules(junction.lineSlots) + queued + 1 > JUNCTION_SPEC.maxModules) {
-    return state;
-  }
-  return queueExpansion(
-    state,
-    JUNCTION_SPEC.moduleCapexPln,
-    JUNCTION_SPEC.moduleBuildDays,
-    junction.hex,
-    { kind: "junctionExpansion", junctionId },
-  );
 }
 
 /** +500 MW of border capacity per module (01 §5.7); the doc sets no cap. */

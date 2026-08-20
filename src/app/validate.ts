@@ -9,6 +9,7 @@
 // it refuses on and where that number comes from.
 
 import {
+  JUNCTION_SPEC,
   KM_PER_HEX,
   LINE_SLOTS_PER_OBJECT,
   LINE_TYPES,
@@ -124,12 +125,11 @@ export function linesAt(census: Map<string, HexLineCount>, key: string): HexLine
   return census.get(key) ?? NO_LINES;
 }
 
-/** Line slots of the object on a hex: 6, or a junction's own count (01 §5.4). */
+/** Line slots of the object on a hex: 6, or a junction station's 12 (01 §5.4). */
 export function lineSlotsAt(state: GameState, key: string): number {
-  return (
-    state.junctions.find((junction) => hexKey(junction.hex) === key)?.lineSlots ??
-    LINE_SLOTS_PER_OBJECT
-  );
+  return state.junctions.some((junction) => hexKey(junction.hex) === key)
+    ? JUNCTION_SPEC.lineSlots
+    : LINE_SLOTS_PER_OBJECT;
 }
 
 // --- money ------------------------------------------------------------------
@@ -141,8 +141,16 @@ export function moneyNote(state: GameState, costPln: number): Diagnosis {
 
 // --- sites ------------------------------------------------------------------
 
-/** Site rules every point object shares (01 §3.2, 02 §8.1, engine queueObject). */
-export function siteNote(state: GameState, hex: HexCoord): Diagnosis {
+/**
+ * Site rules every point object shares (01 §3.2, 02 §8.1, engine queueObject).
+ * `lineSlots` is the slot budget of the object being placed — six for every
+ * one of them except a junction station, which has twelve (01 §5.4).
+ */
+export function siteNote(
+  state: GameState,
+  hex: HexCoord,
+  lineSlots: number = LINE_SLOTS_PER_OBJECT,
+): Diagnosis {
   if (!isInsideMap(state.map, hex)) return `${NO} heks poza mapą`;
   const terrain = terrainAt(state, hex);
   if (TERRAIN[terrain].object === null) {
@@ -153,8 +161,8 @@ export function siteNote(state: GameState, hex: HexCoord): Diagnosis {
   // 01 §3.3 (0.19): every route crossing the site is cut on the object the day
   // it stands, and each cut ends in it twice. More ends than slots = no site.
   const ends = linesAtHex(state, key, new Set([...objectHexKeys(state), key]));
-  if (ends > LINE_SLOTS_PER_OBJECT) {
-    return `${NO} linie przez heks zajmą ${formatNumber(ends)} przyłączy — obiekt ma ${formatNumber(LINE_SLOTS_PER_OBJECT)}`;
+  if (ends > lineSlots) {
+    return `${NO} linie przez heks zajmą ${formatNumber(ends)} przyłączy — obiekt ma ${formatNumber(lineSlots)}`;
   }
   return null;
 }

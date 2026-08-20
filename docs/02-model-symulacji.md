@@ -1,10 +1,16 @@
 # ElectroNation — Model symulacji uproszczonej (silnik tury)
 
-**Wersja:** 0.5
+**Wersja:** 0.6
 **Data:** 2026-08-19
 **Status:** **obowiązuje** — formalizuje rdzeń mechaniki z dokumentu 01 §4 (graf sieci,
 rozpływ, straty, niedobory) oraz krok rozstrzygnięcia tury. Wprowadzona tu zmiana 01 §4.1
 (nadwyżka sterowalna karana) obowiązuje od 01 v0.16.
+
+**Zmiany 0.5 → 0.6 (stacja rozdzielcza bez przepustowości):** §2 — jedynym węzłem
+z własną przepustowością zostaje **przyłącze graniczne**; stacja rozdzielcza przepuszcza
+wszystko, co przyniosą linie, i ma 12 przyłączy bez rozbudowy (01 §4.3, §5.4 w 0.21).
+Rachunek rozpływu bez zmian — ubywa tylko jedno ograniczenie węzłowe; §9.6 przepisany
+z „cienkiej stacji" na cienki korytarz.
 
 **Zmiany 0.4 → 0.5 (linia przerywana na obiekcie):** §2 — rozpad linii na segmenty
 przestaje być wyłącznie operacją grafu: gotowa linia jest **przecięta na mijanym obiekcie
@@ -59,9 +65,9 @@ uzupełniające katalogi 01 §5 zebrane w §8 są **baseline'em dla dokumentów 
 
 - **Węzły** = wszystkie obiekty punktowe (01 §3.3): elektrownie, farmy OZE, magazyny,
   stacje rozdzielcze, miasta, przyłącza graniczne. Węzeł ma limit przyłączy liniowych
-  (6; stacja do 18). **Przepustowość węzła [MW]** mają tylko stacje rozdzielcze
-  i przyłącza graniczne — suma mocy przepływającej przez węzeł ≤ limit (01 §4.3).
-  Pozostałe węzły nie ograniczają przepływu.
+  (6; stacja rozdzielcza 12 — 01 §5.4 w 0.21). **Przepustowość węzła [MW]** ma od 0.21
+  już tylko **przyłącze graniczne** — suma mocy przepływającej przez nie ≤ limit
+  (01 §5.7). Pozostałe węzły, stację rozdzielczą włącznie, przepływu nie ograniczają.
 - **Krawędzie** = linie przesyłowe: typ (NN/SN/WN → przepustowość 150/500/1500 MW),
   długość w heksach trasy (1 heks = 25 km), współczynnik strat typu (4/2/1% na 100 km,
   01 §4.2). Straty krawędzi: `sprawność = 1 − k_strat × długość_km / 100`.
@@ -235,7 +241,8 @@ koszcie rosnącym z odległością sprawia, że miasta bliskie źródłom i mias
 na trasie linii konsumują pierwsze, a niedobór kumuluje się w miastach dalekich,
 za wąskimi gardłami lub za innymi miastami. Dotyczy obu przyczyn niedoboru:
 
-- **sieciowej** (linia/stacja za cienka) — niedobór lokalny za wąskim gardłem,
+- **sieciowej** (linia za cienka, przyłącze graniczne wyczerpane) — niedobór lokalny
+  za wąskim gardłem,
 - **systemowej** (za mało mocy w puli) — pula wyczerpuje się na bliskich odbiorach,
   niedobór spada na najdalsze miasta (straty dodatkowo pogłębiają efekt: dostawa
   daleko „kosztuje" pulę więcej na każdą dostarczoną MWh).
@@ -298,7 +305,7 @@ Przykład: bateria 100 MW / 200 MWh = 160 + 220 = **380 mln zł**, budowa 1 doba
 | Bateria | 40 tys. zł/MW/rok (od mocy) |
 | Szczytowo-pompowa | 80 tys. zł/MW/rok |
 | Linie | 1,5% CAPEX-u/rok (NN ~18 / SN ~37,5 / WN ~90 tys. zł/km/rok) |
-| Stacja rozdzielcza, przyłącze graniczne | 2% CAPEX-u/rok |
+| Stacja rozdzielcza (60 mln zł → 1,2 mln zł/rok), przyłącze graniczne | 2% CAPEX-u/rok |
 
 Naliczanie dobowe: roczne / 365 × liczba reprezentowanych dni doby (01 §6).
 
@@ -307,7 +314,7 @@ Naliczanie dobowe: roczne / 365 × liczba reprezentowanych dni doby (01 §6).
 **DECYZJA (9):** rozbudowa = **70% czasu** i **85% CAPEX-u** nowej lokalizacji
 (jednakowo dla wszystkich technologii). Limity: elektrownie sterowalne **6 bloków
 na heks**; farmy OZE do limitu mocy heksa: **wiatr 300 MW, PV 200 MW**; magazyny
-i stacje wg tabel (§8.2, 01 §5.4).
+wg tabel (§8.2). Stacji rozdzielczej nie rozbudowuje się w ogóle (01 §5.4 w 0.21).
 
 **Rozszerzenie (01 §4.2 w 0.17): reguła obejmuje też linie.** Rozbudowa gotowej linii do
 wyższego typu (NN→SN→WN, tylko w górę) kosztuje **85% CAPEX-u** i trwa **70% czasu** nowej
@@ -346,8 +353,9 @@ Testy specyfikacyjne cytują sekcje tego dokumentu:
    w dalszym.
 5. **§6** — tap w przelocie: miasto mijane przez linię konsumuje przed odbiorami
    za nim.
-6. **§2** — wąskie gardło węzła: „grube linie, cienka stacja" (3×500 MW w stację
-   250 MW) → przepływ przez węzeł ≤ 250 MW (01 §4.3).
+6. **§2** — wąskie gardło korytarza: dwie linie SN po 500 MW zebrane w linię NN
+   150 MW → przepływ ≤ 150 MW (01 §4.2). Ograniczenie węzłowe pozostaje wyłącznie
+   na przyłączu granicznym (01 §5.7); stacja rozdzielcza nie ogranicza niczego.
 7. **§4** — priorytety: przy ciasnej sieci ładowanie i eksport nie odbierają miastom
    ani MW (porównanie przebiegów).
 8. **§5** — zrzut: kara tylko od sterowalnych; zrzut OZE darmowy; paliwo naliczone

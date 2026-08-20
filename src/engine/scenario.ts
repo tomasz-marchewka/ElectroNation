@@ -3,7 +3,7 @@
 // minimal scenario below is the bare skeleton kept for tests and for anything
 // that needs a map without geography. City names are player-facing, hence Polish.
 
-import { JUNCTION_SPEC, LINE_TYPES, type TerrainId, type WindClass } from "./config";
+import { LINE_TYPES, type TerrainId, type WindClass } from "./config";
 import { DEFAULT_MAP_SIZE, type MapSize } from "./map";
 import type { HexCoord } from "./network";
 import type {
@@ -19,11 +19,9 @@ import type {
 
 /**
  * Fields a scenario may leave out because they follow from the object itself:
- * a scenario plant is one block unless it says otherwise, and a scenario
- * junction has the base number of line slots.
+ * a scenario plant is one block unless it says otherwise.
  */
 export type ScenarioPlant = Omit<PlantState, "blocks"> & { blocks?: number };
-export type ScenarioJunction = Omit<JunctionState, "lineSlots"> & { lineSlots?: number };
 
 export interface Scenario {
   startingMoneyPln: number;
@@ -31,7 +29,7 @@ export interface Scenario {
   plants: ScenarioPlant[];
   farms: FarmState[];
   storages: StorageState[];
-  junctions: ScenarioJunction[];
+  junctions: JunctionState[];
   borders: BorderState[];
   lines: LineState[];
   /** Map bounds (01 §3.1); missing = the small 24×16 grid of 02 §8.6. */
@@ -145,10 +143,7 @@ export function scenarioToStateFields(
       plants: scenario.plants.map((plant) => ({ ...plant, blocks: plant.blocks ?? 1 })),
       farms: scenario.farms,
       storages: scenario.storages,
-      junctions: scenario.junctions.map((junction) => ({
-        ...junction,
-        lineSlots: junction.lineSlots ?? JUNCTION_SPEC.lineSlots,
-      })),
+      junctions: scenario.junctions,
       borders: scenario.borders,
       lines: scenario.lines,
       constructions: [],

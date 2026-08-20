@@ -216,14 +216,30 @@ describe("catalogue — prices carry the terrain multiplier (02 §8.1)", () => {
     });
     const { container } = renderPanel(newGame(7, crossed), at(2, 1));
 
-    expect(entry(container, "Stacja rozdzielcza").disabled).toBe(true);
+    expect(entry(container, "CCGT").disabled).toBe(true);
     expect(container.textContent).toContain("linie przez heks zajmą 8 przyłączy");
-    // Three of them leave room: 6 ends, 6 slots.
+    // The same corridor is a site for a junction station: 8 ends, 12 slots (0.21).
+    expect(entry(container, "Stacja rozdzielcza").disabled).toBe(false);
+    // Three of them leave room for any object: 6 ends, 6 slots.
     const thinner = fixture({
       lines: Array.from({ length: 3 }, (_, index) => finishedLine(`line-${index}`, "mv", corridor)),
     });
     const room = renderPanel(newGame(7, thinner), at(2, 1));
-    expect(entry(room.container, "Stacja rozdzielcza").disabled).toBe(false);
+    expect(entry(room.container, "CCGT").disabled).toBe(false);
+  });
+
+  test("even a junction station runs out of slots (01 §5.4, 0.21)", () => {
+    // Seven routes crossing (2,1) = 14 ends against the station's 12. Types are
+    // mixed so the corridor itself stays legal (⩽9 of one type per hex).
+    const corridor = [at(1, 1), at(2, 1), at(3, 1)];
+    const lines = [
+      ...Array.from({ length: 4 }, (_, i) => finishedLine(`mv-${i}`, "mv", corridor)),
+      ...Array.from({ length: 3 }, (_, i) => finishedLine(`lv-${i}`, "lv", corridor)),
+    ];
+    const { container } = renderPanel(newGame(7, fixture({ lines })), at(2, 1));
+
+    expect(entry(container, "Stacja rozdzielcza").disabled).toBe(true);
+    expect(container.textContent).toContain("linie przez heks zajmą 14 przyłączy — obiekt ma 12");
   });
 
   test("an entry the budget cannot reach says how much is missing", () => {
@@ -457,6 +473,17 @@ describe("alerts — the panel points at the tight spot (01 §8 pt 1, pt 6)", ()
     expect(container.querySelector(".en-map__highlight")).toBeNull();
     await userEvent.click(action("POKAŻ WĄSKIE GARDŁO"));
     expect(container.querySelector(".en-map__highlight")).not.toBeNull();
+  });
+
+  test("a junction station shows no meter and nothing to expand (01 §4.3, 0.21)", () => {
+    const withJunction = fixture({
+      junctions: [{ id: "junction-1", name: "Węzeł", hex: at(2, 1) }],
+    });
+    const { container } = renderPanel(newGame(7, withJunction), at(2, 1));
+
+    expect(value(container, "PRZEPUSTOWOŚĆ")).toBe("bez ograniczeń");
+    expect(value(container, "PRZYŁĄCZA")).toBe("0 / 12");
+    expect(screen.queryByText(/ROZBUDUJ/)).toBeNull();
   });
 
   test("a healthy object neither alerts nor offers the bottleneck", async () => {

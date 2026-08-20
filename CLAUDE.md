@@ -186,9 +186,15 @@ npx vitest run <path>  # single test file (add -t "name" for one test)
 npm run goldens:update # re-record golden scenarios — review the diff!
 npm run e2e            # Playwright smoke (first run: npx playwright install chromium)
 npm run lint           # ESLint (includes the engine-wall rules)
+npm run format:check   # Prettier, read-only (npm run format writes)
 npm run typecheck      # tsc for app + engine (the no-DOM wall)
 npm run build          # typecheck + production bundle
+npm run check          # everything CI runs except e2e — the pre-merge sweep
 ```
+
+`git push` runs lint + format:check on its own (`.githooks/pre-push`, wired by
+the `prepare` script). `npm run check` adds typecheck, tests and build; only
+the Playwright smoke stays CI-only, because it needs the browser download.
 
 Prototype (throwaway, static files):
 

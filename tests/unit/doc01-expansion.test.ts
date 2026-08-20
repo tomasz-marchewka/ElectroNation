@@ -10,6 +10,7 @@ import {
   type Action,
   type FarmState,
   type GameState,
+  type LineType,
   type Scenario,
 } from "../../src/engine";
 
@@ -69,7 +70,7 @@ function makeScenario(overrides: Partial<Scenario> = {}): Scenario {
         setpoint: { mode: "idle", mw: 0 },
       },
     ],
-    junctions: [{ id: "junction-1", name: "J1", hex: { q: 8, r: 0 }, throughputMw: 250 }],
+    junctions: [{ id: "junction-1", name: "J1", hex: { q: 8, r: 0 } }],
     borders: [
       {
         id: "border-1",
@@ -215,22 +216,12 @@ describe("doc 01 §7: hard site limits, counting work already queued", () => {
     expect(pumped()?.capacityMwh).toBe(10_000);
   });
 
-  test("doc 01 §5.4: junction modules add 250 MW and 2 line slots, 6 modules max", () => {
-    let state = newGame(7, makeScenario());
-    const before = state.moneyPln;
-    state = apply(state, { type: "expandJunction", junctionId: "junction-1" });
-    expect(before - state.moneyPln).toBe(JUNCTION_SPEC.moduleCapexPln);
-    state = run(state, TURNS_PER_DAY);
-    expect(state.junctions[0]?.throughputMw).toBe(500);
-    expect(state.junctions[0]?.lineSlots).toBe(8);
-
-    for (let i = 0; i < 5; i++) {
-      state = apply(state, { type: "expandJunction", junctionId: "junction-1" });
-    }
-    expect(apply(state, { type: "expandJunction", junctionId: "junction-1" })).toBe(state);
-    state = run(state, TURNS_PER_DAY);
-    expect(state.junctions[0]?.throughputMw).toBe(1_750);
-    expect(state.junctions[0]?.lineSlots).toBe(18);
+  test("doc 01 §5.4 (0.21): a junction station has nothing to expand", () => {
+    const state = newGame(7, makeScenario());
+    // No throughput, no modules — the object is a site and 12 line slots.
+    expect(state.junctions[0]).toStrictEqual({ id: "junction-1", name: "J1", hex: { q: 8, r: 0 } });
+    expect(JUNCTION_SPEC.capexPln).toBe(60_000_000);
+    expect(JUNCTION_SPEC.lineSlots).toBe(12);
   });
 
   test("doc 01 §5.7: a border module adds 500 MW for 0.7 mld in 2 days", () => {
@@ -252,15 +243,16 @@ describe("doc 01 §7: hard site limits, counting work already queued", () => {
     expect(apply(base, { type: "expandPumpedStorage", storageId: "battery-1" })).toBe(base);
     expect(apply(base, { type: "expandPlant", plantId: "plant-1", capacityMw: 600 })).toBe(base); // > CCGT block size
     const poor = { ...base, moneyPln: 1_000 };
-    expect(apply(poor, { type: "expandJunction", junctionId: "junction-1" })).toBe(poor);
+    expect(apply(poor, { type: "expandBorder", borderId: "border-1" })).toBe(poor);
   });
 });
 
 describe("doc 01 §3.3 / §5.4: line slots are a per-object limit", () => {
-  // A junction ringed by eight farms, each two hexes away, so only the
-  // junction's own slot count can be the binding constraint. Routes are written
-  // around the junction and then shifted inland, because every hex of a route
-  // has to be a hex of the map (01 §3.1).
+  // A junction station ringed by thirteen farms, each two hexes away, so only
+  // the station's own slot count can be the binding constraint. Routes are
+  // written around the junction and then shifted inland, because every hex of a
+  // route has to be a hex of the map (01 §3.1). Types are spread over the ring
+  // so the ≤9-lines-of-one-type-per-hex rule (01 §3.3) never fires first.
   const JUNCTION_HEX = { q: 5, r: 3 };
   const shift = (hex: { q: number; r: number }) => ({
     q: hex.q + JUNCTION_HEX.q,
@@ -268,6 +260,7 @@ describe("doc 01 §3.3 / §5.4: line slots are a per-object limit", () => {
   });
   const ROUTES: { q: number; r: number }[][] = (
     [
+      // Six corners of the ring, one per axial direction.
       [
         { q: 2, r: 0 },
         { q: 1, r: 0 },
@@ -298,14 +291,39 @@ describe("doc 01 §3.3 / §5.4: line slots are a per-object limit", () => {
         { q: 0, r: 1 },
         { q: 0, r: 0 },
       ],
+      // Six edges between them, each entering through a neighbouring hex.
       [
-        { q: 3, r: 0 },
-        { q: 2, r: 0 },
+        { q: 2, r: -1 },
         { q: 1, r: 0 },
         { q: 0, r: 0 },
       ],
       [
-        { q: 4, r: 0 },
+        { q: 1, r: -2 },
+        { q: 1, r: -1 },
+        { q: 0, r: 0 },
+      ],
+      [
+        { q: -1, r: -1 },
+        { q: 0, r: -1 },
+        { q: 0, r: 0 },
+      ],
+      [
+        { q: -2, r: 1 },
+        { q: -1, r: 0 },
+        { q: 0, r: 0 },
+      ],
+      [
+        { q: -1, r: 2 },
+        { q: -1, r: 1 },
+        { q: 0, r: 0 },
+      ],
+      [
+        { q: 1, r: 1 },
+        { q: 0, r: 1 },
+        { q: 0, r: 0 },
+      ],
+      // The thirteenth, from outside the ring — one slot too many.
+      [
         { q: 3, r: 0 },
         { q: 2, r: 0 },
         { q: 1, r: 0 },
@@ -313,6 +331,8 @@ describe("doc 01 §3.3 / §5.4: line slots are a per-object limit", () => {
       ],
     ] as { q: number; r: number }[][]
   ).map((route) => route.map(shift));
+
+  const TYPES: LineType[] = ROUTES.map((_, i) => (i < 6 ? "lv" : i < 12 ? "mv" : "hv"));
 
   const ringScenario: Scenario = {
     startingMoneyPln: 10_000_000_000,
@@ -324,25 +344,31 @@ describe("doc 01 §3.3 / §5.4: line slots are a per-object limit", () => {
       return windFarm(`farm-${i}`, end.q, end.r);
     }),
     storages: [],
-    junctions: [{ id: "junction-1", name: "J1", hex: JUNCTION_HEX, throughputMw: 250 }],
+    junctions: [{ id: "junction-1", name: "J1", hex: JUNCTION_HEX }],
     borders: [],
     lines: [],
   };
 
-  test("a junction takes 6 lines, and 2 more per capacity module", () => {
-    let state = newGame(7, ringScenario);
-    expect(state.junctions[0]?.lineSlots).toBe(6);
-    for (const path of ROUTES) {
-      state = apply(state, { type: "buildLine", lineType: "lv", path });
+  const buildRoutes = (state: GameState, indices: number[]): GameState => {
+    let current = state;
+    for (const i of indices) {
+      const path = ROUTES[i];
+      const lineType = TYPES[i];
+      if (!path || !lineType) throw new Error("fixture");
+      current = apply(current, { type: "buildLine", lineType, path });
     }
-    expect(state.lines).toHaveLength(6); // routes 7 and 8 refused
+    return current;
+  };
 
-    state = apply(state, { type: "expandJunction", junctionId: "junction-1" });
-    state = run(state, TURNS_PER_DAY);
-    for (const path of ROUTES.slice(6)) {
-      state = apply(state, { type: "buildLine", lineType: "lv", path });
-    }
-    expect(state.lines).toHaveLength(8);
+  test("a junction station takes 12 lines and refuses the thirteenth", () => {
+    const all = [...ROUTES.keys()];
+    const state = buildRoutes(newGame(7, ringScenario), all);
+    expect(state.lines).toHaveLength(JUNCTION_SPEC.lineSlots);
+    expect(JUNCTION_SPEC.lineSlots).toBe(12);
+
+    // The refusal is the slot count, not the route: with a slot free it fits.
+    const roomLeft = buildRoutes(newGame(7, ringScenario), all.slice(0, 11));
+    expect(buildRoutes(roomLeft, [12]).lines).toHaveLength(12);
   });
 });
 

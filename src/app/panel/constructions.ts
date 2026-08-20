@@ -42,8 +42,6 @@ function expandedName(state: GameState, pending: PendingObject): string {
     case "batteryExpansion":
     case "pumpedExpansion":
       return named(state.storages, pending.storageId);
-    case "junctionExpansion":
-      return named(state.junctions, pending.junctionId);
     case "borderExpansion":
       return named(state.borders, pending.borderId);
     default:
