@@ -48,6 +48,7 @@ import { buildTurnDigest, coverageIndex } from "./history";
 import {
   buildSegments,
   emptyResidual,
+  hexKey,
   runFlowPass,
   type FlowSink,
   type FlowSource,
@@ -67,6 +68,7 @@ import {
   isLineBuilt,
   type CityState,
   type GameState,
+  type LineState,
   type SourceKind,
   type StorageMode,
   type TurnCityReport,
@@ -255,6 +257,16 @@ function yearlyFixedCostsPln(state: GameState): number {
  * advances the calendar; after the free day's last turn, evaluates monthly
  * city growth, then rolls the next day and generates its truth.
  */
+/**
+ * Whether a finished line already touches this hex — the test an object faces
+ * the day it is raised (01 §5.2 in 0.23). A line still being strung does not
+ * count: it carries nothing yet.
+ */
+function connectedHex(lines: readonly LineState[], hex: HexCoord): boolean {
+  const key = hexKey(hex);
+  return lines.some((line) => isLineBuilt(line) && line.path.some((step) => hexKey(step) === key));
+}
+
 export function resolveTurn(state: GameState): GameState {
   const truth = state.dayTruth;
   const startHour = state.calendar.turnIndex * HOURS_PER_TURN;
@@ -390,11 +402,11 @@ export function resolveTurn(state: GameState): GameState {
   let fuelCostPln = 0;
   let importCostPln = 0;
   let ensPenaltyPln = 0;
-  let dumpPenaltyPln = 0;
   let totalDemandMw = 0;
   let totalDeliveredMw = 0;
   let totalEnsMw = 0;
   let dumpMw = 0;
+  let resCurtailedMw = 0;
   const cityReports: TurnCityReport[] = [];
 
   const cities = state.cities.map((city): CityState => {
@@ -426,11 +438,23 @@ export function resolveTurn(state: GameState): GameState {
     const available = Math.min(plant.setpointMw, plant.capacityMw);
     const used = usedTotal.get(plant.id) ?? 0;
     costsPln += used * hours * PLANT_TECHS[plant.tech].varCostPlnPerMwh;
-    costsPln += Math.max(0, available - used) * hours * CONFIG.dumpPenaltyPlnPerMwh;
     fuelCostPln += used * hours * PLANT_TECHS[plant.tech].varCostPlnPerMwh;
-    dumpPenaltyPln += Math.max(0, available - used) * hours * CONFIG.dumpPenaltyPlnPerMwh;
     dumpMw += Math.max(0, available - used);
   }
+  // Production nobody took, from farms this time (01 §4.1 in 0.23). The flow
+  // uses RES first — it costs 0 — so RES is curtailed LAST: this only bites
+  // when the weather alone outruns everything the network can absorb, or when
+  // a bottleneck strands a farm. A farm switched off produces nothing and so
+  // owes nothing; that toggle is the player's whole lever here (01 §5.2).
+  for (const farm of state.farms) {
+    resCurtailedMw += Math.max(0, (farmBlockMw.get(farm.id) ?? 0) - (usedTotal.get(farm.id) ?? 0));
+  }
+  // ONE penalty over the total surplus, whichever technology produced it
+  // (01 §4.1 in 0.23; until 0.22 RES was curtailed for free). The two MW
+  // figures stay apart in the report so it can still say where the
+  // overproduction came from.
+  const dumpPenaltyPln = (dumpMw + resCurtailedMw) * hours * CONFIG.dumpPenaltyPlnPerMwh;
+  costsPln += dumpPenaltyPln;
   for (const border of state.borders) {
     costsPln += border.importSetpointMw * hours * CONFIG.importPricePlnPerMwh;
     revenuePln +=
@@ -522,11 +546,6 @@ export function resolveTurn(state: GameState): GameState {
     if (state.plants.some((p) => p.id === sourceId)) return "plant";
     return "import";
   };
-  let resCurtailedMw = 0;
-  for (const farm of state.farms) {
-    resCurtailedMw += Math.max(0, (farmBlockMw.get(farm.id) ?? 0) - (usedTotal.get(farm.id) ?? 0));
-  }
-
   const report: TurnReport = {
     dayIndex: state.calendar.dayIndex,
     turnIndex: state.calendar.turnIndex,
@@ -682,7 +701,13 @@ export function resolveTurn(state: GameState): GameState {
         spawned.plants.push(pending.plant);
         break;
       case "farm":
-        spawned.farms.push(pending.farm);
+        // An object that lands with no line at its hex lands SWITCHED OFF
+        // (01 §5.2 in 0.23). A farm is the only kind this can bite: plants,
+        // storages and border points all arrive at a zero setpoint anyway,
+        // while a farm arrives producing — and since 0.23 production nobody
+        // can take is charged the surplus penalty (§4.1). `lines` and not
+        // `state.lines`: a spur finishing on this very day counts.
+        spawned.farms.push({ ...pending.farm, enabled: connectedHex(lines, pending.farm.hex) });
         break;
       case "storage":
         spawned.storages.push(pending.storage);

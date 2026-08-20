@@ -233,3 +233,137 @@ body,
 .en-sessionbar__file {
   display: none;
 }
+
+/* ── detailed report (turn / day / month / year) ────────
+   Two docks share the map row. On a wide screen the report stands BETWEEN the
+   map and the dispatcher panel; below `--en-report-min-w` there is no honest
+   way to keep both, so the report takes the map's place and the map steps out.
+   The ribbon under them and the panel beside them never move: the report is a
+   second reading of the archive, not a screen of its own (01 §2.3).
+
+   The threshold is spelled out in the media query because a query condition
+   cannot read a custom property; `--en-report-min-w` carries the same number
+   for anything that CAN read it. */
+.en-workspace {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.en-workspace > .en-region--map {
+  flex: 1;
+  min-width: 0;
+}
+
+.en-reportdock {
+  flex: none;
+  width: var(--en-report-w);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--en-bg-panel);
+  border-left: var(--en-border-w) solid var(--en-border);
+  font-family: var(--en-font-mono);
+}
+
+@media (max-width: 1499px) {
+  .en-workspace.has-report > .en-region--map {
+    display: none;
+  }
+
+  .en-workspace.has-report > .en-reportdock {
+    flex: 1;
+    width: auto;
+    border-left: 0;
+  }
+}
+
+.en-reportdock__head {
+  flex: none;
+  padding: var(--en-space-6) var(--en-space-8);
+  border-bottom: var(--en-border-w) solid var(--en-border);
+}
+
+.en-reportdock__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--en-space-4);
+}
+
+.en-reportdock__close {
+  margin-left: auto;
+}
+
+/* Period stepper: ◀ title ▶, the arrows glued to the edges so the title keeps
+   the middle no matter how long the month's name is. */
+.en-reportdock__nav {
+  display: flex;
+  align-items: center;
+  gap: var(--en-space-5);
+  margin-top: var(--en-space-6);
+}
+
+.en-reportdock__title {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--en-fs-display);
+  font-weight: var(--en-fw-bold);
+  color: var(--en-text);
+  line-height: var(--en-lh-tight);
+}
+
+.en-reportdock__title span {
+  display: block;
+  font-size: var(--en-fs-sm);
+  font-weight: var(--en-fw-regular);
+  color: var(--en-text-3);
+  margin-top: var(--en-space-2);
+}
+
+.en-reportdock__coverage {
+  margin-top: var(--en-space-5);
+  font-size: var(--en-fs-micro);
+  color: var(--en-text-4);
+}
+
+.en-reportdock__coverage em {
+  font-style: normal;
+  color: var(--en-ok);
+}
+
+/* Only the rows scroll — the scope switcher and the stepper stay reachable
+   however long the year's ledger gets.
+
+   The sections flow into columns instead of stretching: docked next to the map
+   the report is one 520 px column, but standing IN the map's place it is twice
+   that, and a row of `label ................ 22 MW` reads worse the wider the
+   gap in the middle gets.
+
+   A grid, not `columns`: multi-column inside a scrolling box overflows
+   SIDEWAYS once the sections outgrow the height, and the last section becomes
+   unreachable. The grid grows downward, which is the direction that scrolls. */
+.en-reportdock__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  align-content: start;
+}
+
+.en-repline__note {
+  font-size: var(--en-fs-micro);
+  color: var(--en-text-4);
+}
+
+/* The row that closes a section — the period's bottom line. */
+.en-repline--strong {
+  margin-top: var(--en-space-4);
+  padding-top: var(--en-space-4);
+  border-top: var(--en-border-w) solid var(--en-border-subtle);
+}
+
+.en-repline--strong .en-kv {
+  font-size: var(--en-fs-base);
+  font-weight: var(--en-fw-bold);
+}

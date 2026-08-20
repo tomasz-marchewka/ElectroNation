@@ -204,6 +204,75 @@ describe("doc 01 §2.6 / §4.2: lines build 1 hex per turn (LV) and only then ca
   });
 });
 
+describe("doc 01 §3.3, §5.2 (0.23): a spur may be strung to a site still being raised", () => {
+  /** Queues a wind farm two hexes off the start plant and returns its site. */
+  function queueFarm(state: GameState): { state: GameState; hex: { q: number; r: number } } {
+    const hex = { q: 2, r: 0 };
+    const next = apply(state, {
+      type: "buildFarm",
+      tech: "wind",
+      hex,
+      capacityMw: 100,
+    });
+    expect(next).not.toBe(state);
+    expect(next.constructions).toHaveLength(1);
+    return { state: next, hex };
+  }
+
+  test("a line may end on a construction site, and would not before 0.23", () => {
+    const base = newGame(3, makeScenario());
+    const site = { q: 2, r: 0 };
+    const path = [{ q: 0, r: 0 }, { q: 1, r: 0 }, site];
+
+    // Nothing stands there yet — the route has a dangling end.
+    expect(apply(base, { type: "buildLine", lineType: "lv", path })).toBe(base);
+
+    const queued = queueFarm(base);
+    const routed = apply(queued.state, { type: "buildLine", lineType: "lv", path });
+    expect(routed).not.toBe(queued.state);
+    expect(routed.lines).toHaveLength(1);
+  });
+
+  test("the site books slots, so it cannot collect more ends than it will have", () => {
+    let state = queueFarm(newGame(3, makeScenario())).state;
+    const path = [
+      { q: 0, r: 0 },
+      { q: 1, r: 0 },
+      { q: 2, r: 0 },
+    ];
+    for (let i = 0; i < 7; i++) {
+      state = apply(state, { type: "buildLine", lineType: "lv", path });
+    }
+    // Six slots on the plant and six on the farm site — the seventh is refused.
+    expect(state.lines).toHaveLength(6);
+  });
+
+  test("the farm lands CONNECTED and running when its spur is finished in time", () => {
+    const queued = queueFarm(newGame(3, makeScenario()));
+    let state = apply(queued.state, {
+      type: "buildLine",
+      lineType: "lv",
+      path: [{ q: 0, r: 0 }, { q: 1, r: 0 }, queued.hex],
+    });
+    // LV takes 3 h per hex, the farm one game day: the spur wins the race.
+    state = run(state, TURNS_PER_DAY);
+    const farm = state.farms.find((candidate) => candidate.hex.q === queued.hex.q);
+    expect(farm).toBeDefined();
+    expect(farm?.enabled).toBe(true);
+  });
+
+  test("with no line at its hex the farm lands SWITCHED OFF (01 §5.2 in 0.23)", () => {
+    const queued = queueFarm(newGame(3, makeScenario()));
+    const state = run(queued.state, TURNS_PER_DAY);
+    const farm = state.farms.find((candidate) => candidate.hex.q === queued.hex.q);
+    expect(farm).toBeDefined();
+    // Nothing could take its power, and since 0.23 production nobody takes is
+    // charged the surplus penalty (§4.1) — so it arrives off, not bleeding.
+    expect(farm?.enabled).toBe(false);
+    expect(state.lastTurnReport?.totals.resCurtailedMw).toBe(0);
+  });
+});
+
 describe("doc 01 §3.4: connecting a city is an explicit, paid act", () => {
   function connectMidMonth(): GameState {
     let state = newGame(3, makeScenario());

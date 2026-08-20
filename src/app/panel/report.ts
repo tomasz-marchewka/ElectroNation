@@ -14,6 +14,7 @@ import {
   absoluteTurn,
   digestAt,
   turnForecast,
+  type ForecastComparison,
   type GameState,
   type TurnDigest,
   type TurnForecast,
@@ -60,6 +61,18 @@ function shortfallNote(state: GameState, digest: TurnDigest): string {
   return rest > 0 ? `${head} +${formatNumber(rest)}` : head;
 }
 
+/**
+ * Two forecast bands sharing one unit — `10 ±3 / 7 ±2 MW`. The pair keeps the
+ * slash order of the value above it, so the reader maps band to quantity by
+ * position alone.
+ */
+function bandPair(first: ForecastComparison, second: ForecastComparison): string {
+  return `${formatBand(first.forecastMw, first.bandMw, "").trim()} / ${formatBand(
+    second.forecastMw,
+    second.bandMw,
+  )}`;
+}
+
 export function reportTiles(state: GameState, digest: TurnDigest): ReportTile[] {
   const { totals, finance, forecastMiss } = digest;
   const revenuePln = finance.revenueEnergyPln + finance.revenueExportPln;
@@ -84,9 +97,12 @@ export function reportTiles(state: GameState, digest: TurnDigest): ReportTile[] 
 
   return [
     {
-      label: "WIATR REALNY",
-      value: formatMw(forecastMiss.wind.actualMw),
-      note: `PROGNOZA ${formatBand(forecastMiss.wind.forecastMw, forecastMiss.wind.bandMw)}`,
+      // Both weather-driven technologies in one tile: the strip has seven
+      // columns and PV is exactly as much of the bet as wind is (01 §2.4).
+      // Slash order is wind first, PV second, in the label and in the note.
+      label: "WIATR / PV REALNE",
+      value: `${formatNumber(forecastMiss.wind.actualMw)} / ${formatMw(forecastMiss.pv.actualMw)}`,
+      note: `PROGNOZA ${bandPair(forecastMiss.wind, forecastMiss.pv)}`,
       tone: "info",
     },
     {
@@ -113,10 +129,11 @@ export function reportTiles(state: GameState, digest: TurnDigest): ReportTile[] 
     },
     {
       label: "KARY",
-      // Dumping dispatchable surplus is penalized too (02 §5) — the handoff
-      // predates that rule and only knew the ENS penalty.
+      // Surplus is penalized too (02 §5) — the handoff predates that rule and
+      // only knew the ENS penalty. Since 0.23 the surplus penalty covers RES
+      // as well, so the note says NADWYŻKA, not ZRZUT.
       value: formatSignedMoneyPln(-penaltyPln),
-      note: `ENS ${formatMoneyPln(finance.ensPenaltyPln)} · ZRZUT ${formatMoneyPln(finance.dumpPenaltyPln)}`,
+      note: `ENS ${formatMoneyPln(finance.ensPenaltyPln)} · NADWYŻKA ${formatMoneyPln(finance.dumpPenaltyPln)}`,
       tone: penaltyPln > 0 ? "danger" : undefined,
     },
     {

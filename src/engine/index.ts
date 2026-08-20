@@ -12,6 +12,7 @@ export {
   sunsetHourAngleDeg,
 } from "./astronomy";
 export {
+  lineEndpointHexKeys,
   lineSlotsAt,
   lineUpgradeCostPln,
   lineUpgradeHours,

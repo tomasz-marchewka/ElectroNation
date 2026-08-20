@@ -1,10 +1,22 @@
 # ElectroNation — Model symulacji uproszczonej (silnik tury)
 
-**Wersja:** 0.7
+**Wersja:** 0.8
 **Data:** 2026-08-20
 **Status:** **obowiązuje** — formalizuje rdzeń mechaniki z dokumentu 01 §4 (graf sieci,
 rozpływ, straty, niedobory) oraz krok rozstrzygnięcia tury. Wprowadzona tu zmiana 01 §4.1
 (nadwyżka sterowalna karana) obowiązuje od 01 v0.16.
+
+**Zmiany 0.7 → 0.8 (kara za nadwyżkę obejmuje OZE; linia do placu budowy):** §5.1 — podstawą kary bilansowej
+jest **suma zrzutu wszystkich źródeł**, nie sama produkcja sterowalna; OZE przestaje być
+przycinane za darmo (01 §4.1 w 0.23). Stawka bez zmian, 400 zł/MWh. §5.2 — wyliczenie
+92. percentyla **zostaje w mocy**: dotyczy nastawy sterowalnych wobec `popyt − OZE`,
+a krańcową nadwyżką jest niemal zawsze blok sterowalny, bo merit order przycina go
+pierwszy. §8 — **końcem trasy linii może być plac budowy**, nie tylko gotowy obiekt
+(01 §3.3 w 0.23): przyłącza rezerwuje się w chwili budowy linii, więc plac nie zbierze
+więcej końców, niż obiekt będzie miał gniazd, a stacja rozdzielcza w budowie liczy się
+od razu jako 12-gniazdowa. Obiekt ukończony bez gotowej linii przy heksie wchodzi
+wyłączony (01 §5.2 w 0.23) — w silniku dotyczy to wyłącznie farmy, bo reszta i tak
+startuje z nastawą zero.
 
 **Zmiany 0.6 → 0.7 (wiatr morski):** §8.1 — tabela terenu dostaje **trzecią kolumnę**:
 morze przyjmuje **farmę wiatrową za ×2,5**, a odmowa `budowa niemożliwa` przestaje
@@ -154,7 +166,8 @@ Kolejność jest częścią kontraktu silnika:
 4. **Rozpływ — przebieg 2: ładowanie magazynów** na przepustowościach rezydualnych.
    Do magazynu wchodzi energia × sprawność ładowania (połowa strat cyklu).
 5. **Rozpływ — przebieg 3: eksport** na tym, co zostało.
-6. **Zrzut i kara** (§5): niewykorzystana produkcja sterowalna i import.
+6. **Zrzut i kara** (§5): niewykorzystana produkcja **wszystkich** źródeł (sterowalne
+   i OZE) oraz import.
 7. **Niedobory i kary** (§6): energia niedostarczona per miasto (wejście do 05 §6.1).
 8. **Finanse tury**: przychód (taryfa × energia dostarczona), koszty zmienne
    (od energii **wykorzystanej**, §5), kara za zrzut, kara za niedobór; postęp budów
@@ -209,11 +222,16 @@ Trzy konsekwencje, które są częścią kontraktu:
 Po przebiegach rozpływu każdemu źródłu zostaje `zrzut = nastawa − wykorzystanie`
 (dla OZE: `produkcja − wykorzystanie`). **DECYZJA (2):**
 
-- **OZE**: zrzut darmowy (bez zmian względem 01 §4.1) — pogoda nie jest winą gracza,
-  a rozpływ i tak używa OZE pierwsze (koszt 0), więc OZE jest przycinane efektywnie
-  ostatnie.
+- **OZE**: zrzut karany tak samo jak sterowalny — **400 zł/MWh** (0.8; uchyla darmowy
+  zrzut OZE). Rozpływ używa OZE pierwsze (koszt 0), więc OZE jest przycinane efektywnie
+  **ostatnie**: kara sięga po nie dopiero, gdy pogoda przerasta cały odbiór sieci albo
+  gdy wąskie gardło odcina farmę. Gracz broni się magazynem, eksportem albo wyłączeniem
+  całej farmy (01 §5.2) — farma wyłączona nie produkuje i nic nie jest winna.
 - **Elektrownie sterowalne**: paliwo płacone **tylko od energii wykorzystanej**;
   każda MWh zrzutu kosztuje **karę bilansową 400 zł/MWh**.
+- **Podstawa kary** = `zrzut sterowalnych + przycięcie OZE`, jedną stawką. Silnik trzyma
+  obie sumy osobno (`dumpMw`, `resCurtailedMw`), żeby raport mógł powiedzieć, skąd wzięła
+  się nadprodukcja, ale nalicza z nich jedną pozycję (`dumpPenaltyPln`).
 - **Import**: kontrakt take-or-pay — **płatny od nastawy** (800 zł/MWh), zrzut bez
   dodatkowej kary (nadmiar importu boli już ceną).
 - **Magazyn**: niewykorzystana nastawa rozładowania po prostu zostaje w magazynie —
@@ -235,6 +253,13 @@ rozsądny zapas, ale nie „zawsze maks". Kontrola skrajności: kara 0 → optim
 4 000 → optimum przy 54. percentylu (chroniczne blackouty). **400 zł/MWh** daje
 asymetrię ~12:1 — blackout boli wielokrotnie mocniej niż zrzut, ale zrzut przestaje
 być darmowy. Parametr do strojenia w dokumencie 03.
+
+**Co zmienia objęcie OZE karą (0.8).** Wyliczenie powyżej dotyczy **nastawy sterowalnych**
+przy danym `popyt − OZE` i zostaje w mocy: OZE jest w merit order pierwsze, więc krańcową
+zrzucaną MWh jest niemal zawsze blok sterowalny, a asymetria 4650:400 nie drgnie. Kara za
+OZE działa na **innej osi decyzyjnej** — nie na nastawie tury, lecz na rozmiarze floty OZE
+wobec sieci i magazynów: opłaca się dokładać farmę tylko dopóty, dopóki jest ją czym
+wyprowadzić i gdzie odłożyć. Do wystrojenia w dokumencie 03 wraz z resztą ekonomii.
 
 Kara jest niższa od taryfy (650), więc nadwyżkę zawsze opłaca się zagospodarować:
 ładowanie magazynu unika kary i przechowuje energię wartą taryfę; eksport daje 150
@@ -405,8 +430,9 @@ Testy specyfikacyjne cytują sekcje tego dokumentu:
    na przyłączu granicznym (01 §5.7); stacja rozdzielcza nie ogranicza niczego.
 7. **§4** — priorytety: przy ciasnej sieci ładowanie i eksport nie odbierają miastom
    ani MW (porównanie przebiegów).
-8. **§5** — zrzut: kara tylko od sterowalnych; zrzut OZE darmowy; paliwo naliczone
-   od wykorzystania; import od nastawy.
+8. **§5** — zrzut: kara od **sumy** zrzutu sterowalnych i przycięcia OZE (0.8); paliwo
+   naliczone od wykorzystania; import od nastawy. Kontrola: farma odcięta od odbioru
+   płaci co turę, farma wyłączona nie płaci nic.
 9. **§5.2** — próba symulacyjna: strategia „zawsze maksymalne nastawy" jest droższa
    od strategii celującej w ~90. percentyl pasma (kara działa).
 10. **§6** — suma energii niedostarczonej per miasto × wagi dób = `1 − U` z 05 §6.1
@@ -449,6 +475,10 @@ Testy specyfikacyjne cytują sekcje tego dokumentu:
 
 - **01 §4.1** — zmiana: „nadwyżka sterowalna przycinana bez kary" → zrzut karany
   (§5); OZE bez zmian. Zaktualizowane w 01 v0.16.
+- **01 §4.1, §5.2, §6** — zmiana (0.8): podstawą kary jest **cała** nadwyżka, OZE
+  włącznie. Zaktualizowane w 01 v0.23.
+- **01 §3.3, §5.2** — zmiana (0.8): linia może kończyć się na placu budowy, a obiekt
+  ukończony bez linii startuje wyłączony. Zaktualizowane w 01 v0.23.
 - **01 §3.2, §5.3, §6, §7** — zaktualizowane w 01 v0.16 wskazaniami na §8 (baseline;
   kanon parametrów przejmą dokumenty 03/04).
 - **03 (ekonomia)** — strojenie: kara bilansowa, take-or-pay importu, koszty stałe,

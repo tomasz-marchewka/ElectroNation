@@ -20,6 +20,8 @@
 
   --en-header-h: 52px;         /* pasek górny */
   --en-panel-w: 400px;         /* panel dyspozytora, prawa krawędź */
+  --en-report-w: 520px;        /* dok raportu szczegółowego, obok mapy */
+  --en-report-min-w: 1500px;   /* poniżej tej szerokości raport wypiera mapę */
   --en-turnbar-cell-py: 5px;   /* oś doby: 8 komórek */
   --en-track-h: 8px;           /* pasek prognozy */
   --en-track-h-sm: 6px;        /* pasek nastawy */

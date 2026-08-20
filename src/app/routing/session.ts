@@ -13,11 +13,12 @@ import {
   LINE_TYPES,
   TURNS_PER_DAY,
   hexKey,
+  lineEndpointHexKeys,
   type GameState,
   type HexCoord,
   type LineType,
 } from "../../engine";
-import { objectHexKeys, routeCostPln, routeNote, type Diagnosis } from "../validate";
+import { routeCostPln, routeNote, type Diagnosis } from "../validate";
 import { findRouteThrough } from "./astar";
 
 /** Build progress a line makes per game day: 8 turns × 3 h (01 §2.6). */
@@ -135,7 +136,8 @@ export function applyRoutingClick(
   const key = hexKey(hex);
   if (key === hexKey(session.from)) return session;
   if (session.target === null) {
-    if (!objectHexKeys(state).has(key)) return session;
+    // A site under construction locks as a target too (01 §3.3 in 0.23).
+    if (!lineEndpointHexKeys(state).has(key)) return session;
     return { ...session, target: hex, hover: null };
   }
   if (key === hexKey(session.target)) return session;
