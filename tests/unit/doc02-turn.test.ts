@@ -1,6 +1,8 @@
 import { describe, expect, test } from "vitest";
 import {
+  CONFIG,
   DAY_WEIGHTS,
+  HOURS_PER_TURN,
   TURNS_PER_DAY,
   applyAction,
   finishedLine,
@@ -78,7 +80,7 @@ describe("doc 02 §5: dump penalty on dispatchable surplus", () => {
     expect(lower.moneyPln - higher.moneyPln).toBe(expected);
   });
 
-  test("RES dump is free: an island wind farm burns no money within a day", () => {
+  test("RES dump costs the same 400 zł/MWh: an island wind farm bleeds (0.23)", () => {
     const scenario = makeScenario({
       cities: [],
       plants: [],
@@ -97,10 +99,47 @@ describe("doc 02 §5: dump penalty on dispatchable surplus", () => {
       ],
     });
     const state = newGame(7, scenario);
-    // 7 turns stay within the day — no fixed costs yet, and all production is
-    // dumped RES, so money must not move at all.
+    // 7 turns stay within the day, so fixed costs are still out of it and the
+    // ONLY thing moving the budget is the surplus penalty on RES nobody took.
+    let current = state;
+    let curtailedMwh = 0;
+    for (let i = 0; i < TURNS_PER_DAY - 1; i++) {
+      current = resolveTurn(current);
+      const report = current.lastTurnReport;
+      if (!report) throw new Error("missing report");
+      // Nothing is connected, so every produced MW is curtailed — and the
+      // dispatchable side of the penalty stays empty, there being no plant.
+      expect(report.totals.dumpMw).toBe(0);
+      curtailedMwh += report.totals.resCurtailedMw * HOURS_PER_TURN;
+    }
+    const penalty = Math.round(curtailedMwh * CONFIG.dumpPenaltyPlnPerMwh * DAY_WEIGHTS.working);
+    expect(penalty).toBeGreaterThan(0);
+    // Rounded per turn in the engine, so allow the accumulated rounding drift.
+    expect(state.moneyPln - current.moneyPln).toBeCloseTo(penalty, -1);
+  });
+
+  test("a farm switched off produces nothing and therefore owes nothing (01 §5.2)", () => {
+    const scenario = makeScenario({
+      cities: [],
+      plants: [],
+      lines: [],
+      farms: [
+        {
+          id: "farm-1",
+          name: "F1",
+          hex: { q: 0, r: 0 },
+          tech: "wind",
+          capacityMw: 200,
+          enabled: false,
+          windClass: "open",
+          solarMultiplier: 1,
+        },
+      ],
+    });
+    const state = newGame(7, scenario);
     let current = state;
     for (let i = 0; i < TURNS_PER_DAY - 1; i++) current = resolveTurn(current);
+    expect(current.lastTurnReport?.totals.resCurtailedMw).toBe(0);
     expect(current.moneyPln).toBe(state.moneyPln);
   });
 });

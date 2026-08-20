@@ -3,6 +3,7 @@ import {
   CONFIG,
   COVERAGE_LAYERS,
   DAY_WEIGHTS,
+  HOURS_PER_TURN,
   TURNS_PER_DAY,
   applyAction,
   digestAt,
@@ -274,9 +275,20 @@ describe("01 §2.3: the bet against the forecast", () => {
     expect(report.forecastMiss.wind.forecastMw).toBeCloseTo(expectedForecast / 3, 2);
     expect(report.forecastMiss.wind.bandMw).toBeCloseTo(expectedBand / 3, 2);
     expect(report.forecastMiss.wind.actualMw).toBeCloseTo(expectedActual / 3, 2);
-    // An island farm dumps everything — free RES curtailment (01 §4.1).
+    // An island farm dumps everything — and since 0.23 pays for it at the same
+    // rate as a dispatchable block dumped at its source (01 §4.1). The engine
+    // knows no RES setpoint, only the on/off switch, so this is what an
+    // unconnected farm costs until a line reaches it or the player turns it off.
     expect(report.totals.resCurtailedMw).toBeCloseTo(expectedActual / 3, 2);
-    expect(report.finance.dumpPenaltyPln).toBe(0);
+    expect(report.totals.dumpMw).toBe(0);
+    expect(report.finance.dumpPenaltyPln).toBe(
+      Math.round(
+        report.totals.resCurtailedMw *
+          HOURS_PER_TURN *
+          CONFIG.dumpPenaltyPlnPerMwh *
+          DAY_WEIGHTS.working,
+      ),
+    );
   });
 
   test("06 §8.6.4: the band is recorded because the reveal destroys it", () => {

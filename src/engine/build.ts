@@ -99,7 +99,7 @@ function occupiedHexKeys(state: GameState): Set<string> {
   return keys;
 }
 
-/** Hexes of completed objects only — valid line endpoints and tap slots. */
+/** Hexes of completed objects only — what cuts a line in two and taps it. */
 function builtObjectHexKeys(state: GameState): Set<string> {
   const keys = new Set<string>();
   const all: { hex: HexCoord }[] = [
@@ -111,6 +111,23 @@ function builtObjectHexKeys(state: GameState): Set<string> {
     ...state.borders,
   ];
   for (const object of all) keys.add(hexKey(object.hex));
+  return keys;
+}
+
+/**
+ * Where a line may END (01 §3.3 in 0.23): completed objects AND sites still
+ * under construction. Running the spur while the object is being raised is the
+ * whole point — an object that arrives with nowhere to send its power is dead
+ * weight, and since 0.23 a farm in that state would also owe the surplus
+ * penalty (§4.1). Slots are booked here and not when the object lands, so a
+ * site cannot collect more line ends than the object will have slots for.
+ */
+export function lineEndpointHexKeys(state: GameState): Set<string> {
+  const keys = builtObjectHexKeys(state);
+  for (const construction of state.constructions) {
+    const hex = pendingHex(construction.pending);
+    if (hex) keys.add(hexKey(hex));
+  }
   return keys;
 }
 
@@ -351,11 +368,21 @@ export function linesAtHex(
   return count;
 }
 
-/** Line slots of the object on this hex — a junction station has double (01 §5.4). */
+/**
+ * Line slots of the object on this hex — a junction station has double
+ * (01 §5.4). A junction still under construction counts as one already: since
+ * 0.23 lines may end on a building site, and the site has to promise the slots
+ * the finished station will actually have.
+ */
 export function lineSlotsAt(state: GameState, key: string): number {
-  return state.junctions.some((j) => hexKey(j.hex) === key)
-    ? JUNCTION_SPEC.lineSlots
-    : LINE_SLOTS_PER_OBJECT;
+  const junction =
+    state.junctions.some((j) => hexKey(j.hex) === key) ||
+    state.constructions.some(
+      (construction) =>
+        construction.pending.kind === "junction" &&
+        hexKey(construction.pending.junction.hex) === key,
+    );
+  return junction ? JUNCTION_SPEC.lineSlots : LINE_SLOTS_PER_OBJECT;
 }
 
 export function buildLine(state: GameState, lineType: LineType, path: HexCoord[]): GameState {
@@ -370,7 +397,9 @@ export function buildLine(state: GameState, lineType: LineType, path: HexCoord[]
     const b = path[i + 1];
     if (!a || !b || !areNeighbors(a, b)) return state;
   }
-  const objectHexes = builtObjectHexKeys(state);
+  // Endpoints and slot accounting run on sites too, not just finished objects
+  // (01 §3.3 in 0.23) — a spur may be strung to an object still being raised.
+  const objectHexes = lineEndpointHexKeys(state);
   const first = path[0];
   const last = path[path.length - 1];
   if (!first || !last) return state;

@@ -297,6 +297,16 @@ test("pełna pętla: nowa gra, budowa, linia, koniec doby, wznowienie po przeła
   await page.locator(".en-catalog__buy", { hasText: "Farma PV" }).click();
   await expect(page.locator(".en-panel")).toContainText("BUDOWA W TOKU");
 
+  // A site still under construction is a legal line target since 0.23
+  // (01 §3.3): the route locks onto it and prices like any other object. This
+  // run leaves it undrawn, so the farm below lands unconnected on purpose.
+  await page.locator("path[data-hex='1,9']").click();
+  await page.getByRole("button", { name: "POPROWADŹ LINIĘ STĄD" }).click();
+  await page.locator("path[data-hex='5,7']").click();
+  await expect(page.locator(".en-map__route")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^ZATWIERDŹ — / })).toBeVisible();
+  await page.keyboard.press("Escape");
+
   // A line routed from the starting plant to Turów (01 §3.3).
   await page.locator("path[data-hex='1,9']").click();
   await page.getByRole("button", { name: "POPROWADŹ LINIĘ STĄD" }).click();
@@ -326,7 +336,10 @@ test("pełna pętla: nowa gra, budowa, linia, koniec doby, wznowienie po przeła
   await expect(page.locator(".en-report__label")).toContainText("TURA 8 · PÓŹNY WIECZ.");
   await page.locator("path[data-hex='5,7']").click();
   await expect(page.locator(".en-panel")).toContainText("Farma PV");
-  await expect(page.locator(".en-panel")).toContainText("praca normalna");
+  // No line was ever drawn to its hex, so it came into the world SWITCHED OFF
+  // (01 §5.2 in 0.23) instead of producing straight into the surplus penalty.
+  await expect(page.locator(".en-panel")).toContainText("PRZYŁĄCZA0 / 6");
+  await expect(page.locator(".en-panel")).toContainText("wyłączona");
 
   // And the session simply goes on from there.
   await page.keyboard.press("Escape");

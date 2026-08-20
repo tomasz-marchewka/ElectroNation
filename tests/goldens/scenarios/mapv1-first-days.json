@@ -7,7 +7,11 @@
   "actions": [
     {
       "beforeTurn": 0,
-      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 60 }
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 60
+      }
     },
     {
       "beforeTurn": 2,
@@ -15,23 +19,37 @@
         "type": "buildFarm",
         "tech": "pv",
         "capacityMw": 60,
-        "hex": { "q": 5, "r": 7 }
+        "hex": {
+          "q": 5,
+          "r": 7
+        }
       }
     },
     {
-      "beforeTurn": 10,
+      "beforeTurn": 2,
       "action": {
         "type": "buildLine",
         "lineType": "lv",
         "path": [
-          { "q": 4, "r": 7 },
-          { "q": 5, "r": 7 }
+          {
+            "q": 4,
+            "r": 7
+          },
+          {
+            "q": 5,
+            "r": 7
+          }
         ]
-      }
+      },
+      "note": "ordered together with the farm, onto its building site (01 §3.3 in 0.23), so the farm lands connected and running instead of switched off (§5.2)"
     },
     {
       "beforeTurn": 12,
-      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 55 }
+      "action": {
+        "type": "setPlantSetpoint",
+        "plantId": "plant-start-ccgt",
+        "mw": 55
+      }
     }
   ]
 }

@@ -1,8 +1,46 @@
 # ElectroNation — Dokument bazowy mechaniki gry
 
-**Wersja:** 0.22 (dokument koncepcyjny)
+**Wersja:** 0.23 (dokument koncepcyjny)
 **Data:** 2026-08-20
 **Status:** obowiązuje **wersja uproszczona** gry; mechaniki odłożone czekają w [90-pomysly-na-przyszlosc.md](90-pomysly-na-przyszlosc.md)
+
+**Zmiany 0.22 → 0.23 (nadwyżka karana bez względu na źródło; linia do budowy):**
+
+1. **Kara bilansowa obejmuje całą nadwyżkę, także OZE** (§4.1, §6; uchyla „zrzut OZE
+   pozostaje bez kary" z 0.16). Stawka bez zmian — **400 zł/MWh** — ale podstawą jest
+   suma nadwyżki wszystkich źródeł, a nie sama produkcja sterowalna. Zasada tury brzmi
+   teraz symetrycznie: **pokryj zapotrzebowanie i nie produkuj ponad nie**, a czym
+   nadprodukowałeś, nie ma znaczenia.
+2. **Kiedy to w ogóle uderza.** Rozpływ bierze OZE pierwsze (koszt zmienny 0), więc OZE
+   jest przycinane **ostatnie** — kara sięga po nie dopiero, gdy sama pogoda przerasta
+   wszystko, co sieć może wchłonąć (miasta + ładowanie magazynów + eksport), albo gdy
+   wąskie gardło odcina farmę od odbioru. To nie jest podatek od posiadania OZE, tylko
+   cena za moc, której nie ma czym wyprowadzić ani gdzie odłożyć.
+3. **Czym gracz się broni.** Ładowanie magazynu i eksport liczą się jako odbiór i karę
+   znoszą (02 §5.2 — eksport daje efektywnie ~550 zł/MWh). Ostatnią deską ratunku jest
+   **wyłączenie całej farmy** (§5.2): farma wyłączona nie produkuje, więc nic nie jest
+   winna. Częściowego zadawania mocy OZE nadal nie ma — to świadomie zostawia narzędzie
+   tępe, bo decyzję trzeba podjąć **przed** ujawnieniem pogody.
+4. **Konsekwencja, którą trzeba przyjąć.** Farma bez wyprowadzenia mocy — postawiona,
+   zanim linia się dobuduje, albo odcięta przez zbyt cienki tor — **kosztuje co turę**,
+   dokładnie tak, jak od 0.16 kosztuje nastawiony blok, którego nie ma czym odebrać.
+   Symetria jest zamierzona: silnik nie zna „nastawy" OZE, ale zna włącznik.
+5. **Kalibracja 92. percentyla stoi** (02 §5.2). Dotyczyła nastawy sterowalnych wobec
+   `popyt − OZE` i nadal jej dotyczy: krańcową nadwyżką prawie zawsze jest blok
+   sterowalny, bo to on jest w merit order ostatni. Kara OZE dokłada osobną presję —
+   na **rozmiar floty OZE względem sieci i magazynów**, nie na nastawę tury.
+6. **Linię wolno poprowadzić do obiektu, który dopiero się buduje** (§3.3, §7). Cel
+   trasy nie musi już stać — wystarczy, że jego budowa jest zlecona i heks zajęty.
+   Przyłącza budowanego obiektu są rezerwowane od razu, więc plac budowy nie zbierze
+   więcej końców linii, niż gotowy obiekt będzie miał gniazd (§5.4). Bez tej zmiany
+   każdy nowy obiekt musiał czekać na wyprowadzenie mocy **po** ukończeniu, a od
+   pkt. 1 taki przestój kosztuje.
+7. **Obiekt, przy którego heksie w chwili ukończenia nie ma gotowej linii, wchodzi do
+   gry WYŁĄCZONY** (§5.2, §7). Dotyczy to w praktyce wyłącznie farmy OZE: elektrownia,
+   magazyn i przyłącze graniczne i tak startują z nastawą zero, a farma startowała
+   produkująca — czyli od pkt. 1 od razu zadłużona. Linia ukończona **tego samego dnia**
+   co obiekt liczy się jako połączenie. Farmę włącza się jednym kliknięciem, gdy
+   wyprowadzenie stanie; jest to świadomie decyzja gracza, a nie automat.
 
 **Zmiany 0.21 → 0.22 (wiatr morski wchodzi do gry):**
 
@@ -571,6 +609,11 @@ typu park narodowy — 90 §2.)*
 
 - **Linie łączą obiekty bezpośrednio** — elektrownię z miastem, farmę z magazynem itd.
   Każdy obiekt jest węzłem sieci; osobnego przyłącza nie ma.
+- **Końcem trasy może być obiekt gotowy albo dopiero budowany** (0.23). Cel wskazuje się
+  na mapie tak samo w obu przypadkach; plac budowy rezerwuje przyłącza od razu, więc nie
+  zbierze więcej końców linii, niż gotowy obiekt będzie miał gniazd. Dzięki temu linia
+  i obiekt powstają równolegle i **obiekt staje gotowy do pracy w dniu ukończenia**, a nie
+  kilka dób później — co od 0.23 ma cenę (§4.1, §5.2).
 - Każdy obiekt ma **6 przyłączy liniowych** — po jednym z każdego sąsiedniego heksa
   (0.12; wcześniej 2 — za mało, krępowało topologię). Każdy obiekt może więc zbierać
   i rozdzielać linie. **Stacja rozdzielcza** pozostaje wyspecjalizowanym węzłem sieci,
@@ -662,12 +705,20 @@ ZUŻYCIE:   zapotrzebowanie miast + ładowanie magazynów + eksport + straty prz
 > PV = 0 (po zachodzie). Dostarczone: 1485 MW → **15 MW niedoboru** w najdalszym mieście.
 > Raport: kara + notatka, że zabrakło zapasu na dolne pasmo prognozy.
 
-- **Produkcja OZE jest niesterowalna** — wynika z pogody. Nadwyżki przycina automatyka
-  (curtailment, bez kary — tracona jest darmowa energia). Jedyna ręczna kontrola gracza
-  (0.13): **wyłączenie/włączenie całej farmy** — częściowego zadawania mocy OZE nie ma.
-- **Nadwyżka produkcji sterowalnej jest przycinana u źródła i karana (0.16, 02 §5):
-  kara bilansowa 400 zł/MWh zrzutu** — nadstawianie „na zapas" ma kosztować. Paliwo
-  płaci się tylko od energii wykorzystanej; import jest take-or-pay (płatny od nastawy).
+- **Każda nadwyżka jest karana — 400 zł/MWh, niezależnie od źródła (0.23, 02 §5;
+  uchyla darmowy zrzut OZE z 0.16).** Podstawą kary jest suma tego, czego rozpływ nie
+  odebrał: nastawa sterowalnych ponad wykorzystanie **plus** produkcja OZE ponad
+  wykorzystanie. Cel tury jest przez to symetryczny: pokryć zapotrzebowanie i **nie
+  produkować ponad nie**. Paliwo płaci się tylko od energii wykorzystanej (zrzucona MWh
+  nie pali paliwa, ale jest karana); import jest take-or-pay (płatny od nastawy).
+- **Produkcja OZE jest niesterowalna** — wynika z pogody, więc jej nadwyżkę przycina
+  automatyka. Rozpływ używa OZE pierwsze (koszt 0), zatem OZE jest przycinane **ostatnie**
+  i kara sięga po nie dopiero, gdy pogoda przerasta cały odbiór sieci albo gdy wąskie
+  gardło odcina farmę. Jedyna ręczna kontrola gracza (0.13): **wyłączenie/włączenie całej
+  farmy** — częściowego zadawania mocy OZE nie ma, a farma wyłączona nie produkuje i nic
+  nie jest winna.
+- **Nadwyżkę zawsze opłaca się zagospodarować, nie zrzucić** (02 §5.2): ładowanie
+  magazynu i eksport liczą się jako odbiór, więc karę znoszą.
 - **Niedobór** — patrz §4.5.
 
 ### 4.2 Linie: przepustowość i straty
@@ -813,7 +864,18 @@ dyspozycyjność, emisje — 90 §3.)*
 
 Źródła pogodozależne: **koszt zmienny ~0**, produkcja **niesterowalna** — wynika z pogody
 wyznaczanej przez [dokument 06](06-model-astronomiczny-i-pogodowy.md) (krzywa mocy turbiny:
-06 §6.3, produkcja PV: 06 §5, reżimy pogodowe: 06 §8). Można je tylko przycinać (§4.1).
+06 §6.3, produkcja PV: 06 §5, reżimy pogodowe: 06 §8). Można je tylko przycinać — a od 0.23
+**przycięcie kosztuje 400 zł/MWh jak każda inna nadwyżka** (§4.1), więc włącznik farmy
+przestaje być formalnością: flota OZE bez sieci i magazynów, które ją odbiorą, jest
+kosztem, nie kapitałem.
+
+**Stan startowy farmy (0.23):** farma ukończona na heksie, przy którym **nie ma gotowej
+linii**, wchodzi do gry **wyłączona** — inaczej płaciłaby karę za nadwyżkę od pierwszej
+tury swojego istnienia, nie mając dokąd oddać ani jednej MWh. Linia ukończona tego samego
+dnia liczy się jako połączenie. Farma z wyprowadzeniem mocy wchodzi **włączona** i od razu
+pracuje. Włączenie po fakcie jest zwykłą akcją gracza — automatu, który sam zapala farmę
+po dociągnięciu linii, nie ma. Pozostałe obiekty startują z nastawą zero i reguła ich
+nie dotyczy.
 
 | Technologia | Typowa farma | CAPEX | Czas budowy (doby gry) | Roczny CF (kontrola: 06 §12) | Charakter |
 |---|---|---|---|---|---|
@@ -936,11 +998,12 @@ konfiguracji.
   wartość wystrojona graniem; parametr scenariusza, weryfikacja w doc 03). Straty przesyłowe
   nie są opłacane — gracz płaci za nie paliwem.
 - **Koszty zmienne:** paliwo od energii **wykorzystanej** (0.16 — zrzucona MWh nie pali
-  paliwa, ale jest karana, §4.1); import take-or-pay (płatny od nastawy).
+  paliwa, ale jest karana, §4.1); import take-or-pay (płatny od nastawy). OZE nie ma
+  kosztu zmiennego, ale od 0.23 ma karę za nadwyżkę.
 - **Koszty stałe:** utrzymanie obiektów [zł/MW/rok], naliczane dobowo (roczne/365 × liczba
   reprezentowanych dni doby); tabela stawek — 02 §8.3 (0.16).
-- **Kary:** energia niedostarczona (§4.5) oraz zrzut energii sterowalnej — 400 zł/MWh
-  (§4.1, 02 §5).
+- **Kary:** energia niedostarczona (§4.5) oraz **nadwyżka — 400 zł/MWh od sumy
+  niewykorzystanej produkcji wszystkich źródeł, sterowalnych i OZE** (0.23; §4.1, 02 §5).
 - **Skalowanie doby:** wynik doby × 10,9 (robocza) / × 8,7 (wolna) — §2.1.
 - **Finansowanie:** wyłącznie kapitał startowy (10 mld zł) i zyski. Kredytów, obligacji
   i bankructwa w wersji uproszczonej nie ma *(90 §5)* — kto wyda wszystko, czeka na wpływy
@@ -1135,7 +1198,7 @@ indeksem ceny.
 | ✅ | **Rozbudowa linii do wyższego typu (0.17)**: NN→SN→WN na tej samej trasie, 85% CAPEX-u / 70% czasu, tylko w górę i tylko dla linii gotowej; linia przesyła na starym typie do końca robót i zajmuje korytarz dla obu typów. Kara 5% za ścieżkę „tanio teraz, grubo później" przyjęta świadomie — strojenie w doc 04 | 4.2, 7 |
 | ✅ | Handoff UI = wskazówka wyłącznie wizualna; wymagania z dokumentów | 8 |
 | ✅ | Algorytm rozpływu: **min-cost flow** w przybliżeniu kolejnych najtańszych ścieżek; priorytet **miasta → magazyny → eksport**; niedobór emergentnie u najdalszych (0.16) | 4.4, 4.5, doc 02 |
-| ✅ | **Kara bilansowa za zrzut sterowalnych 400 zł/MWh** (0.16): paliwo od wykorzystania, import take-or-pay, zrzut OZE darmowy | 4.1, 02 §5 |
+| ✅ | **Kara bilansowa za nadwyżkę 400 zł/MWh** (0.16, rozszerzona w 0.23 na OZE): podstawą jest suma niewykorzystanej produkcji **wszystkich** źródeł; paliwo od wykorzystania, import take-or-pay | 4.1, 02 §5 |
 | ✅ | **Mapa v1 ręczna 24×16, 8–12 miast** (0.16); generator proceduralny — doc 07; parametry uzupełniające (teren, magazyny, koszty stałe, rozbudowa, limity OZE) — 02 §8 | 02 §8 |
 | ✅ | Prototyp: pogoda etapami — krok 1 bez reżimów, krok 2 reżimy z 06 §8 | 12 |
 | ✅ | Import i eksport dostępne od startu | 5.7 |

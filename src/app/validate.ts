@@ -20,6 +20,7 @@ import {
   hexNeighbors,
   isInsideMap,
   isLineBuilt,
+  lineEndpointHexKeys,
   lineUpgradeCostPln,
   linesAtHex,
   routeLinesAtHex,
@@ -103,7 +104,7 @@ export interface HexLineCount {
  * (01 §4.2).
  */
 export function lineCensus(state: GameState): Map<string, HexLineCount> {
-  const objects = objectHexKeys(state);
+  const objects = lineEndpointHexKeys(state);
   const census = new Map<string, HexLineCount>();
   for (const line of state.lines) {
     // The route pays per visit; the key set only keeps it from being added twice.
@@ -289,12 +290,15 @@ export function routeNote(
     const b = path[i + 1];
     if (!a || !b || !areNeighbors(a, b)) return `${NO} trasa musi biec po sąsiednich heksach`;
   }
-  const objects = objectHexKeys(state);
+  // Sites still under construction are legal endpoints since 0.23 (01 §3.3):
+  // the spur may be strung while the object is being raised, so that it is
+  // connected the day it stands.
+  const objects = lineEndpointHexKeys(state);
   const first = path[0];
   const last = path[path.length - 1];
   if (!first || !last) return `${NO} trasa musi łączyć dwa obiekty`;
   if (!objects.has(hexKey(first)) || !objects.has(hexKey(last))) {
-    return `${NO} linia łączy obiekty — wskaż obiekt docelowy`;
+    return `${NO} linia łączy obiekty — wskaż obiekt docelowy lub jego budowę`;
   }
   const census = lineCensus(state);
   for (const [index, hex] of path.entries()) {
