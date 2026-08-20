@@ -7,7 +7,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { applyAction, newGame, type Action, type GameState, type Scenario } from "../../src/engine";
 import { App } from "../../src/app/App";
-import { formatMw, formatSignedMoneyPln } from "../../src/app/format";
+import { formatMw, formatNumber, formatSignedMoneyPln } from "../../src/app/format";
 import { DispatcherPanel } from "../../src/app/panel/DispatcherPanel";
 import { DEFAULT_SEED, useGameStore } from "../../src/app/store/gameStore";
 import { useThemeStore } from "../../src/app/store/themeStore";
@@ -391,7 +391,9 @@ describe("commit — the one action that moves time (01 §2.3)", () => {
     expect(screen.getByText("TURA 1 · NOC")).toBeDefined();
     expect(tileValue(container, "WYNIK TURY")).toBe(formatSignedMoneyPln(report.finance.netPln));
     expect(tileValue(container, "NIEDOBÓR")).toBe(formatMw(report.totals.ensMw));
-    expect(tileValue(container, "WIATR REALNY")).toBe(formatMw(report.forecastMiss.wind.actualMw));
+    expect(tileValue(container, "WIATR / PV REALNE")).toBe(
+      `${formatNumber(report.forecastMiss.wind.actualMw)} / ${formatMw(report.forecastMiss.pv.actualMw)}`,
+    );
     expect(tileValue(container, "DOSTARCZONO")).toContain(formatMw(report.totals.demandMw));
     // The panel has moved on to the next turn's forecast.
     expect(screen.getByText("PROGNOZA · TURA 2")).toBeDefined();

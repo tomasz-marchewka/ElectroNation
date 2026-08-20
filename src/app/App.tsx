@@ -1,6 +1,11 @@
 // The dispatcher screen (01 §8, handoff README "Layout"): top bar → map +
 // docked 400 px panel → time ribbon → full-width report strip.
 //
+// The detailed report joins the map row as a second dock: next to the map on a
+// wide screen, in its place on a narrow one (app-shell.css). The ribbon and the
+// dispatcher panel never move, so the screen keeps being one continuous view
+// (01 §2.3) — the report is a layer of reading, not a screen of its own.
+//
 // The 400 px column has three mutually exclusive states and never shows two of
 // them at once: the dispatcher panel by default, the hex panel while a hex is
 // selected (01 §8 pt 6), and the routing panel while a line is being drawn
@@ -22,6 +27,8 @@ import { HexMapView } from "./map/HexMapView";
 import { buildMapScene, type RoutePreview } from "./map/sceneModel";
 import { DispatcherPanel } from "./panel/DispatcherPanel";
 import { buildReportStrip } from "./panel/report";
+import { ReportView } from "./report/ReportView";
+import { buildPeriodReport } from "./report/reportModel";
 import { planRoute } from "./routing/session";
 import { TimelineView } from "./timeline/TimelineView";
 import { buildTimeline } from "./timeline/timeline";
@@ -53,6 +60,13 @@ export function App() {
   const confirmRouting = useGameStore((store) => store.confirmRouting);
   const showBottleneck = useGameStore((store) => store.showBottleneck);
   const selectedTurn = useGameStore((store) => store.selectedTurn);
+  const reportOpen = useGameStore((store) => store.reportOpen);
+  const reportScope = useGameStore((store) => store.reportScope);
+  const reportAnchor = useGameStore((store) => store.reportAnchor);
+  const toggleReport = useGameStore((store) => store.toggleReport);
+  const closeReport = useGameStore((store) => store.closeReport);
+  const setReportScope = useGameStore((store) => store.setReportScope);
+  const stepReport = useGameStore((store) => store.stepReport);
   const timelineFrom = useGameStore((store) => store.timelineFrom);
   const selectTurn = useGameStore((store) => store.selectTurn);
   const scrollTimeline = useGameStore((store) => store.scrollTimeline);
@@ -87,6 +101,10 @@ export function App() {
     [game, timelineFrom, selectedTurn],
   );
   const strip = useMemo(() => buildReportStrip(game, selectedTurn), [game, selectedTurn]);
+  const periodReport = useMemo(
+    () => (reportOpen ? buildPeriodReport(game, reportScope, reportAnchor) : null),
+    [game, reportOpen, reportScope, reportAnchor],
+  );
 
   // ESC steps back one level: out of routing first, out of the hex panel next,
   // out of a turn being read back last (01 §2.5).
@@ -96,11 +114,12 @@ export function App() {
       const store = useGameStore.getState();
       if (store.routing) cancelRouting();
       else if (store.selectedHex) selectHex(null);
+      else if (store.reportOpen) closeReport();
       else showNow();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [cancelRouting, selectHex, showNow]);
+  }, [cancelRouting, closeReport, selectHex, showNow]);
 
   return (
     <div className="en-app">
@@ -112,16 +131,32 @@ export function App() {
           { label: "WYNIK DOBY", ...dayResultKpi(game) },
           { label: "PROGNOZY", value: forecastSystemKpi(game) },
         ]}
+        actions={
+          <button type="button" className="en-seg" aria-pressed={reportOpen} onClick={toggleReport}>
+            RAPORTY
+          </button>
+        }
       />
 
       <div className="en-body">
         <div className="en-main">
-          <div className="en-region--map" data-region="map">
-            <HexMapView
-              scene={scene}
-              onHexClick={routing ? clickRouting : selectHex}
-              onHexHover={routing ? hoverRouting : undefined}
-            />
+          <div className={reportOpen ? "en-workspace has-report" : "en-workspace"}>
+            <div className="en-region--map" data-region="map">
+              <HexMapView
+                scene={scene}
+                onHexClick={routing ? clickRouting : selectHex}
+                onHexHover={routing ? hoverRouting : undefined}
+              />
+            </div>
+            {reportOpen && (
+              <ReportView
+                model={periodReport}
+                scope={reportScope}
+                onScope={setReportScope}
+                onStep={stepReport}
+                onClose={closeReport}
+              />
+            )}
           </div>
           <TimelineView
             model={timeline}

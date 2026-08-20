@@ -13,7 +13,7 @@ import {
   type GameState,
   type TurnDigest,
 } from "../../../src/engine";
-import { formatBand, formatMw, formatSignedMoneyPln } from "../../../src/app/format";
+import { formatBand, formatMw, formatNumber, formatSignedMoneyPln } from "../../../src/app/format";
 import { reportTiles, reportTitle } from "../../../src/app/panel/report";
 import { makeScenario } from "../../helpers/scenario";
 
@@ -34,7 +34,7 @@ describe("tile order tells cause and effect (ReportStrip.prompt.md)", () => {
   test("weather → delivery → shortfall → money → result", () => {
     const { state, report } = resolved(newGame(7, makeScenario()));
     expect(reportTiles(state, report).map((entry) => entry.label)).toEqual([
-      "WIATR REALNY",
+      "WIATR / PV REALNE",
       "DOSTARCZONO",
       "NIEDOBÓR",
       "PRZYCHÓD",
@@ -47,7 +47,7 @@ describe("tile order tells cause and effect (ReportStrip.prompt.md)", () => {
 });
 
 describe("the bet against the forecast", () => {
-  test("wind names what came in and what was promised, band and all", () => {
+  test("wind AND PV name what came in and what was promised, bands and all", () => {
     const { state, report } = resolved(
       newGame(7, {
         ...makeScenario(),
@@ -65,12 +65,14 @@ describe("the bet against the forecast", () => {
         ],
       }),
     );
-    const wind = tile(state, report, "WIATR REALNY");
+    const res = tile(state, report, "WIATR / PV REALNE");
+    const { wind, pv } = report.forecastMiss;
 
-    expect(report.forecastMiss.wind.bandMw).toBeGreaterThan(0);
-    expect(wind.value).toBe(formatMw(report.forecastMiss.wind.actualMw));
-    expect(wind.note).toBe(
-      `PROGNOZA ${formatBand(report.forecastMiss.wind.forecastMw, report.forecastMiss.wind.bandMw)}`,
+    expect(wind.bandMw).toBeGreaterThan(0);
+    // Slash order is wind first, PV second, in the value and in the band pair.
+    expect(res.value).toBe(`${formatNumber(wind.actualMw)} / ${formatMw(pv.actualMw)}`);
+    expect(res.note).toBe(
+      `PROGNOZA ${formatBand(wind.forecastMw, wind.bandMw, "").trim()} / ${formatBand(pv.forecastMw, pv.bandMw)}`,
     );
   });
 });
@@ -121,7 +123,7 @@ describe("money — every tile traceable to the report", () => {
     expect(tile(state, report, "KARY").value).toBe(
       formatSignedMoneyPln(-(finance.ensPenaltyPln + finance.dumpPenaltyPln)),
     );
-    expect(tile(state, report, "KARY").note).toContain("ZRZUT");
+    expect(tile(state, report, "KARY").note).toContain("NADWYŻKA");
     expect(tile(state, report, "WYNIK TURY").value).toBe(formatSignedMoneyPln(finance.netPln));
   });
 

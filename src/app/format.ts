@@ -71,6 +71,19 @@ export function formatMwh(mwh: number, fractionDigits = 0): string {
   return `${formatNumber(mwh, fractionDigits)} MWh`;
 }
 
+/**
+ * Energy at a scale a human reads without counting digits: MWh up to 9 999,
+ * GWh up to 9 999, TWh above that. Period reports sum whole game years, where
+ * raw MWh runs to eight digits — the same reason `formatMoneyPln` picks a scale
+ * instead of printing every złoty.
+ */
+export function formatEnergy(mwh: number): string {
+  const magnitude = Math.abs(mwh);
+  if (magnitude >= 1e7) return `${formatNumber(mwh / 1e6, 2)} TWh`;
+  if (magnitude >= 1e4) return `${formatNumber(mwh / 1e3, 1)} GWh`;
+  return formatMwh(Math.round(mwh));
+}
+
 /** `62` → `"62%"`. The value is already in percent, not a fraction. */
 export function formatPercent(percent: number, fractionDigits = 0): string {
   return `${formatNumber(percent, fractionDigits)}%`;

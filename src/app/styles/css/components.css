@@ -13,6 +13,7 @@
 .en-topbar__ctx { color: var(--en-text-3); }
 .en-topbar__ctx em { font-style: normal; color: var(--en-info); }
 .en-topbar__kpis { margin-left: auto; display: flex; gap: var(--en-space-10); }
+.en-topbar__actions { display: flex; align-items: center; gap: var(--en-space-4); }
 .en-kpi { color: var(--en-text-3); }
 .en-kpi b { color: var(--en-text); font-weight: var(--en-fw-bold); }
 .en-kpi b.is-ok { color: var(--en-ok); }

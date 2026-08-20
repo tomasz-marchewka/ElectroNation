@@ -1,5 +1,13 @@
 // Adapted from design-system/components/shell/TopBar.{jsx,d.ts}.
 // The bar is read-only by design (TopBar.prompt.md): no actions live here.
+//
+// One deliberate exception, `actions`: the detailed report is opened from the
+// top of the screen, and the screen has no other strip up there — the biome
+// legend is drawn inside the map's SVG, not in the DOM. The slot takes the
+// segmented control's small button, never the primary one: the screen's single
+// primary action stays ZATWIERDŹ TURĘ (Button.prompt.md).
+
+import type { ReactNode } from "react";
 
 export interface TopBarKpi {
   /** Uppercase label, e.g. "BUDŻET". */
@@ -19,9 +27,17 @@ export interface TopBarProps {
   regime?: string;
   /** Right-aligned indicators. Max 4 — beyond that the bar gets crowded. */
   kpis?: TopBarKpi[];
+  /** Small controls at the far right, after the indicators. See the note above. */
+  actions?: ReactNode;
 }
 
-export function TopBar({ mark = "ELECTRONATION", context, regime, kpis = [] }: TopBarProps) {
+export function TopBar({
+  mark = "ELECTRONATION",
+  context,
+  regime,
+  kpis = [],
+  actions,
+}: TopBarProps) {
   return (
     <div className="en-topbar">
       <div className="en-topbar__mark">⬡ {mark}</div>
@@ -42,6 +58,7 @@ export function TopBar({ mark = "ELECTRONATION", context, regime, kpis = [] }: T
           </div>
         ))}
       </div>
+      {actions && <div className="en-topbar__actions">{actions}</div>}
     </div>
   );
 }

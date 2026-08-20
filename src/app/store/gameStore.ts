@@ -21,6 +21,7 @@ import {
   type LoadError,
 } from "../../engine";
 import type { BottleneckRef } from "../map/sceneModel";
+import { nextPeriod, previousPeriod, resolveAnchor, type ReportScope } from "../report/period";
 import {
   applyRoutingClick,
   hoverRouting,
@@ -92,6 +93,18 @@ export interface GameStore {
   timelineFrom: number | null;
   /** What POKAŻ WĄSKIE GARDŁO pointed at, until the view moves on. */
   bottleneck: BottleneckRef | null;
+  /** Whether the detailed report is docked next to (or over) the map. */
+  reportOpen: boolean;
+  /** Which period the detailed report aggregates over. */
+  reportScope: ReportScope;
+  /**
+   * Turn the detailed report is anchored on; null follows the newest resolved
+   * one. A SECOND, independent reading of the archive — deliberately not
+   * `selectedTurn`: scrolling the report may not move the ribbon, the strip or
+   * the map, and committing a turn may not throw the reader out of the month
+   * they were studying.
+   */
+  reportAnchor: number | null;
   /**
    * Why the last scrub stopped (01 §2.5) — null whenever time moved one turn
    * at a time, so the diagnosis never outlives the run that produced it.
@@ -130,6 +143,13 @@ export interface GameStore {
   /** Orders the routed line and leaves routing mode. */
   confirmRouting: (path: HexCoord[]) => boolean;
   showBottleneck: (ref: BottleneckRef | null) => void;
+  /** Opens or closes the detailed report. */
+  toggleReport: () => void;
+  closeReport: () => void;
+  /** Switches the scope, keeping the moment being read (only the zoom changes). */
+  setReportScope: (scope: ReportScope) => void;
+  /** Steps the report one period back (−1) or forward (+1), clamped. */
+  stepReport: (delta: number) => void;
   /** Starts a fresh session on `seed`; clears the selection and the autosave. */
   restart: (seed: number) => void;
   /**
@@ -150,6 +170,9 @@ const CLEARED_VIEW = {
   skipStop: null,
   selectedTurn: null,
   timelineFrom: null,
+  // The anchor points into an archive that no longer exists; whether the report
+  // is open is the player's layout choice and survives.
+  reportAnchor: null,
 } as const;
 
 export const useGameStore = create<GameStore>()((set, get) => {
@@ -184,6 +207,9 @@ export const useGameStore = create<GameStore>()((set, get) => {
     selectedTurn: null,
     timelineFrom: null,
     saveNotice: null,
+    reportOpen: false,
+    reportScope: "turn",
+    reportAnchor: null,
     dispatch: (action) => {
       const before = get().game;
       const game = applyAction(before, action);
@@ -237,6 +263,24 @@ export const useGameStore = create<GameStore>()((set, get) => {
       return true;
     },
     showBottleneck: (ref) => set({ bottleneck: ref }),
+    toggleReport: () => set((store) => ({ reportOpen: !store.reportOpen })),
+    closeReport: () => set({ reportOpen: false }),
+    setReportScope: (scope) => set({ reportScope: scope }),
+    stepReport: (delta) =>
+      set((store) => {
+        const period = resolveAnchor(store.game, store.reportScope, store.reportAnchor);
+        if (period === null) return store;
+        const target =
+          delta < 0 ? previousPeriod(store.game, period) : nextPeriod(store.game, period);
+        if (target === null) return store;
+        // Landing back on the newest period re-arms following, so the report
+        // then moves with time on its own instead of freezing on what used to
+        // be the newest month.
+        const newest = resolveAnchor(store.game, store.reportScope, null);
+        return {
+          reportAnchor: target.fromTurn === newest?.fromTurn ? null : target.fromTurn,
+        };
+      }),
     restart: (seed) => {
       const game = newGame(seed);
       set({ game, ...CLEARED_VIEW, saveNotice: null });
