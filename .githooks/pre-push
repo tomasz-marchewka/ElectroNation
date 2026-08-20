@@ -12,6 +12,6 @@ echo "pre-push: eslint"
 npm run --silent lint
 
 echo "pre-push: prettier"
-npx --no-install prettier --check .
+npm run --silent format:check
 
 echo "pre-push: ok"
