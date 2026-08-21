@@ -82,13 +82,13 @@ function withFinishedLine(
 }
 
 describe("doc 01 §4.2: a raise costs 85% of the target type and takes 70% of its time", () => {
-  test("MV → HV on a 4-step route: 510 mln zł and 34 h of work", () => {
+  test("MV → HV on a 4-step route: 255 mln zł and 34 h of work", () => {
     const built = withFinishedLine(newGame(3, makeScenario()), LONG);
     const before = built.moneyPln;
     const raised = apply(built, { type: "upgradeLine", lineId: "obj-1", lineType: "hv" });
 
-    // A new HV line here would cost 4 × 25 km × 6 mln = 600 mln (02 §8.1, plains).
-    expect(before - raised.moneyPln).toBe(Math.round(600_000_000 * 0.85));
+    // A new HV line here would cost 4 × 25 km × 3 mln = 300 mln (02 §8.1, plains).
+    expect(before - raised.moneyPln).toBe(Math.round(300_000_000 * 0.85));
     // …and take 4 × 12 h = 48 h; the raise takes 70% of that, rounded.
     expect(raised.lines[0]?.upgrade).toEqual({ type: "hv", builtHours: 0, totalHours: 34 });
     // The line itself is untouched until the work finishes.
@@ -101,13 +101,13 @@ describe("doc 01 §4.2: a raise costs 85% of the target type and takes 70% of it
     const before = built.moneyPln;
     const raised = apply(built, { type: "upgradeLine", lineId: "obj-1", lineType: "hv" });
     // Charged from the second hex on: (1,0) ×1,0, (2,0) ×2,5, (3,0) ×2,0, (4,0) ×1,0.
-    const full = 25 * 6_000_000 * (1.0 + 2.5 + 2.0 + 1.0);
+    const full = 25 * 3_000_000 * (1.0 + 2.5 + 2.0 + 1.0);
     expect(before - raised.moneyPln).toBe(Math.round(Math.round(full) * 0.85));
   });
 
   test("the raise is paid up front and refused on an empty wallet", () => {
     const poor = makeScenario({ startingMoneyPln: 300_000_000 });
-    // 250 mln for the MV line leaves 50 mln — far short of the 510 mln raise.
+    // 125 mln for the MV line leaves 175 mln — far short of the 255 mln raise.
     const built = withFinishedLine(newGame(3, poor), LONG);
     expect(apply(built, { type: "upgradeLine", lineId: "obj-1", lineType: "hv" })).toBe(built);
   });

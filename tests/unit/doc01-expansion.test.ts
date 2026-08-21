@@ -11,6 +11,7 @@ import {
   type FarmState,
   type GameState,
   type LineType,
+  type PlantBlockSize,
   type Scenario,
 } from "../../src/engine";
 
@@ -97,8 +98,8 @@ function run(state: GameState, turns: number): GameState {
 describe("doc 02 §8.4: plants and farms expand at 85% CAPEX and 70% time", () => {
   test("a CCGT block: 85% of the new-site price, ceil(70%) days, then +capacity", () => {
     const base = newGame(7, makeScenario());
-    const ordered = apply(base, { type: "expandPlant", plantId: "plant-1", capacityMw: 100 });
-    expect(base.moneyPln - ordered.moneyPln).toBe(Math.round(100 * 5_500_000 * 0.85));
+    const ordered = apply(base, { type: "expandPlant", plantId: "plant-1", size: "small" });
+    expect(base.moneyPln - ordered.moneyPln).toBe(Math.round(100 * 2_750_000 * 0.85));
     // CCGT builds 3 days new → 0.7 × 3 = 2.1 → 3 whole game days.
     expect(ordered.constructions[0]?.remainingDays).toBe(3);
     expect(ordered.plants[0]?.capacityMw).toBe(400);
@@ -113,26 +114,26 @@ describe("doc 02 §8.4: plants and farms expand at 85% CAPEX and 70% time", () =
   });
 
   test.each([
-    { tech: "nuclear" as const, capacityMw: 100, buildDays: 9, expected: 7 },
-    { tech: "coal" as const, capacityMw: 100, buildDays: 5, expected: 4 },
-    { tech: "ccgt" as const, capacityMw: 100, buildDays: 3, expected: 3 },
-    { tech: "ocgt" as const, capacityMw: 100, buildDays: 1, expected: 1 },
-  ])(
-    "$tech: 70% of $buildDays days rounds up to $expected (min 1 day)",
-    ({ tech, capacityMw, expected }) => {
-      const scenario = makeScenario();
-      const plant = scenario.plants[0];
-      if (!plant) throw new Error("fixture");
-      const state = newGame(7, { ...scenario, plants: [{ ...plant, tech }] });
-      const ordered = apply(state, { type: "expandPlant", plantId: "plant-1", capacityMw });
-      expect(ordered.constructions[0]?.remainingDays).toBe(expected);
-    },
-  );
+    { tech: "nuclear" as const, buildDays: 9, expected: 7 },
+    { tech: "coal" as const, buildDays: 5, expected: 4 },
+    { tech: "ccgt" as const, buildDays: 3, expected: 3 },
+    { tech: "ocgt" as const, buildDays: 1, expected: 1 },
+  ])("$tech: 70% of $buildDays days rounds up to $expected (min 1 day)", ({ tech, expected }) => {
+    // The smallest rung of each technology (01 §5.1 in 0.24) — for nuclear
+    // that is 1 000 MW, i.e. 17,85 mld zł, so this fixture needs a wallet the
+    // starting capital does not have.
+    const scenario = makeScenario({ startingMoneyPln: 100_000_000_000 });
+    const plant = scenario.plants[0];
+    if (!plant) throw new Error("fixture");
+    const state = newGame(7, { ...scenario, plants: [{ ...plant, tech }] });
+    const ordered = apply(state, { type: "expandPlant", plantId: "plant-1", size: "small" });
+    expect(ordered.constructions[0]?.remainingDays).toBe(expected);
+  });
 
   test("a wind farm grows to the 300 MW hex limit; over it is a no-op", () => {
     const base = newGame(7, makeScenario());
     const ordered = apply(base, { type: "expandFarm", farmId: "farm-1", capacityMw: 200 });
-    expect(base.moneyPln - ordered.moneyPln).toBe(Math.round(200 * 3_600_000 * 0.85));
+    expect(base.moneyPln - ordered.moneyPln).toBe(Math.round(200 * 1_800_000 * 0.85));
     expect(ordered.constructions[0]?.remainingDays).toBe(1); // 0.7 × 1 day → 1
     const done = run(ordered, TURNS_PER_DAY);
     expect(done.farms[0]?.capacityMw).toBe(300);
@@ -141,8 +142,8 @@ describe("doc 02 §8.4: plants and farms expand at 85% CAPEX and 70% time", () =
 
   test("terrain multiplies the expansion price too", () => {
     const base = newGame(7, makeScenario({ terrain: { "0,0": "mountains" } }));
-    const ordered = apply(base, { type: "expandPlant", plantId: "plant-1", capacityMw: 100 });
-    expect(base.moneyPln - ordered.moneyPln).toBe(Math.round(100 * 5_500_000 * 0.85 * 2.5));
+    const ordered = apply(base, { type: "expandPlant", plantId: "plant-1", size: "small" });
+    expect(base.moneyPln - ordered.moneyPln).toBe(Math.round(100 * 2_750_000 * 0.85 * 2.5));
   });
 });
 
@@ -150,17 +151,17 @@ describe("doc 01 §7: hard site limits, counting work already queued", () => {
   test("6 blocks per plant hex — the 7th order is refused", () => {
     let state = newGame(7, makeScenario());
     for (let i = 0; i < 5; i++) {
-      state = apply(state, { type: "expandPlant", plantId: "plant-1", capacityMw: 50 });
+      state = apply(state, { type: "expandPlant", plantId: "plant-1", size: "small" });
     }
     expect(state.constructions).toHaveLength(5);
     // All five are still under construction: the limit counts them anyway.
-    const refused = apply(state, { type: "expandPlant", plantId: "plant-1", capacityMw: 50 });
+    const refused = apply(state, { type: "expandPlant", plantId: "plant-1", size: "small" });
     expect(refused).toBe(state);
 
     const done = run(state, 3 * TURNS_PER_DAY);
     expect(done.plants[0]?.blocks).toBe(6);
-    expect(done.plants[0]?.capacityMw).toBe(650);
-    expect(apply(done, { type: "expandPlant", plantId: "plant-1", capacityMw: 50 })).toBe(done);
+    expect(done.plants[0]?.capacityMw).toBe(900); // 400 at start + 5 × 100
+    expect(apply(done, { type: "expandPlant", plantId: "plant-1", size: "small" })).toBe(done);
   });
 
   test("doc 02 §8.2: battery modules are printed prices, capped at 500 MW / 2 000 MWh", () => {
@@ -220,14 +221,14 @@ describe("doc 01 §7: hard site limits, counting work already queued", () => {
     const state = newGame(7, makeScenario());
     // No throughput, no modules — the object is a site and 12 line slots.
     expect(state.junctions[0]).toStrictEqual({ id: "junction-1", name: "J1", hex: { q: 8, r: 0 } });
-    expect(JUNCTION_SPEC.capexPln).toBe(60_000_000);
+    expect(JUNCTION_SPEC.capexPln).toBe(30_000_000);
     expect(JUNCTION_SPEC.lineSlots).toBe(12);
   });
 
-  test("doc 01 §5.7: a border module adds 500 MW for 0.7 mld in 2 days", () => {
+  test("doc 01 §5.7: a border module adds 500 MW for 350 mln in 2 days", () => {
     const base = newGame(7, makeScenario());
     const ordered = apply(base, { type: "expandBorder", borderId: "border-1" });
-    expect(base.moneyPln - ordered.moneyPln).toBe(700_000_000);
+    expect(base.moneyPln - ordered.moneyPln).toBe(350_000_000);
     expect(ordered.constructions[0]?.remainingDays).toBe(2);
     const done = run(ordered, 2 * TURNS_PER_DAY);
     expect(done.borders[0]?.throughputMw).toBe(1_000);
@@ -235,13 +236,17 @@ describe("doc 01 §7: hard site limits, counting work already queued", () => {
 
   test("unknown ids, zero sizes and an empty wallet are no-ops", () => {
     const base = newGame(7, makeScenario());
-    expect(apply(base, { type: "expandPlant", plantId: "nope", capacityMw: 10 })).toBe(base);
+    expect(apply(base, { type: "expandPlant", plantId: "nope", size: "small" })).toBe(base);
     expect(apply(base, { type: "expandFarm", farmId: "farm-1", capacityMw: 0 })).toBe(base);
     expect(
       apply(base, { type: "expandBattery", storageId: "pumped-1", powerMw: 10, capacityMwh: 0 }),
     ).toBe(base); // wrong technology
     expect(apply(base, { type: "expandPumpedStorage", storageId: "battery-1" })).toBe(base);
-    expect(apply(base, { type: "expandPlant", plantId: "plant-1", capacityMw: 600 })).toBe(base); // > CCGT block size
+    // 01 §5.1 (0.24): a block has one of four sizes — anything else off the
+    // wire is refused, not rounded to the nearest one.
+    expect(
+      apply(base, { type: "expandPlant", plantId: "plant-1", size: "huge" as PlantBlockSize }),
+    ).toBe(base);
     const poor = { ...base, moneyPln: 1_000 };
     expect(apply(poor, { type: "expandBorder", borderId: "border-1" })).toBe(poor);
   });
@@ -378,7 +383,7 @@ describe("doc 01 §2.6: cancelling forfeits everything paid", () => {
     const ordered = apply(base, {
       type: "buildPlant",
       tech: "ocgt",
-      capacityMw: 100,
+      size: "large",
       hex: { q: 1, r: 1 },
     });
     const constructionId = ordered.constructions[0]?.id ?? "";
@@ -394,9 +399,9 @@ describe("doc 01 §2.6: cancelling forfeits everything paid", () => {
   test("a queued expansion cancels the same way and frees the site limit", () => {
     let state = newGame(7, makeScenario());
     for (let i = 0; i < 5; i++) {
-      state = apply(state, { type: "expandPlant", plantId: "plant-1", capacityMw: 50 });
+      state = apply(state, { type: "expandPlant", plantId: "plant-1", size: "small" });
     }
-    expect(apply(state, { type: "expandPlant", plantId: "plant-1", capacityMw: 50 })).toBe(state);
+    expect(apply(state, { type: "expandPlant", plantId: "plant-1", size: "small" })).toBe(state);
     const constructionId = state.constructions[0]?.id ?? "";
     const cancelled = apply(state, { type: "cancelConstruction", constructionId });
     expect(cancelled.constructions).toHaveLength(4);
@@ -405,7 +410,7 @@ describe("doc 01 §2.6: cancelling forfeits everything paid", () => {
     const reordered = apply(cancelled, {
       type: "expandPlant",
       plantId: "plant-1",
-      capacityMw: 50,
+      size: "small",
     });
     expect(reordered.constructions).toHaveLength(5);
   });

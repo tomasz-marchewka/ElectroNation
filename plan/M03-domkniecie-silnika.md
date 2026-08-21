@@ -43,6 +43,13 @@ Nowe akcje (celują w **id obiektu**, nie heks):
   ma używać limitu per obiekt, nie stałej globalnej.
 - `expandBorder { borderId }` — +500 MW zdolności za ~0,7 mld, 2 doby (01 §5.7).
 
+> **Nieaktualne w tej liście (01 v0.24–0.25):** `expandPlant` niesie `size` — jeden
+> z czterech rozmiarów bloku — a nie `capacityMw`; stałą `maxBlockMw` zastąpiła
+> tabela `PLANT_TECHS.blockMw`. Limity lokalizacji i rachunek 85% / 70% obowiązują
+> bez zmian, ale **wszystkie kwoty powyżej są sprzed cięcia cen o połowę** z 0.25
+> (moduł graniczny to dziś ~0,35 mld). Kanon: docs/01 §5, docs/02 §8 — nigdy liczby
+> z tego briefu.
+
 Reguła cen: tam, gdzie dokument podaje cenę modułu wprost (stacja, przyłącze
 graniczne, moduły magazynów), użyj jej; reguła 85%/70% z 02 §8.4 stosuje się do
 elektrowni i farm. Odnotuj to rozstrzygnięcie komentarzem w konfiguracji — doc 03/04

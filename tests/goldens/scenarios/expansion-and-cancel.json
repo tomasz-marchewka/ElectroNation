@@ -25,7 +25,7 @@
       "action": {
         "type": "expandPlant",
         "plantId": "plant-start-ccgt",
-        "capacityMw": 200
+        "size": "medium"
       }
     },
     {

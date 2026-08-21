@@ -18,6 +18,7 @@ import {
   KM_PER_HEX,
   LINE_TYPES,
   MAX_PLANT_BLOCKS_PER_HEX,
+  PLANT_BLOCK_SIZES,
   PLANT_TECHS,
   PUMPED_BLOCK,
   STORAGE_TECHS,
@@ -29,6 +30,7 @@ import {
   lineUpgradeCostPln,
   lineUpgradeTargets,
   linesAtHex,
+  nearestPlantBlockSize,
   type Action,
   type BorderState,
   type CityState,
@@ -39,6 +41,7 @@ import {
   type JunctionState,
   type LineState,
   type PendingObject,
+  type PlantBlockSize,
   type PlantState,
   type PlantTech,
   type StorageState,
@@ -61,6 +64,7 @@ import {
   FARM_CATALOG_NAMES,
   JUNCTION_CATALOG_NAME,
   LINE_TYPE_LABELS,
+  PLANT_BLOCK_SIZE_NAMES,
   PLANT_CATALOG_NAMES,
   STORAGE_CATALOG_NAMES,
   STORAGE_MODE_LABELS,
@@ -110,16 +114,15 @@ export interface HexAction {
 // --- catalogue sizes --------------------------------------------------------
 
 /**
- * The size the catalogue opens with and the step it moves in. The sizes are
- * the reference build's own catalogue (DispatcherScreen.jsx `CATALOG`), the
- * step is UI granularity — the ceiling is always the engine's (`maxBlockMw`,
- * `maxMwPerHex`, BATTERY limits: 01 §5, 02 §8.2), never a number from here.
+ * The rung the plant catalogue opens on (01 §5.1 in 0.24). The MW behind every
+ * rung is the engine's (`PLANT_TECHS.blockMw`) — this only says where the
+ * ladder starts, roughly at the sizes the reference build's catalogue printed.
  */
-const PLANT_BLOCKS: Record<PlantTech, { defaultMw: number; stepMw: number }> = {
-  ocgt: { defaultMw: 120, stepMw: 10 },
-  ccgt: { defaultMw: 400, stepMw: 50 },
-  coal: { defaultMw: 500, stepMw: 50 },
-  nuclear: { defaultMw: 1200, stepMw: 100 },
+const DEFAULT_PLANT_SIZE: Record<PlantTech, PlantBlockSize> = {
+  ocgt: "large",
+  ccgt: "large",
+  coal: "medium",
+  nuclear: "medium",
 };
 
 const FARM_BLOCKS: Record<FarmTech, { defaultMw: number; stepMw: number }> = {
@@ -135,59 +138,114 @@ const BATTERY_BLOCK = {
   stepCapacityMwh: 100,
 } as const;
 
-/** Sizes the player has dialled in on this hex's catalogue. */
+/**
+ * Sizes the player has dialled in on this hex's catalogue. A plant block is
+ * one of four named rungs (01 §5.1 in 0.24); everything else is still free MW
+ * within the engine's limit.
+ */
 export interface CatalogSizes {
-  plantMw: Record<PlantTech, number>;
+  plantSize: Record<PlantTech, PlantBlockSize>;
   farmMw: Record<FarmTech, number>;
   batteryPowerMw: number;
   batteryCapacityMwh: number;
 }
 
 export const DEFAULT_CATALOG_SIZES: CatalogSizes = {
-  plantMw: {
-    nuclear: PLANT_BLOCKS.nuclear.defaultMw,
-    coal: PLANT_BLOCKS.coal.defaultMw,
-    ccgt: PLANT_BLOCKS.ccgt.defaultMw,
-    ocgt: PLANT_BLOCKS.ocgt.defaultMw,
-  },
+  plantSize: { ...DEFAULT_PLANT_SIZE },
   farmMw: { wind: FARM_BLOCKS.wind.defaultMw, pv: FARM_BLOCKS.pv.defaultMw },
   batteryPowerMw: BATTERY_BLOCK.defaultPowerMw,
   batteryCapacityMwh: BATTERY_BLOCK.defaultCapacityMwh,
 };
 
-/** Which number of {@link CatalogSizes} a stepper moves. */
+/** Which value of {@link CatalogSizes} a stepper moves. */
 export type CatalogSizeTarget =
   | { kind: "plant"; tech: PlantTech }
   | { kind: "farm"; tech: FarmTech }
   | { kind: "batteryPower" }
   | { kind: "batteryCapacity" };
 
+/** What a step sets: a rung for a plant block, MW for everything else. */
+export type CatalogSizeValue = PlantBlockSize | number;
+
 export function applyCatalogSize(
   sizes: CatalogSizes,
   target: CatalogSizeTarget,
-  value: number,
+  value: CatalogSizeValue,
 ): CatalogSizes {
+  // A step always carries the kind its target asks for; a mismatch could only
+  // come from a caller pairing the wrong two, and changes nothing.
   switch (target.kind) {
     case "plant":
-      return { ...sizes, plantMw: { ...sizes.plantMw, [target.tech]: value } };
+      return typeof value === "string"
+        ? { ...sizes, plantSize: { ...sizes.plantSize, [target.tech]: value } }
+        : sizes;
     case "farm":
-      return { ...sizes, farmMw: { ...sizes.farmMw, [target.tech]: value } };
+      return typeof value === "number"
+        ? { ...sizes, farmMw: { ...sizes.farmMw, [target.tech]: value } }
+        : sizes;
     case "batteryPower":
-      return { ...sizes, batteryPowerMw: value };
+      return typeof value === "number" ? { ...sizes, batteryPowerMw: value } : sizes;
     case "batteryCapacity":
-      return { ...sizes, batteryCapacityMwh: value };
+      return typeof value === "number" ? { ...sizes, batteryCapacityMwh: value } : sizes;
   }
 }
 
+/**
+ * One `− value +` control of the catalogue. The arithmetic lives here, not in
+ * the component: a farm walks fixed MW steps, a plant block walks the four
+ * rungs of its technology, and both come out as "what a click sets" — null at
+ * the end of the range, where the button greys out.
+ */
 export interface CatalogStepper {
   target: CatalogSizeTarget;
-  /** Short caption of the number, e.g. "MOC". */
+  /** Short caption of the value, e.g. "MOC". */
   label: string;
-  value: number;
-  unit: string;
-  min: number;
-  max: number;
-  step: number;
+  /** What the control reads: `400 MW`, or `DUŻY · 400 MW` for a block. */
+  valueLabel: string;
+  /** How the buttons are announced, e.g. `−50 MW` / `mniejszy`. */
+  decreaseLabel: string;
+  increaseLabel: string;
+  decreaseTo: CatalogSizeValue | null;
+  increaseTo: CatalogSizeValue | null;
+}
+
+/** A `− MW +` control over a plain number: farms and battery modules. */
+function mwStepper(
+  target: CatalogSizeTarget,
+  label: string,
+  value: number,
+  unit: string,
+  { min, max, step }: { min: number; max: number; step: number },
+): CatalogStepper {
+  return {
+    target,
+    label,
+    valueLabel: `${formatNumber(value)} ${unit}`,
+    decreaseLabel: `−${formatNumber(step)} ${unit}`,
+    increaseLabel: `+${formatNumber(step)} ${unit}`,
+    decreaseTo: value - step >= min ? value - step : null,
+    increaseTo: value + step <= max ? value + step : null,
+  };
+}
+
+/**
+ * The block-size control: four rungs, walked one at a time (01 §5.1 in 0.24).
+ * A four-way segmented control is explicitly the wrong component in the design
+ * system (SegmentedControl.prompt.md: "cztery opcje = zły komponent"), so the
+ * ladder rides the stepper the catalogue already uses.
+ */
+function blockStepper(tech: PlantTech, size: PlantBlockSize): CatalogStepper {
+  const rung = PLANT_BLOCK_SIZES.indexOf(size);
+  const mw = PLANT_TECHS[tech].blockMw[size];
+  return {
+    target: { kind: "plant", tech },
+    label: "BLOK",
+    valueLabel: `${PLANT_BLOCK_SIZE_NAMES[size]} · ${formatMw(mw)}`,
+    decreaseLabel: "mniejszy",
+    increaseLabel: "większy",
+    decreaseTo: PLANT_BLOCK_SIZES[rung - 1] ?? null,
+    increaseTo: PLANT_BLOCK_SIZES[rung + 1] ?? null,
+  };
 }
 
 export interface CatalogEntry {
@@ -560,24 +618,15 @@ export function buildCatalog(
 ): CatalogEntry[] {
   const plants = (["ocgt", "ccgt", "coal", "nuclear"] as const).map((tech) => {
     const spec = PLANT_TECHS[tech];
-    const capacityMw = sizes.plantMw[tech];
+    const size = sizes.plantSize[tech];
+    const capacityMw = spec.blockMw[size];
     return entry(state, hex, {
       key: `plant:${tech}`,
       name: PLANT_CATALOG_NAMES[tech],
       size: `${formatMw(capacityMw)} · ${daysLabel(spec.buildDays)} BUDOWY`,
       basePln: capacityMw * spec.capexPlnPerMw,
-      action: { type: "buildPlant", tech, capacityMw, hex },
-      steppers: [
-        {
-          target: { kind: "plant", tech },
-          label: "BLOK",
-          value: capacityMw,
-          unit: "MW",
-          min: PLANT_BLOCKS[tech].stepMw,
-          max: spec.maxBlockMw,
-          step: PLANT_BLOCKS[tech].stepMw,
-        },
-      ],
+      action: { type: "buildPlant", tech, size, hex },
+      steppers: [blockStepper(tech, size)],
     });
   });
 
@@ -594,15 +643,11 @@ export function buildCatalog(
       action: { type: "buildFarm", tech, capacityMw, hex },
       siteMultiplier: site.multiplier,
       steppers: [
-        {
-          target: { kind: "farm", tech },
-          label: "MOC",
-          value: capacityMw,
-          unit: "MW",
+        mwStepper({ kind: "farm", tech }, "MOC", capacityMw, "MW", {
           min: FARM_BLOCKS[tech].stepMw,
           max: site.maxMwPerHex,
           step: FARM_BLOCKS[tech].stepMw,
-        },
+        }),
       ],
     });
   });
@@ -616,24 +661,16 @@ export function buildCatalog(
     basePln: powerMw * BATTERY.powerCapexPlnPerMw + capacityMwh * BATTERY.energyCapexPlnPerMwh,
     action: { type: "buildBattery", powerMw, capacityMwh, hex },
     steppers: [
-      {
-        target: { kind: "batteryPower" },
-        label: "MOC",
-        value: powerMw,
-        unit: "MW",
+      mwStepper({ kind: "batteryPower" }, "MOC", powerMw, "MW", {
         min: BATTERY_BLOCK.stepPowerMw,
         max: BATTERY.maxPowerMwPerHex,
         step: BATTERY_BLOCK.stepPowerMw,
-      },
-      {
-        target: { kind: "batteryCapacity" },
-        label: "POJEMNOŚĆ",
-        value: capacityMwh,
-        unit: "MWh",
+      }),
+      mwStepper({ kind: "batteryCapacity" }, "POJEMNOŚĆ", capacityMwh, "MWh", {
         min: BATTERY_BLOCK.stepCapacityMwh,
         max: BATTERY.maxCapacityMwhPerHex,
         step: BATTERY_BLOCK.stepCapacityMwh,
-      },
+      }),
     ],
   });
 
@@ -809,8 +846,10 @@ function plantView(state: GameState, report: TurnReport | null, plant: PlantStat
   const used = report?.sources.find((source) => source.sourceId === plant.id);
   const alert = inBottleneck(state, report, plant.hex);
   // A new block matches the ones already standing here (01 §7 — expansion adds
-  // blocks in place), capped by the technology's own block limit.
-  const blockMw = Math.min(spec.maxBlockMw, Math.round(plant.capacityMw / plant.blocks));
+  // blocks in place), snapped to the nearest rung of the catalogue: since 0.24
+  // the average of what stands here need not be a size that can be ordered.
+  const blockSize = nearestPlantBlockSize(plant.tech, plant.capacityMw / plant.blocks);
+  const blockMw = spec.blockMw[blockSize];
   const pending = queued(state, (item) =>
     item.kind === "plantExpansion" && item.plantId === plant.id ? 1 : 0,
   );
@@ -838,9 +877,9 @@ function plantView(state: GameState, report: TurnReport | null, plant: PlantStat
       routeAction(state, plant.hex),
       expansionAction(state, plant.hex, {
         key: "expand",
-        label: `ROZBUDUJ · +BLOK ${formatMw(blockMw)}`,
+        label: `ROZBUDUJ · +BLOK ${PLANT_BLOCK_SIZE_NAMES[blockSize]} ${formatMw(blockMw)}`,
         basePln: blockMw * spec.capexPlnPerMw * EXPANSION.capexShare,
-        action: { type: "expandPlant", plantId: plant.id, capacityMw: blockMw },
+        action: { type: "expandPlant", plantId: plant.id, size: blockSize },
         limit: limitNote(plant.blocks, pending, 1, MAX_PLANT_BLOCKS_PER_HEX, "bloków"),
       }),
       ...expansionActions(state, plant.id),

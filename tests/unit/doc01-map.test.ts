@@ -57,7 +57,7 @@ function makeScenario(): Scenario {
 const apply = (state: GameState, action: Action) => applyAction(state, action);
 
 const buildAt = (state: GameState, q: number, r: number): GameState =>
-  apply(state, { type: "buildPlant", tech: "ocgt", capacityMw: 50, hex: { q, r } });
+  apply(state, { type: "buildPlant", tech: "ocgt", size: "medium", hex: { q, r } });
 
 describe("doc 01 §3.1: the grid is a bounded rectangle in offset coordinates", () => {
   test("axial ↔ offset (odd-q) is a bijection over the whole rectangle", () => {

@@ -1,8 +1,83 @@
 # ElectroNation — Dokument bazowy mechaniki gry
 
-**Wersja:** 0.23 (dokument koncepcyjny)
-**Data:** 2026-08-20
+**Wersja:** 0.25 (dokument koncepcyjny)
+**Data:** 2026-08-21
 **Status:** obowiązuje **wersja uproszczona** gry; mechaniki odłożone czekają w [90-pomysly-na-przyszlosc.md](90-pomysly-na-przyszlosc.md)
+
+**Zmiany 0.24 → 0.25 (wszystkie ceny inwestycji o połowę niżej):**
+
+1. **Każdy CAPEX w grze spada o połowę** — elektrownie sterowalne, farmy OZE, magazyny,
+   linie, stacje rozdzielcze, przyłącza graniczne, akt przyłączenia miasta i systemy
+   prognostyczne. Kanoniczne tabele: §4.2 (linie), §5.1 (elektrownie), §5.2 (OZE),
+   §5.3 (magazyny), §5.4 (stacja), §5.7 (granica), §2.4 (prognozy).
+   **Wszystkie kwoty w starszych wpisach tego dziennika (0.10–0.24) są sprzed cięcia** —
+   obowiązują wyłącznie tabele wymienionych paragrafów.
+2. **Powód: rabat „CAPEX ~×0,6" z 0.13 (§11) nigdy nie dotarł do technologii
+   sterowalnych.** Wiatr i PV stały na ~0,6 ceny realnej, a elektrownie cieplne na cenie
+   realnej albo powyżej (CCGT ×1,2), przez co cała flota sterowalna zwracała się o ~2 lata
+   wolniej niż dowolna farma. Cięcie objęło najpierw elektrownie, a potem — dla spójności —
+   całą resztę katalogu.
+3. **Cięcie jest jednolite, więc żadna relacja cenowa się nie zmienia.** Każda technologia
+   zwraca się dokładnie **dwa razy szybciej**, w niezmienionej kolejności: wiatr lądowy
+   **1,3** · PV **1,5** · wiatr morski **1,8** · węgiel **2,4** · jądrowa **2,7** ·
+   CCGT **2,9 roku**; OCGT jak dotąd **nie zwraca się z marży** i pozostaje polisą od kary
+   za niedobór (§4.5). Utrzymane są też relacje pochodne: koszt stały linii to nadal
+   **1,5% CAPEX-u/rok** (02 §8.3 — obniżony razem z CAPEX-em), a stacja rozdzielcza nadal
+   kosztuje mniej więcej **jeden heks linii SN** (§5.4).
+4. **Prawdziwą zmianą jest tempo gry, nie równowaga technologii.** Kapitał startowy
+   **zostaje 10 mld zł** i kupuje odtąd dwa razy więcej, a każda zainwestowana złotówka
+   wraca dwa razy szybciej. Pierwsza fala rozbudowy przestaje być wyborem „albo blok, albo
+   korytarz".
+5. **Próg wejścia w jądrówkę przestaje być regułą, staje się osądem** (§5.1; osłabia pkt 3
+   z 0.24). Najmniejszy blok jądrowy to teraz **8,4 mld zł, czyli mniej niż kapitał
+   startowy** — silnik przyjmie takie zamówienie w pierwszej turze. Tym, co nadal stoi na
+   drodze, nie jest portfel, lecz **strona popytowa**: 800 MW nie ma czemu sprzedawać przy
+   zalążku o szczycie kilkudziesięciu MW, koszt stały biegnie **400 mln zł rocznie** bez
+   względu na to, czy blok pracuje (02 §8.3), a wyprowadzenie takiej mocy to osobna
+   inwestycja liniowa. Kupienie jądrówki na starcie jest odtąd **błędem gracza, a nie
+   odmową silnika**.
+6. **Czego cięcie nie dotyczy:** taryfy 650 zł/MWh, kar (4 000 za niedobór, 400 za
+   nadwyżkę), cen importu i eksportu, kosztów zmiennych, kosztów stałych liczonych od MW
+   (02 §8.3 — elektrownie, farmy, magazyny), czasów budowy, drabiny rozmiarów z 0.24
+   i kapitału startowego. Reguła rozbudowy 85% / 70% działa bez zmian — od nowego,
+   niższego CAPEX-u.
+7. **Otwarte po tej zmianie** (do doc 03, dopisane do §11): czy taryfa i kapitał startowy
+   nie są teraz zbyt hojne, skoro cały majątek potaniał dwukrotnie, a zwroty skróciły się
+   do 1,3–2,9 roku.
+
+**Zmiany 0.23 → 0.24 (blok elektrowni z czterech rozmiarów):**
+
+1. **Blok elektrowni sterowalnej ma jeden z czterech rozmiarów** (§5.1; uchyla dobieranie
+   mocy bloku co do MW). Katalog każdej technologii to **MAŁY / ŚREDNI / DUŻY / WIELKI** —
+   cztery szczeble o mocach z tabeli §5.1 i nic pomiędzy. Zamiast pytania „ile dokładnie
+   MW" gracz odpowiada na pytanie „który blok"; decyzja zostaje ta sama co była (ile mocy
+   dostawić i za ile), ale przestaje być suwakiem o 40 pozycjach.
+2. **Rozmiar jest względny wobec technologii.** MAŁY blok jądrowy to 800 MW, WIELKI
+   blok CCGT — 500 MW, a WIELKI blok OCGT (150 MW) jest mniejszy od MAŁEGO CCGT. Nazwa
+   mówi o miejscu na drabinie **swojej** technologii, nigdy o mocy bezwzględnej, dlatego
+   interfejs drukuje MW obok nazwy szczebla (§8 pkt 6).
+3. **Próg wejścia w jądrówkę przestaje być fikcją.** Do 0.23 „typowy blok 1000–1600 MW"
+   był wyłącznie opisem — silnik przyjmował blok jądrowy dowolnej mocy, więc dało się
+   postawić 100 MW jądrówki za 2,1 mld zł. Od 0.24 najmniejszy blok jądrowy to 800 MW.
+   *(Kwota tego progu — wtedy 16,8 mld wobec 10 mld kapitału — spadła w 0.25 do 8,4 mld
+   razem z CAPEX-em; sama reguła „nie ma bloków jądrowych o mocy turbiny szczytowej"
+   obowiązuje bez zmian.)* Analogicznie znika „blok" węglowy o mocy turbiny szczytowej.
+   **Drugi koniec drabiny idzie w górę:** blok jądrowy WIELKI to **2 400 MW** (bliźniacza
+   lokalizacja dwóch reaktorów klasy 1 200 MW), a więc moc, której **nie wyprowadzi jedna
+   linia WN** (1 500 MW — §4.2). Największa jednostka w grze wymusza drugi tor albo
+   rozdział mocy na dwa kierunki; to ta sama zasada co przy morskiej farmie 600 MW
+   w linii SN (02 §8.4).
+4. **Rozbudowa idzie z tego samego katalogu** (§7): dostawiany blok też jest jednym
+   z czterech rozmiarów i **nie musi** być równy blokom już stojącym na heksie. Panel
+   podpowiada szczebel najbliższy temu, co na heksie stoi, bo obiekt ze stanu startowego
+   albo starego zapisu może mieć moc spoza drabiny.
+5. **Czego zmiana nie dotyczy.** Farmy OZE i magazyny dobiera się jak dotąd: farma
+   dowolną mocą do limitu heksa (§5.2), bateria osobnymi modułami mocy i pojemności
+   (§5.3) — tam blok nie istnieje, a za drabinę robi limit lokalizacji. Bez zmian
+   zostają też ceny (CAPEX w zł/MW), czasy budowy, koszty stałe i limit **6 bloków**
+   na heksie (§7).
+6. **Stan startowy zostaje bez zmian** (§3.4): CCGT 400 MW to dokładnie szczebel DUŻY,
+   więc zalążek gracza daje się od 0.24 opisać katalogiem.
 
 **Zmiany 0.22 → 0.23 (nadwyżka karana bez względu na źródło; linia do budowy):**
 
@@ -57,6 +132,9 @@
    miejsca na lądzie nie brakuje (332 heksy zabudowywalne wobec 47 morskich) — nikt by
    go nie kupił. ×2,5 daje +38%: morze jest **premią za jakość zasobu**, nie tanią
    energią. Zwrot ~3,5 roku, między wiatrem lądowym (~2,7) a flotą cieplną (4,1–5,1).
+   *(Kwoty sprzed cięcia z 0.25; po nim wszystkie trzy skróciły się o połowę — morze 1,8
+   wobec 1,3 na lądzie i 2,4–2,9 dla floty cieplnej. Sama pozycja morza między lądem
+   a flotą cieplną obowiązuje bez zmian, bo cięcie było jednolite.)*
 3. **Heks morski mieści 600 MW, lądowy nadal 300** (§7, 02 §8.4) i **budowa trwa 2 doby
    zamiast 1**. Limit lokalizacji i czas budowy przestają być stałą technologii, a stają
    się funkcją terenu. Pełny heks morski to **5,4 mld zł** — ponad połowa kapitału
@@ -461,7 +539,7 @@ Własności, które są sednem mechaniki:
 06 §8.6.3). Poziomy **zwężają pasmo** (mnożniki σ ×1,0 / ×0,7 / ×0,5) **i wydłużają
 horyzont**: podstawowy **24 h**, zaawansowany **3 doby**, ansamblowy **7 dób** (maksimum).
 Każda kolejna doba prognozy niesie większy błąd — σ rośnie dalej z horyzontem. Ceny poziomów
-(parametr, doc 03): ~600 mln / ~1,2 mld zł. Rzadki przypadek inwestycji, która nie dodaje ani
+(parametr, doc 03): ~300 mln / ~600 mln zł. Rzadki przypadek inwestycji, która nie dodaje ani
 megawata, a obniża koszty. Prognoza jest prezentowana jako **pasmo, nie liczba** (06 §8.6.4).
 
 **DECYZJA (0.18): horyzont jest kroczący — liczy się od tury bieżącej, nie do końca doby.**
@@ -641,7 +719,7 @@ typu park narodowy — 90 §2.)*
 - Punkt graniczny wymaga zbudowania przyłącza granicznego, które jest węzłem z własną
   przepustowością (§5.7).
 - **Przyłączenie miasta** = doprowadzenie gotowej linii do miasta + akt przyłączenia
-  (§3.4; koszt aktu ~30 mln zł, parametr).
+  (§3.4; koszt aktu ~15 mln zł, parametr).
 
 **Uchylona decyzja 0.9:** „promień obsługi stacji = 1 heks" i „linie tylko między stacjami" —
 dawna topologia stacyjna czeka w 90 §4 (kandydatka do powrotu razem z poziomami napięć).
@@ -735,9 +813,9 @@ umowne poziomy napięć (realne odpowiedniki ~110/220/400 kV):
 
 | Typ | Maks. przesył | Straty /100 km | Koszt budowy | Czas budowy (§2.6) |
 |---|---|---|---|---|
-| **Niskie napięcie (NN)** | 150 MW | 4% | ~1,2 mln zł/km | 3 h/heks |
-| **Średnie napięcie (SN)** | 500 MW | 2% | ~2,5 mln zł/km | 6 h/heks |
-| **Wysokie napięcie (WN)** | 1500 MW | 1% | ~6 mln zł/km | 12 h/heks |
+| **Niskie napięcie (NN)** | 150 MW | 4% | ~0,6 mln zł/km | 3 h/heks |
+| **Średnie napięcie (SN)** | 500 MW | 2% | ~1,25 mln zł/km | 6 h/heks |
+| **Wysokie napięcie (WN)** | 1500 MW | 1% | ~3 mln zł/km | 12 h/heks |
 
 *(wartości orientacyjne, do strojenia w dokumencie 04; długość = liczba heksów trasy
 × 25 km; koszt × mnożnik terenu)*
@@ -763,7 +841,7 @@ i zwalnia się przyłącze obiektu. Czego nie daje: przepustowości powyżej 150
 mocy — tor NN obok toru SN to 650 MW, podczas gdy rozbudowa NN→SN daje 500 MW.
 
 *Świadoma konsekwencja dla zakładu opisanego niżej:* ścieżka „NN teraz, WN później" kosztuje
-1,2 + 0,85 × 6,0 = **6,3 mln zł/km wobec 6,0 mln zł/km za WN od razu** — kara zaledwie 5%
+0,6 + 0,85 × 3,0 = **3,15 mln zł/km wobec 3,0 mln zł/km za WN od razu** — kara zaledwie 5%
 (przy pełnym CAPEX-ie rozbudowy byłoby 20%), a prąd płynie cztery razy wcześniej. Budowanie
 najtańszego typu i rozbudowa w miarę wzrostu jest więc strategią wyraźnie opłacalną i zakład
 o przyszłość korytarza słabnie. Przyjęte świadomie, na rzecz jednej reguły rozbudowy w całej
@@ -850,12 +928,52 @@ W wersji uproszczonej elektrownia ma tylko: **moc maksymalną [MW]**, **koszt zm
 zmieniać co turę w pełnym zakresie 0–100%. *(Minima techniczne, rozruchy, rampy,
 dyspozycyjność, emisje — 90 §3.)*
 
-| Technologia | Typowy blok | CAPEX | Czas budowy (doby gry) | Koszt zmienny | Rola |
+| Technologia | CAPEX (0.25) | Czas budowy (doby gry) | Koszt zmienny | Rola |
+|---|---|---|---|---|
+| **Jądrowa** | ~10,5 mln zł/MW | 9 (~3 miesiące gry) | ~60 zł/MWh | tania podstawa; próg wejścia to dziś **rozmiar bloku i koszt stały**, nie cena zakupu |
+| **Węgiel** | ~4,5 mln zł/MW | 5 | ~250 zł/MWh | podstawa |
+| **Gaz CCGT** | ~2,75 mln zł/MW | 3 | ~350 zł/MWh | elastyczne wypełnienie |
+| **Gaz OCGT** | ~1,5 mln zł/MW | 1 | ~600 zł/MWh | szczyt, mały i szybki w budowie; **nie zwraca się z marży** — to polisa od kary za niedobór (§4.5) |
+
+**DECYZJA (0.24): blok ma jeden z czterech rozmiarów, nie dowolną moc.** Każda
+technologia sprzedaje cztery szczeble — **MAŁY, ŚREDNI, DUŻY, WIELKI** — i nic pomiędzy.
+Moc jest własnością technologii, nie wyborem gracza co do megawata; pytanie brzmi „który
+blok postawić", a nie „ile dokładnie MW wpisać".
+
+| Technologia | MAŁY | ŚREDNI | DUŻY | WIELKI | Cena bloku (nizina): MAŁY → WIELKI |
 |---|---|---|---|---|---|
-| **Jądrowa** | 1000–1600 MW | ~21 mln zł/MW | 9 (~3 miesiące gry) | ~60 zł/MWh | tania podstawa, wielki próg wejścia |
-| **Węgiel** | 200–1000 MW | ~9 mln zł/MW | 5 | ~250 zł/MWh | podstawa |
-| **Gaz CCGT** | 100–500 MW | ~5,5 mln zł/MW | 3 | ~350 zł/MWh | elastyczne wypełnienie |
-| **Gaz OCGT** | 25–150 MW | ~3 mln zł/MW | 1 | ~600 zł/MWh | szczyt, mały i szybki w budowie |
+| **Jądrowa** | 800 MW | 1 200 MW | 1 600 MW | 2 400 MW | 8,4 → 25,2 mld zł |
+| **Węgiel** | 200 MW | 500 MW | 750 MW | 1 000 MW | 0,9 → 4,5 mld zł |
+| **Gaz CCGT** | 100 MW | 200 MW | 400 MW | 500 MW | 275 mln → 1,375 mld zł |
+| **Gaz OCGT** | 50 MW | 75 MW | 100 MW | 150 MW | 75 → 225 mln zł |
+
+**Rozmiar jest względny wobec technologii, nigdy bezwzględny:** MAŁY blok jądrowy
+(800 MW) jest o połowę większy od WIELKIEGO bloku CCGT (500 MW), a WIELKI blok OCGT
+(150 MW) jest mniejszy od MAŁEGO gazowego CCGT. Nazwa mówi tylko o miejscu na drabinie
+swojej technologii — dlatego katalog zawsze drukuje obok niej moc w MW (§8 pkt 6).
+
+**Drabina nie pozwala „spróbować jądrówki w małej skali"** — najmniejszy blok to
+800 MW i tego reguła pilnuje. Nie pilnuje już natomiast portfela: po cięciu CAPEX-u
+z 0.25 kosztuje on **8,4 mld zł, czyli mniej niż kapitał startowy** (§3.4), więc silnik
+przyjmie takie zamówienie w pierwszej turze gry. Barierą jest **to, co blok przynosi ze
+sobą**: koszt stały **400 mln zł rocznie** płacony niezależnie od pracy (02 §8.3), brak
+odbioru dla 800 MW przy zalążku o szczycie kilkudziesięciu MW i osobna inwestycja
+w wyprowadzenie mocy. Jądrówka na starcie jest więc **błędem gracza, nie odmową
+silnika** — czy ta bariera wystarcza, weryfikuje doc 03. Turbina szczytowa OCGT
+pozostaje najtańszą wejściówką (75 mln zł za blok MAŁY) i to ona jest odpowiedzią na
+pierwszy szczyt, którego nie domyka zalążek.
+
+**Zwroty przy taryfie 650 zł/MWh po cięciu z 0.25:** wiatr lądowy **1,3** · PV **1,5** ·
+wiatr morski **1,8** · węgiel **2,4** · jądrowa **2,7** · CCGT **2,9 roku**. Cięcie było
+jednolite dla całego katalogu, więc **kolejność jest ta sama co przed nim** — OZE zwraca
+się szybciej, sterowalne kupuje się za pewność, nie za tempo zwrotu. Zmieniło się
+wyłącznie tempo: każda pozycja zwraca się dwa razy szybciej niż do 0.24.
+
+**Górny koniec drabiny jądrowej jest problemem sieciowym, nie tylko budżetowym:** blok
+WIELKI ma 2 400 MW, a najgrubsza linia (WN) przenosi 1 500 MW (§4.2) — pełnego bloku nie
+wyprowadzi jeden tor, a sześć takich bloków na heksie (limit §7) to 14 400 MW, czyli
+połowa docelowej skali całego systemu (§3.4). Jądrówka jest więc decyzją o topologii
+korytarza, a nie tylko o pieniądzach.
 
 *(wartości orientacyjne, do strojenia w dokumentach 03–04; wodna przepływowa i biomasa —
 90 §2)*
@@ -879,9 +997,9 @@ nie dotyczy.
 
 | Technologia | Typowa farma | CAPEX | Czas budowy (doby gry) | Roczny CF (kontrola: 06 §12) | Charakter |
 |---|---|---|---|---|---|
-| **Wiatr lądowy** | 50–300 MW | ~3,6 mln zł/MW | 1 | ~15–30% (zależnie od heksa) | najmocniej wieje zimą; **wyłączenie sztormowe przy 25 m/s** |
-| **Wiatr morski** (0.22) | 100–600 MW | ~9,0 mln zł/MW (×2,5 za teren) | 2 | ~47% | ta sama turbina, klasa wiatrowa morska; **płaska sezonowość**, ale sztorm gasi ją pierwszą |
-| **PV** | 10–200 MW | ~1,8 mln zł/MW | 1 | ~11–12% | szczyt w letnie południe, **zero w nocy**; grudzień = ~8–10% czerwca |
+| **Wiatr lądowy** | 50–300 MW | ~1,8 mln zł/MW | 1 | ~15–30% (zależnie od heksa) | najmocniej wieje zimą; **wyłączenie sztormowe przy 25 m/s** |
+| **Wiatr morski** (0.22) | 100–600 MW | ~4,5 mln zł/MW (×2,5 za teren) | 2 | ~47% | ta sama turbina, klasa wiatrowa morska; **płaska sezonowość**, ale sztorm gasi ją pierwszą |
+| **PV** | 10–200 MW | ~0,9 mln zł/MW | 1 | ~11–12% | szczyt w letnie południe, **zero w nocy**; grudzień = ~8–10% czerwca |
 
 **Wiatr morski to nie osobna technologia (0.22)** — to ta sama farma postawiona na heksie
 morskim (§3.2). Silnik nie zna „turbiny morskiej": zna jedną technologię `wiatr`, a różnicę
@@ -915,9 +1033,9 @@ moc przez 2 godziny. UI musi to wyraźnie pokazywać.
 | **Bateria (BESS)** | ~90% | 1–4 h | 1 | brak — wszędzie |
 | **Szczytowo-pompowa** | ~75% | 6–20 h | 5 | góry/wyżyna + woda (§3.2) |
 
-**CAPEX (0.16, 02 §8.2):** bateria — moduł mocy **1,6 mln zł/MW** + moduł pojemności
-**1,1 mln zł/MWh** (kupowane osobno; limit 500 MW / 2 000 MWh na heks); szczytowo-pompowa —
-bloki **250 MW / 2 500 MWh** po **~1,1 mld zł** (do 4 bloków na heksie).
+**CAPEX (0.16, ceny z 0.25; 02 §8.2):** bateria — moduł mocy **0,8 mln zł/MW** + moduł
+pojemności **0,55 mln zł/MWh** (kupowane osobno; limit 500 MW / 2 000 MWh na heks); szczytowo-pompowa —
+bloki **250 MW / 2 500 MWh** po **~550 mln zł** (do 4 bloków na heksie).
 
 Moc i pojemność baterii rozbudowuje się **osobno** (moduły). Zastosowania w wersji
 uproszczonej: przenoszenie taniej energii (nocna jądrowa/węgiel, nadwyżki wiatru) na szczyt
@@ -931,9 +1049,9 @@ Rola w topologii — §3.3, mechanika węzła — §4.3. Parametry (orientacyjne
 |---|---|---|
 | **Przepustowość** | brak limitu (0.21) | — |
 | **Przyłącza liniowe** (ile linii można wpiąć) | 12 | — (bez modułów od 0.21) |
-| CAPEX / czas budowy | ~60 mln zł, 1 doba gry | — |
+| CAPEX / czas budowy | ~30 mln zł, 1 doba gry | — |
 
-Cena to mniej więcej **jeden heks linii SN** (62,5 mln zł): stacja zwraca się w chwili,
+Cena to mniej więcej **jeden heks linii SN** (31,25 mln zł): stacja zwraca się w chwili,
 gdy oszczędza jeden heks zdublowanego korytarza. Jest więc rutynowym elementem topologii,
 a nie inwestycją — jedyne pytanie brzmi „czy potrzebuję tu rozgałęzienia". Braku limitu
 mocy nie da się nadużyć: przez stację przepłynie tylko tyle, ile wniosą linie, a te są
@@ -974,7 +1092,7 @@ jest tu zdolnością handlową, nie dubletem limitu linii) i dociąga do niego l
 
 | Parametr | Wartość orientacyjna |
 |---|---|
-| CAPEX przyłącza | ~1,0 mld zł za 500 MW zdolności (moduł +500 MW: ~0,7 mld zł) |
+| CAPEX przyłącza | ~0,5 mld zł za 500 MW zdolności (moduł +500 MW: ~0,35 mld zł) |
 | Czas budowy | 4 doby gry (moduł: 2 doby) |
 | **Cena importu** | ~800 zł/MWh — drożej niż każda własna produkcja |
 | **Cena eksportu** | ~150 zł/MWh — mniej niż koszt zmienny gazu |
@@ -1034,12 +1152,17 @@ LCOE — 90 §5.)*
   mieści na heksie morskim 600 MW zamiast 300 i stawia się 2 doby zamiast 1 (§5.2). Baza
   rozbudowy jest ta sama co przy nowej lokalizacji — 85% CAPEX-u i 70% czasu **liczonego
   od terenu heksa, na którym farma już stoi**, więc dostawienie 300 MW na morzu kosztuje
-  85% z 2,7 mld zł i trwa 70% z 2 dób.
+  85% z 1,35 mld zł i trwa 70% z 2 dób.
 - **Linia rozbudowuje się przez podmianę typu (0.17):** gotową linię podnosi się do wyższego
   typu na tej samej trasie za **85% CAPEX-u i 70% czasu** nowej linii tego typu (§4.2); przez
   całe roboty przesyła dalej na starym typie. Trasy ani długości rozbudowa nie zmienia — to
   ta sama „rozbudowa w miejscu" co blok na heksie elektrowni. Powyżej WN nie ma dokąd
   rozbudowywać: zostaje równoległy tor.
+- **Dostawiany blok wybiera się z tej samej drabiny czterech rozmiarów co nowy** (0.24,
+  §5.1) i **nie musi** być równy blokom już stojącym na heksie: do 400 MW CCGT wolno
+  dostawić szczebel MAŁY (100 MW) albo WIELKI (500 MW). Panel podpowiada szczebel
+  najbliższy średniemu blokowi obiektu — obiekt ze stanu startowego albo starego zapisu
+  może mieć moc spoza drabiny, a rozbudowa musi mimo to nazwać rozmiar.
 - Nowy blok ma własny licznik budowy; linie można dobudowywać równolegle na tej samej trasie
   — drugi tor zawsze pozostaje osobną linią, także po rozbudowie pierwszego.
 
@@ -1110,7 +1233,10 @@ starzenie majątku i remonty, kolejka przyłączeniowa — 90 §3, §7, §10.)*
    (także pusty) otwiera panel dokowany przy prawej krawędzi mapy, nad jej częścią:
    parametry heksa (teren, mnożnik kosztu, wiatr/słońce, lokalizacja szczytowo-pompowa),
    **katalog budowy dostępny na tym heksie — jedyna droga budowania** (ceny z mnożnikiem
-   terenu), a gdy stoi tu obiekt — jego parametry, stan bieżący (przepływ/obciążenie,
+   terenu; blok elektrowni wybiera się spośród **czterech rozmiarów** — §5.1 w 0.24 —
+   przechodząc szczeblami `−`/`+`, a nazwa szczebla stoi zawsze obok mocy w MW, bo sama
+   nie mówi nic o wielkości bezwzględnej), a gdy stoi tu obiekt — jego parametry, stan
+   bieżący (przepływ/obciążenie,
    pobór, SOC) i akcje kontekstowe (przyłączenie miasta, rozbudowa, **poprowadzenie
    linii**: klik „poprowadź linię stąd" + klik heksu obiektu docelowego, anulowanie
    budowy). Panel pokazuje też linie przechodzące przez heks.
@@ -1177,11 +1303,12 @@ indeksem ceny.
 | ✅ | **Uproszczony przepływ (0.7/0.8)**: model „wodociągowy" — bilans turowy, przepustowości linii (od 0.21 tylko ich oraz przyłączy granicznych), straty liniowe od długości; bez praw Kirchhoffa | 4 |
 | ✅ | **W wersji uproszczonej są: PV, wiatr lądowy, magazyny, stacje rozdzielcze, prognozy z błędem** (0.8); **od 0.22 także wiatr morski** — nie jako osobna technologia, lecz jako ta sama farma na heksie morskim | 5, 2.4 |
 | ✅ | **Wiatr morski (0.22)**: farma wiatrowa wolno stawiać na morzu — mnożnik terenu **×2,5**, limit heksa **600 MW**, budowa **2 doby**, klasa wiatrowa morska (CF ~47%). Reszta obiektów na wodzie nadal niemożliwa, na jeziorze nic. Uzasadnienie ×2,5 zamiast ×3,5 od kabla i dowód, że morze nie rozbraja Dunkelflaute ani sztormu — nagłówek 0.22 oraz 06 §12.14 | 3.2, 5.2, 7, 02 §8.1 |
-| ✅ | **Topologia bezpośrednia (0.11)**: linie łączą obiekty wprost; **6 przyłączy liniowych na obiekt** (0.12; wcześniej 2 i stacja jako jedyny węzeł zbiorczy); stacja rozdzielcza = dedykowany węzeł, od 0.21 **bez własnej przepustowości, 12 przyłączy na sztywno, 60 mln zł** (uchyla 250 MW + moduły z 0.12); **linia w przelocie przyłącza mijane obiekty, ⩽9 linii jednego typu na heks** (0.13); **przelot przerywa linię na obiekcie — dwie osobne linie, dwa przyłącza** (0.19; uchyla „jedno przyłącze" z 0.13) | 3.3, 4.3 |
+| ✅ | **Topologia bezpośrednia (0.11)**: linie łączą obiekty wprost; **6 przyłączy liniowych na obiekt** (0.12; wcześniej 2 i stacja jako jedyny węzeł zbiorczy); stacja rozdzielcza = dedykowany węzeł, od 0.21 **bez własnej przepustowości, 12 przyłączy na sztywno** i cena jednego heksa SN (30 mln zł od 0.25; uchyla 250 MW + moduły z 0.12); **linia w przelocie przyłącza mijane obiekty, ⩽9 linii jednego typu na heks** (0.13); **przelot przerywa linię na obiekcie — dwie osobne linie, dwa przyłącza** (0.19; uchyla „jedno przyłącze" z 0.13) | 3.3, 4.3 |
 | ✅ | **Trzy typy linii przesyłowych NN/SN/WN** (0.13; uchyla „jeden typ" z 0.11): 150/500/1500 MW, straty 4/2/1%/100 km, budowa 3/6/12 h/heks | 4.2 |
 | ✅ | **OZE: ręczne sterowanie tylko włącz/wyłącz całą farmę**; przycinanie nadwyżek automatyczne (0.13) | 4.1 |
 | ✅ | **Horyzont prognozy: 24 h bazowo, poziomy wydłużają do 3 / 7 dób** i zwężają pasmo (0.13); **kroczący (0.18)** — liczony od tury bieżącej, nie do końca doby (uchyla „bieżąca doba" z 0.13); lekki buff poziomu podstawowego do weryfikacji w doc 03 | 2.4, 06 §8.6.3 |
-| ✅ | **Wartości ekonomiczne = strojenie z prototypu (0.13)**: taryfa 650, kara 4 000 zł/MWh, CAPEX ~×0,6, graniczne 1,0 mld, przyłączenie miasta 30 mln — baseline dla doc 03 | 4.5, 5, 6 |
+| ✅ | **Wartości ekonomiczne = strojenie z prototypu (0.13)**: taryfa 650, kara 4 000 zł/MWh, CAPEX ~×0,6, graniczne 1,0 mld, przyłączenie miasta 30 mln — baseline dla doc 03. **Rabat ×0,6 objął wyłącznie OZE**; sterowalne dorównały mu dopiero w 0.25 (i to z nawiązką — cięcie o połowę) | 4.5, 5, 6 |
+| ✅ | **Wszystkie ceny inwestycji o połowę niżej (0.25)**: elektrownie, OZE, magazyny, linie, stacje, granice, przyłączenie miasta, systemy prognostyczne — jednolicie ×0,5, więc relacje cenowe i kolejność zwrotów bez zmian (wiatr 1,3 → CCGT 2,9 roku), a gra przyspiesza dwukrotnie kapitałowo. Kapitał startowy zostaje 10 mld. Jądrówka mieści się w nim — jej progiem zostaje koszt stały i brak odbioru, nie cena | 4.2, 5.1–5.4, 5.7, 2.4 |
 | ✅ | Pogoda wg dokumentu 06 (reżimy, prawda przy init doby, seed) | 2.4, 06 |
 | ✅ | Skala czasu — 3 doby reprezentatywne na miesiąc (36 dób/rok) | 2.1 |
 | ✅ | Gra turowa — **doba = 8 tur po 3 h** (tury nazwane od pór doby; prawda pozostaje godzinowa) (0.12) | 2.2 |
@@ -1194,6 +1321,7 @@ indeksem ceny.
 | ✅ | Kapitał startowy 10 mld zł, konfigurowalny | 3.4 |
 | ✅ | Czasy budowy K ≈ 40 (0.12; wcześniej K ≈ 5 → 20), linie 3/6/12 h/heks wg typu (0.13) | 2.6 |
 | ✅ | **Model zapotrzebowania i wzrost miast wg dokumentu 05** (0.14; uchyla formułę tymczasową z 0.13): miasto = gospodarstwa + firmy; wzrost 0–4%/mies. przy `U > 99%`, wysycanie pojemnością 16×, kurczenie o połowę niedoboru przy `U < 90%`, podłoga 100/10; miasta niepodłączone zamrożone | 2.7, 5.6, doc 05 |
+| ✅ | **Blok elektrowni z czterech rozmiarów (0.24)**: MAŁY / ŚREDNI / DUŻY / WIELKI wg tabeli §5.1, nic pomiędzy (uchyla dobór mocy bloku co do MW); rozmiar względny wobec technologii, rozbudowa bierze z tej samej drabiny i nie musi trafiać w bloki już stojące. Farm OZE i magazynów zmiana nie dotyczy | 5.1, 7, 8 pkt 6 |
 | ✅ | Rozbudowa istniejących obiektów z twardymi limitami; obiekt zawsze zajmuje 1 heks (0.13) | 7 |
 | ✅ | **Rozbudowa linii do wyższego typu (0.17)**: NN→SN→WN na tej samej trasie, 85% CAPEX-u / 70% czasu, tylko w górę i tylko dla linii gotowej; linia przesyła na starym typie do końca robót i zajmuje korytarz dla obu typów. Kara 5% za ścieżkę „tanio teraz, grubo później" przyjęta świadomie — strojenie w doc 04 | 4.2, 7 |
 | ✅ | Handoff UI = wskazówka wyłącznie wizualna; wymagania z dokumentów | 8 |
@@ -1222,6 +1350,13 @@ indeksem ceny.
 
 1. **Platforma i silnik docelowy** — nie blokuje prototypu (prototyp jest kodem
    jednorazowym); decyzja planowana wkrótce.
+2. **Skutki cięcia cen z 0.25 — do doc 03.** Cięcie było jednolite, więc równowaga
+   technologii jest nietknięta; otwarte zostaje **tempo**: (a) czy **taryfa 650 zł/MWh
+   i kapitał startowy 10 mld** nie są teraz zbyt hojne, skoro cały majątek potaniał
+   dwukrotnie, a zwroty spadły do 1,3–2,9 roku — pytanie „czy 10 mld domyka otwarcie"
+   z 02 §11 zmienia się w „czy 10 mld nie domyka za dużo"; (b) czy **jądrówka mieszcząca
+   się w kapitale startowym** jest wystarczająco hamowana przez koszt stały, brak odbioru
+   i wyprowadzenie mocy, czy trzeba jej osobnej bariery.
 
 *(Pytanie o docelowy mechanizm wzrostu miast rozstrzygnięte w 0.14 — dokument 05 §6.)*
 
