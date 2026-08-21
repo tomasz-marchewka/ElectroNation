@@ -25,7 +25,7 @@ describe("build queue", () => {
     state = applyAction(state, {
       type: "buildPlant",
       tech: "coal",
-      capacityMw: 500,
+      size: "medium",
       hex: { q: 2, r: 2 },
     });
     state = applyAction(state, { type: "buildLine", lineType: "lv", path: PATH });
@@ -55,7 +55,7 @@ describe("build queue", () => {
     const state = applyAction(newGame(7, makeScenario()), {
       type: "expandPlant",
       plantId: "plant-1",
-      capacityMw: 400,
+      size: "large",
     });
     expect(buildQueue(state)[0]?.name).toBe("ROZBUDOWA · P1");
   });

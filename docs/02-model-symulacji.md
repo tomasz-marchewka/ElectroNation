@@ -1,10 +1,33 @@
 # ElectroNation — Model symulacji uproszczonej (silnik tury)
 
-**Wersja:** 0.8
-**Data:** 2026-08-20
+**Wersja:** 0.10
+**Data:** 2026-08-21
 **Status:** **obowiązuje** — formalizuje rdzeń mechaniki z dokumentu 01 §4 (graf sieci,
 rozpływ, straty, niedobory) oraz krok rozstrzygnięcia tury. Wprowadzona tu zmiana 01 §4.1
 (nadwyżka sterowalna karana) obowiązuje od 01 v0.16.
+
+**Zmiany 0.9 → 0.10 (wszystkie ceny inwestycji o połowę niżej):** §8.1–§8.4 — każdy CAPEX
+w grze spada o połowę (01 §5.1 w 0.25): elektrownie, farmy, magazyny, linie, stacje,
+przyłącza graniczne, przyłączenie miasta i systemy prognostyczne. Powód po stronie 01:
+rabat „~×0,6" z 01 §11 nigdy nie dotarł do technologii sterowalnych. **Silnik nie zmienia
+ani jednej reguły** — cena to nadal `jednostka × CAPEX × mnożnik terenu` (§8.1), rozbudowa
+nadal ×0,85 (§8.4), a rozpływ, straty i rachunek tury nie widzą tej zmiany w ogóle.
+Pochodne trzymają się swoich definicji: koszt stały linii to nadal **1,5% CAPEX-u/rok**,
+więc spadł razem z nim (§8.3), a 2% dla stacji i granicy liczy się od nowego CAPEX-u.
+Koszty stałe liczone od MW (elektrownie, farmy, magazyny), koszty zmienne, taryfa i kary
+zostają bez zmian. **Cięcie jest jednolite, więc kolejność zwrotów jest nietknięta**
+(wiatr 1,3 · PV 1,5 · morze 1,8 · węgiel 2,4 · jądrowa 2,7 · CCGT 2,9 roku) — zmienia się
+tempo gry, nie równowaga technologii. Goldeny przeliczone: **ENS i zrzut co do MW bez
+zmian we wszystkich dziesięciu**, różni się wyłącznie rachunek gotówki.
+
+**Zmiany 0.8 → 0.9 (blok elektrowni z czterech rozmiarów):** §8.4 — moc bloku elektrowni
+sterowalnej przestaje być liczbą podawaną przez gracza: technologia sprzedaje **cztery
+rozmiary** (MAŁY / ŚREDNI / DUŻY / WIELKI, tabela 01 §5.1 w 0.24), a akcja budowy
+i rozbudowy **nazywa szczebel**, nie megawaty. Silnik odrzuca rozmiar spoza tej czwórki
+tak samo, jak dotąd odrzucał moc ponad limit bloku. Rozpływ, straty, koszty i rachunek
+tury bez zmian — zmienia się wyłącznie to, co wolno zamówić: stan gry nadal trzyma moc
+obiektu w MW, więc **schemat zapisu nie rusza się ani o wersję** i endowmenty scenariusza
+(01 §3.4) wolno definiować spoza drabiny. Nowy test akceptacyjny §9.15.
 
 **Zmiany 0.7 → 0.8 (kara za nadwyżkę obejmuje OZE; linia do placu budowy):** §5.1 — podstawą kary bilansowej
 jest **suma zrzutu wszystkich źródeł**, nie sama produkcja sterowalna; OZE przestaje być
@@ -323,13 +346,17 @@ stacje rozdzielcze i przyłącza graniczne na wodzie nadal nie stoją, a **jezio
 przyjmuje niczego**: w grze jest zbyt małe, a jego rolą jest woda dla szczytowo-pompowej.
 
 **Dlaczego ×2,5, a nie ×3,5 od kabla.** Mnożnik ×3,5 strojono dla **linii** — kabla
-podwodnego, nie fundamentu turbiny. Przeniesiony na obiekt dałby CAPEX 12,6 mln zł/MW,
-czyli **93% więcej za roczną MWh** niż farma na nizinie (3 038 vs 1 577 zł), a mapa v1
+podwodnego, nie fundamentu turbiny. Przeniesiony na obiekt dałby CAPEX 6,3 mln zł/MW,
+czyli **93% więcej za roczną MWh** niż farma na nizinie (1 519 vs 789 zł), a mapa v1
 oferuje 332 heksy lądowe wobec 47 morskich (§8.6) — przy braku deficytu miejsca nikt by
-tego nie kupił i morze byłoby opcją martwą. ×2,5 daje 9,0 mln zł/MW, 2 170 zł za roczną
-MWh (+38%) i **zwrot ~3,5 roku** przy taryfie 650 zł/MWh — między wiatrem lądowym (~2,7)
-a flotą cieplną (węgiel 4,1 / CCGT 4,6 / jądrowa 5,1). Morze jest więc **premią za jakość
+tego nie kupił i morze byłoby opcją martwą. ×2,5 daje 4,5 mln zł/MW, 1 085 zł za roczną
+MWh (+38%) i **zwrot ~1,8 roku** przy taryfie 650 zł/MWh — między wiatrem lądowym (~1,3)
+a flotą cieplną (węgiel 2,4 / CCGT 2,9 / jądrowa 2,7). Morze jest więc **premią za jakość
 zasobu** (CF ~47%, płaska sezonowość, o ⅓ mniej godzin zerowych), nie tanią energią.
+*(Kwoty i zwroty przeliczone w 0.10 po jednolitym cięciu wszystkich cen o połowę — 01
+§5.1 w 0.25. Cięcie objęło każdą technologię tak samo, więc relacja „+38% za roczną MWh"
+i pozycja morza między lądem a flotą cieplną są dokładnie te, co przed nim; skróciły się
+same zwroty, dwukrotnie.)*
 Koszt stały pozostaje lądowy — 130 tys. zł/MW/rok (§8.3): podwojenie przesuwa zwrot
 o 0,18 roku, więc nie kupuje tyle, ile kosztuje w komplikacji. Knob do strojenia w doc 03.
 
@@ -337,10 +364,10 @@ o 0,18 roku, więc nie kupuje tyle, ile kosztuje w komplikacji. Knob do strojeni
 
 | Typ | CAPEX | Moduł rozbudowy | Limit na heks |
 |---|---|---|---|
-| **Bateria (BESS)** | moc: **1,6 mln zł/MW** · pojemność: **1,1 mln zł/MWh** (kupowane osobno) | dowolna kombinacja modułów mocy/pojemności | 500 MW / 2 000 MWh |
-| **Szczytowo-pompowa** | blok **250 MW / 2 500 MWh** (10 h): **~1,1 mld zł** | +1 blok | 4 bloki (1000 MW / 10 000 MWh) |
+| **Bateria (BESS)** | moc: **0,8 mln zł/MW** · pojemność: **0,55 mln zł/MWh** (kupowane osobno) | dowolna kombinacja modułów mocy/pojemności | 500 MW / 2 000 MWh |
+| **Szczytowo-pompowa** | blok **250 MW / 2 500 MWh** (10 h): **~550 mln zł** | +1 blok | 4 bloki (1000 MW / 10 000 MWh) |
 
-Przykład: bateria 100 MW / 200 MWh = 160 + 220 = **380 mln zł**, budowa 1 doba gry.
+Przykład: bateria 100 MW / 200 MWh = 80 + 110 = **190 mln zł**, budowa 1 doba gry.
 
 ### 8.3 Koszty stałe utrzymania (uzupełnia 01 §5–6)
 
@@ -354,8 +381,8 @@ Przykład: bateria 100 MW / 200 MWh = 160 + 220 = **380 mln zł**, budowa 1 doba
 | PV | 50 tys. zł/MW/rok |
 | Bateria | 40 tys. zł/MW/rok (od mocy) |
 | Szczytowo-pompowa | 80 tys. zł/MW/rok |
-| Linie | 1,5% CAPEX-u/rok (NN ~18 / SN ~37,5 / WN ~90 tys. zł/km/rok) |
-| Stacja rozdzielcza (60 mln zł → 1,2 mln zł/rok), przyłącze graniczne | 2% CAPEX-u/rok |
+| Linie | 1,5% CAPEX-u/rok (NN ~9 / SN ~18,75 / WN ~45 tys. zł/km/rok — obniżone razem z CAPEX-em w 0.10) |
+| Stacja rozdzielcza (30 mln zł → 0,6 mln zł/rok), przyłącze graniczne | 2% CAPEX-u/rok |
 
 Naliczanie dobowe: roczne / 365 × liczba reprezentowanych dni doby (01 §6).
 
@@ -367,16 +394,43 @@ na heks**; farmy OZE do limitu mocy heksa: **wiatr 300 MW na lądzie i 600 MW na
 (0.7), PV 200 MW**; magazyny wg tabel (§8.2). Stacji rozdzielczej nie rozbudowuje się
 w ogóle (01 §5.4 w 0.21).
 
+**Rozszerzenie (01 §5.1, §7 w 0.24): moc bloku elektrowni jest wyborem z czterech
+rozmiarów**, nie liczbą. Akcje `buildPlant` i `expandPlant` niosą **szczebel**
+(`small` / `medium` / `large` / `xlarge` — MAŁY / ŚREDNI / DUŻY / WIELKI), a MW bierze
+się z tabeli technologii 01 §5.1; szczebel spoza czwórki jest odrzucany jak każda inna
+niedozwolona akcja (stanem zwróconym bez zmiany). Konsekwencje dla silnika:
+
+| Co | Jak |
+|---|---|
+| Stan gry | bez zmian — obiekt trzyma `capacityMw` w MW, schemat zapisu bez bumpa |
+| Log akcji | **niekompatybilny wstecz**: akcja bloku nazywa rozmiar, nie moc; log sprzed 0.24 nie odtworzy się |
+| Cena | bez zmian: MW szczebla × CAPEX zł/MW × mnożnik terenu (§8.1), rozbudowa nadal ×0,85 |
+| Rozbudowa | dostawiany blok **nie musi** równać się blokom stojącym na heksie; limit 6 bloków bez zmian |
+| Scenariusz | endowment (01 §3.4) i mapa v1 wolno definiować z mocą spoza drabiny — drabina wiąże **akcje gracza**, nie definicję świata |
+
+Drabina pilnuje **rozmiaru**, nie ceny: najmniejszy blok jądrowy to 800 MW i mniejszego
+nie ma — do 0.23 silnik przyjmował blok jądrowy dowolnej mocy, więc rola „wielki próg
+wejścia" była opisem bez pokrycia w regule. Po cięciu CAPEX-u z 0.10 taki blok kosztuje
+**8,4 mld zł, czyli mniej niż kapitał startowy**, więc `buildPlant` przyjmie go
+w pierwszej turze; hamują go dopiero rachunek kosztu stałego (400 mln zł/rok na 800 MW,
+§8.3), brak odbioru w grafie i konieczność zbudowania wyprowadzenia mocy. Silnik nie ma
+i nie potrzebuje osobnej reguły „za wcześnie na jądrówkę" — to rozstrzyga rachunek tury. Na drugim końcu drabiny **blok jądrowy WIELKI (2 400 MW) przekracza
+przepustowość linii WN** (1 500 MW, 01 §4.2), więc największa jednostka w grze nie ma
+jednego toru wyprowadzenia mocy — dokładnie ta sama konsekwencja projektowa co przy
+morskiej farmie 600 MW w linii SN (§8.4 powyżej). Sześć takich bloków na heksie to
+14 400 MW przy docelowej skali systemu 20–30 GW (01 §3.4): limit lokalizacji przestaje
+być teoretyczny dopiero dla jądrówki.
+
 **Rozszerzenie (01 §5.2, §7 w 0.22): limit mocy heksa i czas budowy farmy wiatrowej są
 funkcją terenu**, nie samej technologii.
 
 | Teren farmy wiatrowej | Limit mocy heksa | Czas budowy | CAPEX pełnego heksa |
 |---|---|---|---|
-| ląd (dowolny zabudowywalny) | 300 MW | 1 doba gry | 1,08 mld zł (nizina) |
-| **morze** | **600 MW** | **2 doby gry** | **5,4 mld zł** |
+| ląd (dowolny zabudowywalny) | 300 MW | 1 doba gry | 540 mln zł (nizina) |
+| **morze** | **600 MW** | **2 doby gry** | **2,7 mld zł** |
 
 Rozbudowa liczy 85% CAPEX-u i 70% czasu **od terenu heksa, na którym farma stoi** — na
-morzu dostawienie 300 MW to 85% z 2,7 mld zł i 70% z 2 dób. Konsekwencja projektowa
+morzu dostawienie 300 MW to 85% z 1,35 mld zł i 70% z 2 dób. Konsekwencja projektowa
 600 MW: pełna farma morska **nie mieści się w linii SN** (500 MW — 01 §4.2), więc wymusza
 WN albo drugi tor. Wyprowadzenie mocy na ląd jest przez to osobną decyzją inwestycyjną,
 a nie dodatkiem do farmy — i to ono, a nie sam CAPEX turbin, hamuje zabudowę morza.
@@ -456,6 +510,14 @@ Testy specyfikacyjne cytują sekcje tego dokumentu:
     farma wiatrowa. Limit heksa morskiego to 600 MW (lądowego 300), budowa trwa 2 doby
     (na lądzie 1), a rozbudowa liczy 85%/70% od terenu heksa farmy. Farma morska dostaje
     klasę wiatrową morską z danych mapy i wchodzi do rozpływu jak każde inne źródło OZE.
+15. **§8.4** — rozmiary bloku (01 §5.1 w 0.24): dla każdej technologii katalog ma dokładnie
+    cztery szczeble o rosnących mocach; zamówiony blok dostaje moc swojego szczebla i cenę
+    `MW × CAPEX × mnożnik terenu`; szczebel spoza czwórki (także pusty i nieznany — log
+    z sieci może nieść cokolwiek) jest **odrzucany, nie zaokrąglany** do najbliższego;
+    najmniejszy blok jądrowy przekracza kapitał startowy, więc odmowa „brak środków"
+    obowiązuje na starcie dla całej technologii; obiekt o mocy spoza drabiny (endowment
+    scenariusza) czyta się jako szczebel najbliższy, a rozbudowa o dowolny szczebel działa
+    i liczy limit 6 bloków bez względu na rozmiary.
 
 ## 10. Pytania otwarte
 
@@ -479,6 +541,13 @@ Testy specyfikacyjne cytują sekcje tego dokumentu:
   włącznie. Zaktualizowane w 01 v0.23.
 - **01 §3.3, §5.2** — zmiana (0.8): linia może kończyć się na placu budowy, a obiekt
   ukończony bez linii startuje wyłączony. Zaktualizowane w 01 v0.23.
+- **01 §5.1, §7, §8 pkt 6** — zmiana (0.9): blok elektrowni sterowalnej ma jeden
+  z czterech rozmiarów, a akcja budowy/rozbudowy nazywa szczebel. Zaktualizowane
+  w 01 v0.24; tabela mocy szczebli jest w 01 §5.1 i to ona jest kanonem.
+- **01 §5.1, §5.2, §11** — zmiana (0.10): CAPEX elektrowni sterowalnych o połowę niżej;
+  kolejność zwrotów odwrócona, porównanie z 0.7/01 0.22 uchylone. Zaktualizowane
+  w 01 v0.25, z trzema pytaniami przekazanymi do **doc 03** (taryfa i kapitał startowy,
+  korekta OZE, bariera dla wczesnej jądrówki).
 - **01 §3.2, §5.3, §6, §7** — zaktualizowane w 01 v0.16 wskazaniami na §8 (baseline;
   kanon parametrów przejmą dokumenty 03/04).
 - **03 (ekonomia)** — strojenie: kara bilansowa, take-or-pay importu, koszty stałe,

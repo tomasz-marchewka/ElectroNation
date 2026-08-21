@@ -51,6 +51,13 @@ dokąd biegną) — wymagana przez 01 §8 pkt 6, w designie pominięta.
   M5). Jeżeli akcja silnika okazała się no-opem (stan bez zmian), pokaż
   diagnozę z walidacji app-owej (patrz pkt 4).
 
+> **Nieaktualne w tym punkcie (01 v0.24–0.25):** blok elektrowni wybiera się
+> z **czterech rozmiarów** (`PLANT_TECHS.blockMw`, szczeble MAŁY/ŚREDNI/DUŻY/WIELKI),
+> a nie mocą w granicach `maxBlockMw` — tej stałej już nie ma; stepper przechodzi
+> szczeblami. Dobór farm i baterii bez zmian, ale **wszystkie ceny są o połowę niższe**
+> (0.25), więc bateria 150 MW / 300 MWh kosztuje dziś 285, a nie 570 mln zł.
+> Kanon: docs/01 §5.1, §8 pkt 6 — nigdy liczby z tego briefu.
+
 **Heks z obiektem — sekcja `OBIEKT`:** RODZAJ (opis technologii), STAN
 (`StatusDot`: danger, gdy obiekt uczestniczy w wąskim gardle albo miasto ma ENS
 — z `lastTurnReport`), PRZYŁĄCZA `użyte / limit` (limit per obiekt — stacje

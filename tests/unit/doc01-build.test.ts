@@ -1,17 +1,24 @@
 import { describe, expect, test } from "vitest";
 import {
   CITY_CONNECTION_COST_PLN,
+  PLANT_BLOCK_SIZES,
+  PLANT_TECHS,
   TURNS_PER_DAY,
   applyAction,
+  nearestPlantBlockSize,
   newGame,
+  plantBlockMw,
   resolveTurn,
   type Action,
   type GameState,
+  type PlantBlockSize,
+  type PlantTech,
   type Scenario,
 } from "../../src/engine";
 
 // Spec tests for the build loop: docs/01 §2.6 (build times, payment up front),
-// §3.3 (topology limits), §3.4 (city connection act) and 02 §8 (costs).
+// §3.3 (topology limits), §3.4 (city connection act), §5.1 (block sizes)
+// and 02 §8 (costs).
 
 function makeScenario(overrides: Partial<Scenario> = {}): Scenario {
   return {
@@ -77,10 +84,10 @@ describe("doc 01 §2.6: objects pay up front and appear after the countdown", ()
     const built = apply(base, {
       type: "buildPlant",
       tech: "ccgt",
-      capacityMw: 100,
+      size: "small",
       hex: { q: 1, r: 1 },
     });
-    expect(base.moneyPln - built.moneyPln).toBe(100 * 5_500_000);
+    expect(base.moneyPln - built.moneyPln).toBe(100 * 2_750_000);
     expect(built.constructions).toHaveLength(1);
     expect(built.plants).toHaveLength(1);
     // CCGT builds 3 game days; the object exists at the start of day 4.
@@ -97,14 +104,14 @@ describe("doc 01 §2.6: objects pay up front and appear after the countdown", ()
     const onMountain = apply(base, {
       type: "buildPlant",
       tech: "ocgt",
-      capacityMw: 100,
+      size: "large",
       hex: { q: 1, r: 1 },
     });
-    expect(base.moneyPln - onMountain.moneyPln).toBe(Math.round(100 * 3_000_000 * 2.5));
+    expect(base.moneyPln - onMountain.moneyPln).toBe(Math.round(100 * 1_500_000 * 2.5));
     const onLake = apply(base, {
       type: "buildPlant",
       tech: "ocgt",
-      capacityMw: 100,
+      size: "large",
       hex: { q: 2, r: 2 },
     });
     expect(onLake).toBe(base); // no-op
@@ -113,7 +120,7 @@ describe("doc 01 §2.6: objects pay up front and appear after the countdown", ()
   test("invalid builds are no-ops: occupied hex, over-limit farm, empty wallet", () => {
     const base = newGame(3, makeScenario());
     expect(
-      apply(base, { type: "buildPlant", tech: "ocgt", capacityMw: 50, hex: { q: 4, r: 0 } }),
+      apply(base, { type: "buildPlant", tech: "ocgt", size: "medium", hex: { q: 4, r: 0 } }),
     ).toBe(base); // city hex
     expect(
       apply(base, { type: "buildFarm", tech: "wind", capacityMw: 400, hex: { q: 1, r: 1 } }),
@@ -122,10 +129,84 @@ describe("doc 01 §2.6: objects pay up front and appear after the countdown", ()
       apply(base, {
         type: "buildPlant",
         tech: "nuclear",
-        capacityMw: 1_600,
+        size: "xlarge",
         hex: { q: 1, r: 1 },
       }),
-    ).toBe(base); // 33.6 mld > starting capital
+    ).toBe(base); // 25,2 mld > starting capital
+  });
+});
+
+describe("doc 01 §5.1: a block is one of four sizes, never a dialled-in number", () => {
+  const TECHS: PlantTech[] = ["nuclear", "coal", "ccgt", "ocgt"];
+
+  test.each(TECHS)("%s sells exactly four rungs, listed smallest first", (tech) => {
+    const mw = PLANT_BLOCK_SIZES.map((size) => PLANT_TECHS[tech].blockMw[size]);
+    expect(mw).toHaveLength(4);
+    expect([...mw].sort((a, b) => a - b)).toEqual(mw);
+    expect(new Set(mw).size).toBe(4);
+  });
+
+  test("the ordered block gets the technology's MW for that rung, and its price", () => {
+    const base = newGame(3, makeScenario());
+    const built = apply(base, {
+      type: "buildPlant",
+      tech: "ocgt",
+      size: "xlarge",
+      hex: { q: 1, r: 1 },
+    });
+    const capacityMw = PLANT_TECHS.ocgt.blockMw.xlarge;
+    expect(capacityMw).toBe(150);
+    expect(base.moneyPln - built.moneyPln).toBe(capacityMw * PLANT_TECHS.ocgt.capexPlnPerMw);
+    const after = run(built, TURNS_PER_DAY);
+    expect(after.plants.find((p) => p.hex.q === 1)?.capacityMw).toBe(capacityMw);
+  });
+
+  test("a size outside the four is refused, not rounded to the nearest one", () => {
+    const base = newGame(3, makeScenario());
+    const off = { type: "buildPlant" as const, tech: "ccgt" as const, hex: { q: 1, r: 1 } };
+    expect(apply(base, { ...off, size: "tiny" as PlantBlockSize })).toBe(base);
+    expect(apply(base, { ...off, size: "" as PlantBlockSize })).toBe(base);
+    expect(plantBlockMw("ccgt", "tiny" as PlantBlockSize)).toBeNull();
+  });
+
+  test("a block off the ladder — a scenario endowment — reads as its nearest rung", () => {
+    // 01 §3.4: the starting CCGT is 400 MW, which is the DUŻY rung exactly.
+    expect(nearestPlantBlockSize("ccgt", 400)).toBe("large");
+    expect(nearestPlantBlockSize("nuclear", 2_400)).toBe("xlarge");
+    // Anything between rungs rounds to the closer one, the larger on a tie.
+    expect(nearestPlantBlockSize("coal", 800)).toBe("large"); // 750, not 1 000
+    expect(nearestPlantBlockSize("coal", 350)).toBe("medium"); // tie 200/500
+    expect(nearestPlantBlockSize("nuclear", 1)).toBe("small");
+    expect(nearestPlantBlockSize("ocgt", 10_000)).toBe("xlarge");
+  });
+
+  // 01 §5.1 (0.25): halving CAPEX moved nuclear's entry gate off the wallet.
+  // The smallest block now fits inside the starting capital and the engine
+  // takes the order; what still stops the player is the standing charge and
+  // having nothing to sell 800 MW to on day one — a judgement, not a rule.
+  test("the smallest nuclear block fits the starting capital, the largest does not", () => {
+    const base = newGame(3, makeScenario());
+    const spec = PLANT_TECHS.nuclear;
+    const smallest = spec.blockMw.small * spec.capexPlnPerMw;
+    expect(smallest).toBe(8_400_000_000);
+    expect(smallest).toBeLessThan(base.moneyPln);
+
+    const ordered = apply(base, {
+      type: "buildPlant",
+      tech: "nuclear",
+      size: "small",
+      hex: { q: 1, r: 1 },
+    });
+    expect(base.moneyPln - ordered.moneyPln).toBe(smallest);
+
+    // The standing charge it brings with it: 500 tys. zł/MW/rok on 800 MW,
+    // owed whether the block ever runs (02 §8.3).
+    expect(spec.blockMw.small * spec.fixedPlnPerMwYear).toBe(400_000_000);
+
+    // The top of the ladder is still out of reach on day one: 2 400 MW = 25,2 mld.
+    expect(
+      apply(base, { type: "buildPlant", tech: "nuclear", size: "xlarge", hex: { q: 2, r: 2 } }),
+    ).toBe(base);
   });
 });
 
@@ -147,7 +228,7 @@ describe("doc 01 §2.6 / §4.2: lines build 1 hex per turn (LV) and only then ca
     });
     expect(withLine.lines).toHaveLength(1);
     expect(withLine.lines[0]?.totalHours).toBe(12);
-    expect(base.moneyPln - withLine.moneyPln).toBe(4 * 25 * 1_200_000);
+    expect(base.moneyPln - withLine.moneyPln).toBe(4 * 25 * 600_000);
 
     const dispatched = apply(withLine, {
       type: "setPlantSetpoint",

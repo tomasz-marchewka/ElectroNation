@@ -33,8 +33,8 @@ export const CONFIG = {
 // prettier-ignore
 export const FORECAST_LEVELS = {
   basic: { sigmaMultiplier: 1.0, horizonDays: 1, regimeAccuracy: 0.6, upgradeCostPln: 0 },
-  advanced: { sigmaMultiplier: 0.7, horizonDays: 3, regimeAccuracy: 0.8, upgradeCostPln: 600_000_000 },
-  ensemble: { sigmaMultiplier: 0.5, horizonDays: 7, regimeAccuracy: 0.95, upgradeCostPln: 1_200_000_000 },
+  advanced: { sigmaMultiplier: 0.7, horizonDays: 3, regimeAccuracy: 0.8, upgradeCostPln: 300_000_000 },
+  ensemble: { sigmaMultiplier: 0.5, horizonDays: 7, regimeAccuracy: 0.95, upgradeCostPln: 600_000_000 },
 } as const;
 export type ForecastLevel = keyof typeof FORECAST_LEVELS;
 
@@ -44,16 +44,68 @@ export const FORECAST_LEVEL_ORDER = ["basic", "advanced", "ensemble"] as const;
 /** 01 §2.1: representative-day weights (how many real days a played day stands for). */
 export const DAY_WEIGHTS = { working: 10.9, free: 8.7 } as const;
 
-/** 01 §5.1, §2.6: dispatchable plant technologies. */
+/**
+ * 01 §5.1 (0.24): the four sizes a block is sold in, smallest first. The rung
+ * is RELATIVE to the technology — a small nuclear block (800 MW) dwarfs an
+ * extra-large gas one (500 MW) — so the ladder is per-technology and the order
+ * here is the order the catalogue walks.
+ */
+export const PLANT_BLOCK_SIZES = ["small", "medium", "large", "xlarge"] as const;
+export type PlantBlockSize = (typeof PLANT_BLOCK_SIZES)[number];
+
+/** One row of the 01 §5.1 table; every technology carries all four rungs. */
+interface PlantTechSpec {
+  varCostPlnPerMwh: number;
+  fixedPlnPerMwYear: number;
+  capexPlnPerMw: number;
+  buildDays: number;
+  blockMw: Record<PlantBlockSize, number>;
+}
+
+/**
+ * 01 §5.1, §2.6: dispatchable plant technologies. `blockMw` is the whole
+ * catalogue of that technology — a block has one of these four powers and no
+ * other (01 §5.1 in 0.24); the largest rung is what used to be `maxBlockMw`.
+ *
+ * CAPEX is HALF of what it was through 0.24 (01 §5.1 in 0.25): the ~×0,6
+ * discount of 01 §11 had only ever reached the weather-dependent technologies,
+ * leaving dispatchable plants at real-world prices and paying back two years
+ * slower than any farm. Halving is deliberately more than levelling — with it
+ * a coal block overtakes onshore wind, and doc 03 owns the retune.
+ */
 // One line per doc row — reflowing the table would hide it.
 // prettier-ignore
 export const PLANT_TECHS = {
-  nuclear: { varCostPlnPerMwh: 60, fixedPlnPerMwYear: 500_000, capexPlnPerMw: 21_000_000, buildDays: 9, maxBlockMw: 1_600 },
-  coal: { varCostPlnPerMwh: 250, fixedPlnPerMwYear: 260_000, capexPlnPerMw: 9_000_000, buildDays: 5, maxBlockMw: 1_000 },
-  ccgt: { varCostPlnPerMwh: 350, fixedPlnPerMwYear: 120_000, capexPlnPerMw: 5_500_000, buildDays: 3, maxBlockMw: 500 },
-  ocgt: { varCostPlnPerMwh: 600, fixedPlnPerMwYear: 70_000, capexPlnPerMw: 3_000_000, buildDays: 1, maxBlockMw: 150 },
-} as const;
+  nuclear: { varCostPlnPerMwh: 60, fixedPlnPerMwYear: 500_000, capexPlnPerMw: 10_500_000, buildDays: 9, blockMw: { small: 800, medium: 1_200, large: 1_600, xlarge: 2_400 } },
+  coal: { varCostPlnPerMwh: 250, fixedPlnPerMwYear: 260_000, capexPlnPerMw: 4_500_000, buildDays: 5, blockMw: { small: 200, medium: 500, large: 750, xlarge: 1_000 } },
+  ccgt: { varCostPlnPerMwh: 350, fixedPlnPerMwYear: 120_000, capexPlnPerMw: 2_750_000, buildDays: 3, blockMw: { small: 100, medium: 200, large: 400, xlarge: 500 } },
+  ocgt: { varCostPlnPerMwh: 600, fixedPlnPerMwYear: 70_000, capexPlnPerMw: 1_500_000, buildDays: 1, blockMw: { small: 50, medium: 75, large: 100, xlarge: 150 } },
+} as const satisfies Record<string, PlantTechSpec>;
 export type PlantTech = keyof typeof PLANT_TECHS;
+
+/**
+ * MW of one block, or null when the size is not one of the four (a JSON action
+ * off the wire can carry anything — the engine refuses instead of guessing).
+ */
+export function plantBlockMw(tech: PlantTech, size: PlantBlockSize): number | null {
+  const blocks: Partial<Record<string, number>> = PLANT_TECHS[tech].blockMw;
+  return blocks[size] ?? null;
+}
+
+/**
+ * The rung an existing block of `mw` belongs to — the nearest one, the larger
+ * on a tie. Scenario endowments (01 §3.4) and older saves may carry a power
+ * that is off the ladder, and the "add one more block like these" action still
+ * has to name a size.
+ */
+export function nearestPlantBlockSize(tech: PlantTech, mw: number): PlantBlockSize {
+  const blocks = PLANT_TECHS[tech].blockMw;
+  let best: PlantBlockSize = PLANT_BLOCK_SIZES[0];
+  for (const size of PLANT_BLOCK_SIZES) {
+    if (Math.abs(blocks[size] - mw) <= Math.abs(blocks[best] - mw)) best = size;
+  }
+  return best;
+}
 
 /**
  * 01 §5.2, 02 §8.3–8.4: weather-dependent farm technologies. The wind row is
@@ -61,8 +113,8 @@ export type PlantTech = keyof typeof PLANT_TECHS;
  * these two numbers through {@link OFFSHORE_WIND} (01 §5.2, 0.22).
  */
 export const FARM_TECHS = {
-  wind: { fixedPlnPerMwYear: 130_000, capexPlnPerMw: 3_600_000, buildDays: 1, maxMwPerHex: 300 },
-  pv: { fixedPlnPerMwYear: 50_000, capexPlnPerMw: 1_800_000, buildDays: 1, maxMwPerHex: 200 },
+  wind: { fixedPlnPerMwYear: 130_000, capexPlnPerMw: 1_800_000, buildDays: 1, maxMwPerHex: 300 },
+  pv: { fixedPlnPerMwYear: 50_000, capexPlnPerMw: 900_000, buildDays: 1, maxMwPerHex: 200 },
 } as const;
 export type FarmTech = keyof typeof FARM_TECHS;
 
@@ -84,8 +136,8 @@ export type StorageTech = keyof typeof STORAGE_TECHS;
 
 /** 02 §8.2: battery modules are bought separately; hard per-hex limits. */
 export const BATTERY = {
-  powerCapexPlnPerMw: 1_600_000,
-  energyCapexPlnPerMwh: 1_100_000,
+  powerCapexPlnPerMw: 800_000,
+  energyCapexPlnPerMwh: 550_000,
   maxPowerMwPerHex: 500,
   maxCapacityMwhPerHex: 2_000,
 } as const;
@@ -94,7 +146,7 @@ export const BATTERY = {
 export const PUMPED_BLOCK = {
   powerMw: 250,
   capacityMwh: 2_500,
-  capexPln: 1_100_000_000,
+  capexPln: 550_000_000,
   maxBlocks: 4,
 } as const;
 
@@ -102,9 +154,9 @@ export const PUMPED_BLOCK = {
 // One line per doc row — reflowing the table would hide it.
 // prettier-ignore
 export const LINE_TYPES = {
-  lv: { capacityMw: 150, lossPctPer100km: 4, fixedPlnPerKmYear: 18_000, capexPlnPerKm: 1_200_000, buildHoursPerHex: 3 },
-  mv: { capacityMw: 500, lossPctPer100km: 2, fixedPlnPerKmYear: 37_500, capexPlnPerKm: 2_500_000, buildHoursPerHex: 6 },
-  hv: { capacityMw: 1500, lossPctPer100km: 1, fixedPlnPerKmYear: 90_000, capexPlnPerKm: 6_000_000, buildHoursPerHex: 12 },
+  lv: { capacityMw: 150, lossPctPer100km: 4, fixedPlnPerKmYear: 9_000, capexPlnPerKm: 600_000, buildHoursPerHex: 3 },
+  mv: { capacityMw: 500, lossPctPer100km: 2, fixedPlnPerKmYear: 18_750, capexPlnPerKm: 1_250_000, buildHoursPerHex: 6 },
+  hv: { capacityMw: 1500, lossPctPer100km: 1, fixedPlnPerKmYear: 45_000, capexPlnPerKm: 3_000_000, buildHoursPerHex: 12 },
 } as const;
 export type LineType = keyof typeof LINE_TYPES;
 
@@ -133,20 +185,20 @@ export const LINE_SLOTS_PER_OBJECT = 6;
  * module at all (0.21): it carries no throughput and its slot count is fixed.
  */
 export const JUNCTION_SPEC = {
-  capexPln: 60_000_000,
+  capexPln: 30_000_000,
   buildDays: 1,
   /** Double an ordinary object's slots (01 §5.4, 0.21) — the station's only parameter. */
   lineSlots: 2 * LINE_SLOTS_PER_OBJECT,
 } as const;
 export const BORDER_SPEC = {
-  capexPln: 1_000_000_000,
+  capexPln: 500_000_000,
   buildDays: 4,
   throughputMw: 500,
-  moduleCapexPln: 700_000_000,
+  moduleCapexPln: 350_000_000,
   moduleBuildDays: 2,
   moduleThroughputMw: 500,
 } as const;
-export const CITY_CONNECTION_COST_PLN = 30_000_000;
+export const CITY_CONNECTION_COST_PLN = 15_000_000;
 
 /**
  * 02 §8.3: junctions and border points pay 2% of their CAPEX yearly. Border

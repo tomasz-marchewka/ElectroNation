@@ -4,12 +4,14 @@ import {
   BATTERY,
   FARM_TECHS,
   MAX_PLANT_BLOCKS_PER_HEX,
+  PLANT_BLOCK_SIZES,
   PUMPED_BLOCK,
   applyAction,
   newGame,
   resolveTurn,
   type Action,
   type GameState,
+  type PlantBlockSize,
 } from "../../src/engine";
 import { stateHash } from "../helpers/hash";
 import { playTurns } from "../helpers/run";
@@ -55,6 +57,9 @@ const idArb = fc.constantFrom(
   "nope",
 );
 const mwArb = fc.integer({ min: -50, max: 900 });
+// 01 §5.1 (0.24): the four rungs plus one that does not exist — a replayed log
+// may carry anything, and the engine has to answer with the state it was given.
+const sizeArb = fc.constantFrom(...PLANT_BLOCK_SIZES, "huge" as PlantBlockSize);
 
 const actionArb: fc.Arbitrary<Action> = fc.oneof(
   fc.record({ type: fc.constant("noop" as const) }),
@@ -66,7 +71,7 @@ const actionArb: fc.Arbitrary<Action> = fc.oneof(
   fc.record({
     type: fc.constant("buildPlant" as const),
     tech: fc.constantFrom("ocgt" as const, "ccgt" as const),
-    capacityMw: fc.integer({ min: -10, max: 200 }),
+    size: sizeArb,
     hex: hexArb,
   }),
   fc.record({
@@ -86,7 +91,7 @@ const actionArb: fc.Arbitrary<Action> = fc.oneof(
   fc.record({
     type: fc.constant("expandPlant" as const),
     plantId: idArb,
-    capacityMw: fc.integer({ min: -10, max: 600 }),
+    size: sizeArb,
   }),
   fc.record({
     type: fc.constant("expandFarm" as const),

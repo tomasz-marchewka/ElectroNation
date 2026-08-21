@@ -40,6 +40,7 @@ import {
   type FarmTech,
   type ForecastLevel,
   type LineType,
+  type PlantBlockSize,
   type PlantTech,
 } from "./config";
 import { cityDemandForecast, farmProductionForecast } from "./forecast";
@@ -106,7 +107,7 @@ export type Action =
   | { type: "setFarmEnabled"; farmId: string; enabled: boolean }
   | { type: "setImport"; borderId: string; mw: number }
   | { type: "setExport"; borderId: string; mw: number }
-  | { type: "buildPlant"; tech: PlantTech; capacityMw: number; hex: HexCoord }
+  | { type: "buildPlant"; tech: PlantTech; size: PlantBlockSize; hex: HexCoord }
   | { type: "buildFarm"; tech: FarmTech; capacityMw: number; hex: HexCoord }
   | { type: "buildBattery"; powerMw: number; capacityMwh: number; hex: HexCoord }
   | { type: "buildPumpedStorage"; hex: HexCoord }
@@ -114,7 +115,7 @@ export type Action =
   | { type: "buildBorder"; hex: HexCoord }
   | { type: "buildLine"; lineType: LineType; path: HexCoord[] }
   | { type: "upgradeLine"; lineId: string; lineType: LineType }
-  | { type: "expandPlant"; plantId: string; capacityMw: number }
+  | { type: "expandPlant"; plantId: string; size: PlantBlockSize }
   | { type: "expandFarm"; farmId: string; capacityMw: number }
   | { type: "expandBattery"; storageId: string; powerMw: number; capacityMwh: number }
   | { type: "expandPumpedStorage"; storageId: string }
@@ -176,7 +177,7 @@ export function applyAction(state: GameState, action: Action): GameState {
         ),
       };
     case "buildPlant":
-      return buildPlant(state, action.tech, action.capacityMw, action.hex);
+      return buildPlant(state, action.tech, action.size, action.hex);
     case "buildFarm":
       return buildFarm(state, action.tech, action.capacityMw, action.hex);
     case "buildBattery":
@@ -192,7 +193,7 @@ export function applyAction(state: GameState, action: Action): GameState {
     case "upgradeLine":
       return upgradeLine(state, action.lineId, action.lineType);
     case "expandPlant":
-      return expandPlant(state, action.plantId, action.capacityMw);
+      return expandPlant(state, action.plantId, action.size);
     case "expandFarm":
       return expandFarm(state, action.farmId, action.capacityMw);
     case "expandBattery":

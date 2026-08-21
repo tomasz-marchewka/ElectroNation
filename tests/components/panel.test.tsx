@@ -249,7 +249,7 @@ describe("panel structure", () => {
     const building = applyAction(newGame(7, DISPATCH_SCENARIO), {
       type: "buildPlant",
       tech: "coal",
-      capacityMw: 500,
+      size: "medium",
       hex: { q: 5, r: 5 },
     });
     const { container } = renderPanel(building);

@@ -26,9 +26,11 @@ import {
   STORAGE_TECHS,
   TERRAIN,
   farmSiting,
+  plantBlockMw,
   type FarmTech,
   type ForecastLevel,
   type LineType,
+  type PlantBlockSize,
   type PlantTech,
   type TerrainId,
 } from "./config";
@@ -175,16 +177,19 @@ function queueObject(
   };
 }
 
+/**
+ * 01 §5.1 (0.24): a block comes in one of four sizes and no other — the MW is
+ * the technology's, not the player's, so the action names a rung.
+ */
 export function buildPlant(
   state: GameState,
   tech: PlantTech,
-  capacityMw: number,
+  size: PlantBlockSize,
   hex: HexCoord,
 ): GameState {
   const spec = PLANT_TECHS[tech];
-  if (!Number.isFinite(capacityMw) || capacityMw <= 0 || capacityMw > spec.maxBlockMw) {
-    return state;
-  }
+  const capacityMw = plantBlockMw(tech, size);
+  if (capacityMw === null) return state;
   return queueObject(state, capacityMw * spec.capexPlnPerMw, spec.buildDays, hex, (id) => ({
     kind: "plant",
     plant: { id, name: id, hex, tech, capacityMw, blocks: 1, setpointMw: 0 },
@@ -666,14 +671,17 @@ function queueExpansion(
   };
 }
 
-/** Adds one block to a plant — 6 blocks per hex (01 §7), 85% CAPEX / 70% time. */
-export function expandPlant(state: GameState, plantId: string, capacityMw: number): GameState {
+/**
+ * Adds one block to a plant — 6 blocks per hex (01 §7), 85% CAPEX / 70% time.
+ * The new block is sized from the same four-rung catalogue as a new site
+ * (01 §5.1 in 0.24); it need not match the blocks already standing here.
+ */
+export function expandPlant(state: GameState, plantId: string, size: PlantBlockSize): GameState {
   const plant = state.plants.find((p) => p.id === plantId);
   if (!plant) return state;
   const spec = PLANT_TECHS[plant.tech];
-  if (!Number.isFinite(capacityMw) || capacityMw <= 0 || capacityMw > spec.maxBlockMw) {
-    return state;
-  }
+  const capacityMw = plantBlockMw(plant.tech, size);
+  if (capacityMw === null) return state;
   const queued = pendingSum(state, (p) =>
     p.kind === "plantExpansion" && p.plantId === plantId ? 1 : 0,
   );

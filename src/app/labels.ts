@@ -8,6 +8,7 @@ import type {
   ForecastLevel,
   LineType,
   LoadError,
+  PlantBlockSize,
   PlantTech,
   RegimeId,
   StorageMode,
@@ -138,6 +139,19 @@ export const PLANT_CATALOG_NAMES: Record<PlantTech, string> = {
   coal: "Blok węglowy",
   ccgt: "CCGT — blok gazowy",
   ocgt: "OCGT — turbina szczytowa",
+};
+
+/**
+ * 01 §5.1 (0.24): the four rungs a block is sold in. Masculine — the noun is
+ * `blok`. The names are relative to the technology, never absolute: a MAŁY
+ * nuclear block is 1 000 MW, a WIELKI gas one 500 MW, and the panel prints the
+ * MW next to the name so the two never get confused.
+ */
+export const PLANT_BLOCK_SIZE_NAMES: Record<PlantBlockSize, string> = {
+  small: "MAŁY",
+  medium: "ŚREDNI",
+  large: "DUŻY",
+  xlarge: "WIELKI",
 };
 
 export const FARM_CATALOG_NAMES: Record<FarmTech, string> = {

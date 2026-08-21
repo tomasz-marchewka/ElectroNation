@@ -104,7 +104,7 @@ describe("doc 02 §8.1: terrain multiplies what a route costs", () => {
     for (const terrainId of ["lake", "sea"] as const) {
       const state = newGame(5, makeScenario({ terrain: { [key(1, 0)]: terrainId } }));
       expect(
-        apply(state, { type: "buildPlant", tech: "ocgt", capacityMw: 50, hex: at(1, 0) }),
+        apply(state, { type: "buildPlant", tech: "ocgt", size: "medium", hex: at(1, 0) }),
       ).toBe(state);
       expect(apply(state, { type: "buildFarm", tech: "pv", capacityMw: 50, hex: at(1, 0) })).toBe(
         state,
@@ -150,7 +150,7 @@ describe("doc 02 §8.1, §8.4: offshore wind", () => {
     const state = newGame(5, seaScenario());
     const refused: Action[] = [
       { type: "buildFarm", tech: "pv", capacityMw: 50, hex: SITE },
-      { type: "buildPlant", tech: "ocgt", capacityMw: 50, hex: SITE },
+      { type: "buildPlant", tech: "ocgt", size: "medium", hex: SITE },
       { type: "buildBattery", powerMw: 50, capacityMwh: 100, hex: SITE },
       { type: "buildPumpedStorage", hex: SITE },
       { type: "buildJunction", hex: SITE },

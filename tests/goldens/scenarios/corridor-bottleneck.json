@@ -63,7 +63,7 @@
       "action": {
         "type": "buildPlant",
         "tech": "ccgt",
-        "capacityMw": 500,
+        "size": "xlarge",
         "hex": {
           "q": 7,
           "r": 7

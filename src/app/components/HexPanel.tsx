@@ -21,6 +21,7 @@ import {
   lineTypeRows,
   terrainRows,
   type CatalogEntry,
+  type CatalogSizeValue,
   type CatalogSizes,
   type HexAction,
   type InfoRow,
@@ -88,7 +89,7 @@ function CatalogEntryView({
   entry: CatalogEntry;
   rejected: string | undefined;
   onBuild: (entry: CatalogEntry) => void;
-  onSize: (entry: CatalogEntry, index: number, value: number) => void;
+  onSize: (entry: CatalogEntry, index: number, value: CatalogSizeValue) => void;
 }) {
   const note = entry.note ?? rejected ?? null;
   return (
@@ -105,19 +106,21 @@ function CatalogEntryView({
         </span>
         <span className="en-catalog__price">{entry.price}</span>
       </button>
-      {entry.steppers.map((stepper, index) => (
-        <Stepper
-          key={stepper.label}
-          label={stepper.label}
-          name={`${entry.name} · ${stepper.label}`}
-          value={stepper.value}
-          unit={stepper.unit}
-          min={stepper.min}
-          max={stepper.max}
-          step={stepper.step}
-          onChange={(value) => onSize(entry, index, value)}
-        />
-      ))}
+      {entry.steppers.map((stepper, index) => {
+        const { decreaseTo, increaseTo } = stepper;
+        return (
+          <Stepper
+            key={stepper.label}
+            label={stepper.label}
+            name={`${entry.name} · ${stepper.label}`}
+            valueLabel={stepper.valueLabel}
+            decreaseLabel={stepper.decreaseLabel}
+            increaseLabel={stepper.increaseLabel}
+            onDecrease={decreaseTo === null ? null : () => onSize(entry, index, decreaseTo)}
+            onIncrease={increaseTo === null ? null : () => onSize(entry, index, increaseTo)}
+          />
+        );
+      })}
       {note !== null && <div className="en-note">{note}</div>}
     </div>
   );

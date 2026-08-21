@@ -164,25 +164,30 @@ describe("catalogue — prices carry the terrain multiplier (02 §8.1)", () => {
 
   test("the battery is priced from BATTERY, not from the design's catalogue", () => {
     // The reference build prints "150 MW / 300 MWh — 900 mln"; 02 §8.2 makes it
-    // 150 × 1,6 mln + 300 × 1,1 mln = 570 mln.
+    // 150 × 0,8 mln + 300 × 0,55 mln = 285 mln (prices halved in 01 §5.1, 0.25).
     const { container } = renderPanel(newGame(7, fixture()), at(1, 1));
     const expected = 150 * BATTERY.powerCapexPlnPerMw + 300 * BATTERY.energyCapexPlnPerMwh;
 
-    expect(expected).toBe(570_000_000);
+    expect(expected).toBe(285_000_000);
     expect(priceOf(container, "Bateria BESS")).toBe(formatMoneyPln(expected));
   });
 
+  // 01 §5.1 (0.24): the block walks four rungs, it is not dialled in MW. CCGT
+  // opens on DUŻY (400 MW); one step up is WIELKI (500 MW) and the last one.
   test("stepping the block size reprices the entry and the action it dispatches", async () => {
     const { container, onAction } = renderPanel(newGame(7, fixture()), at(1, 1));
 
-    await userEvent.click(action("CCGT — blok gazowy · BLOK +50 MW"));
-    expect(priceOf(container, "CCGT")).toBe(formatMoneyPln(450 * PLANT_TECHS.ccgt.capexPlnPerMw));
+    await userEvent.click(action("CCGT — blok gazowy · BLOK większy"));
+    expect(priceOf(container, "CCGT")).toBe(
+      formatMoneyPln(PLANT_TECHS.ccgt.blockMw.xlarge * PLANT_TECHS.ccgt.capexPlnPerMw),
+    );
+    expect(action("CCGT — blok gazowy · BLOK większy").disabled).toBe(true);
 
     await userEvent.click(entry(container, "CCGT"));
     expect(onAction).toHaveBeenCalledWith({
       type: "buildPlant",
       tech: "ccgt",
-      capacityMw: 450,
+      size: "xlarge",
       hex: at(1, 1),
     });
   });
@@ -345,12 +350,12 @@ describe("object — parameters and contextual actions (01 §8 pt 6)", () => {
     expect(value(container, "PRZYŁĄCZA")).toBe("0 / 6");
 
     const expected = 400 * PLANT_TECHS.ccgt.capexPlnPerMw * EXPANSION.capexShare;
-    const expand = action(`ROZBUDUJ · +BLOK 400 MW — ${formatMoneyPln(expected)}`);
+    const expand = action(`ROZBUDUJ · +BLOK DUŻY 400 MW — ${formatMoneyPln(expected)}`);
     await userEvent.click(expand);
     expect(onAction).toHaveBeenCalledWith({
       type: "expandPlant",
       plantId: "plant-1",
-      capacityMw: 400,
+      size: "large",
     });
   });
 
@@ -436,7 +441,7 @@ describe("object — parameters and contextual actions (01 §8 pt 6)", () => {
     });
     useGameStore
       .getState()
-      .dispatch({ type: "buildPlant", tech: "coal", capacityMw: 500, hex: at(1, 1) });
+      .dispatch({ type: "buildPlant", tech: "coal", size: "medium", hex: at(1, 1) });
     const game = useGameStore.getState().game;
     const construction = game.constructions[0];
     if (!construction) throw new Error("the order must be queued");
