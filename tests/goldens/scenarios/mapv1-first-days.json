@@ -18,11 +18,11 @@
       "action": {
         "type": "buildFarm",
         "tech": "pv",
-        "capacityMw": 60,
         "hex": {
           "q": 5,
           "r": 7
-        }
+        },
+        "size": "medium"
       }
     },
     {

@@ -161,7 +161,7 @@ describe("doc 01 §3.3: an object on a corridor cuts the line in two", () => {
 });
 
 describe("doc 01 §3.3: a cut route spends two line slots, one per direction", () => {
-  const buildFarm = { type: "buildFarm", tech: "pv", capacityMw: 50, hex: { q: 2, r: 0 } } as const;
+  const buildFarm = { type: "buildFarm", tech: "pv", size: "medium", hex: { q: 2, r: 0 } } as const;
 
   test("three routes crossing an object fill its six slots", () => {
     // The city and the plant are the endpoints, so every route crosses the farm

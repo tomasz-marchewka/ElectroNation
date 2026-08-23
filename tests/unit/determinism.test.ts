@@ -1,17 +1,16 @@
 import fc from "fast-check";
 import { expect, test } from "vitest";
 import {
-  BATTERY,
+  BUILD_SIZES,
   FARM_TECHS,
   MAX_PLANT_BLOCKS_PER_HEX,
-  PLANT_BLOCK_SIZES,
-  PUMPED_BLOCK,
+  STORAGE_TECHS,
   applyAction,
   newGame,
   resolveTurn,
   type Action,
   type GameState,
-  type PlantBlockSize,
+  type BuildSize,
 } from "../../src/engine";
 import { stateHash } from "../helpers/hash";
 import { playTurns } from "../helpers/run";
@@ -59,7 +58,7 @@ const idArb = fc.constantFrom(
 const mwArb = fc.integer({ min: -50, max: 900 });
 // 01 §5.1 (0.24): the four rungs plus one that does not exist — a replayed log
 // may carry anything, and the engine has to answer with the state it was given.
-const sizeArb = fc.constantFrom(...PLANT_BLOCK_SIZES, "huge" as PlantBlockSize);
+const sizeArb = fc.constantFrom(...BUILD_SIZES, "huge" as BuildSize);
 
 const actionArb: fc.Arbitrary<Action> = fc.oneof(
   fc.record({ type: fc.constant("noop" as const) }),
@@ -77,13 +76,14 @@ const actionArb: fc.Arbitrary<Action> = fc.oneof(
   fc.record({
     type: fc.constant("buildFarm" as const),
     tech: fc.constantFrom("wind" as const, "pv" as const),
-    capacityMw: fc.integer({ min: -10, max: 400 }),
+    size: sizeArb,
     hex: hexArb,
   }),
   fc.record({
-    type: fc.constant("buildBattery" as const),
-    powerMw: fc.integer({ min: 0, max: 600 }),
-    capacityMwh: fc.integer({ min: 0, max: 2_500 }),
+    type: fc.constant("buildStorage" as const),
+    tech: fc.constantFrom("battery" as const, "pumped" as const),
+    powerSize: sizeArb,
+    capacitySize: sizeArb,
     hex: hexArb,
   }),
   fc.record({ type: fc.constant("buildJunction" as const), hex: hexArb }),
@@ -96,15 +96,18 @@ const actionArb: fc.Arbitrary<Action> = fc.oneof(
   fc.record({
     type: fc.constant("expandFarm" as const),
     farmId: idArb,
-    capacityMw: fc.integer({ min: -10, max: 400 }),
+    size: sizeArb,
   }),
   fc.record({
-    type: fc.constant("expandBattery" as const),
+    type: fc.constant("expandStoragePower" as const),
     storageId: idArb,
-    powerMw: fc.integer({ min: 0, max: 600 }),
-    capacityMwh: fc.integer({ min: 0, max: 2_500 }),
+    size: sizeArb,
   }),
-  fc.record({ type: fc.constant("expandPumpedStorage" as const), storageId: idArb }),
+  fc.record({
+    type: fc.constant("expandStorageCapacity" as const),
+    storageId: idArb,
+    size: sizeArb,
+  }),
   fc.record({ type: fc.constant("expandBorder" as const), borderId: idArb }),
   fc.record({ type: fc.constant("cancelConstruction" as const), constructionId: idArb }),
   fc.record({ type: fc.constant("cancelLine" as const), lineId: idArb }),
@@ -137,12 +140,10 @@ function expectWithinSiteLimits(state: GameState): void {
     expect(farm.capacityMw).toBeLessThanOrEqual(FARM_TECHS[farm.tech].maxMwPerHex);
   }
   for (const storage of state.storages) {
-    if (storage.tech === "battery") {
-      expect(storage.powerMw).toBeLessThanOrEqual(BATTERY.maxPowerMwPerHex);
-      expect(storage.capacityMwh).toBeLessThanOrEqual(BATTERY.maxCapacityMwhPerHex);
-    } else {
-      expect(storage.powerMw).toBeLessThanOrEqual(PUMPED_BLOCK.maxBlocks * PUMPED_BLOCK.powerMw);
-    }
+    // 01 §5.3 (0.26): both axes are capped, and capped separately.
+    const spec = STORAGE_TECHS[storage.tech];
+    expect(storage.powerMw).toBeLessThanOrEqual(spec.maxPowerMwPerHex);
+    expect(storage.capacityMwh).toBeLessThanOrEqual(spec.maxCapacityMwhPerHex);
   }
   // 0.21: a junction station is nothing but a site — no throughput, no modules.
   for (const junction of state.junctions) {

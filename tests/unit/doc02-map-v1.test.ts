@@ -133,9 +133,9 @@ describe("doc 02 §8.6: the v1 map is a complete 24×16 country", () => {
     expect(seaHex).toBeDefined();
     const hex = seaHex ?? { q: 0, r: 0 };
     expect(
-      applyAction(state, { type: "buildFarm", tech: "wind", capacityMw: 300, hex }).constructions,
+      applyAction(state, { type: "buildFarm", tech: "wind", size: "xlarge", hex }).constructions,
     ).toHaveLength(1);
-    expect(applyAction(state, { type: "buildFarm", tech: "pv", capacityMw: 100, hex })).toBe(state);
+    expect(applyAction(state, { type: "buildFarm", tech: "pv", size: "large", hex })).toBe(state);
   });
 
   test("01 §3.2: insolation varies between 0.95 and 1.05", () => {
@@ -150,7 +150,14 @@ describe("doc 02 §8.6: the v1 map is a complete 24×16 country", () => {
 
   test("01 §3.2: the map offers a legal pumped-storage site", () => {
     const legal = allHexes.filter(
-      (hex) => applyAction(state, { type: "buildPumpedStorage", hex }) !== state,
+      (hex) =>
+        applyAction(state, {
+          type: "buildStorage",
+          tech: "pumped",
+          powerSize: "medium",
+          capacitySize: "medium",
+          hex,
+        }) !== state,
     );
     expect(legal.length).toBeGreaterThan(0);
   });

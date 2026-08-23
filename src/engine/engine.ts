@@ -5,23 +5,22 @@
 // growth after the free day.
 
 import {
-  buildBattery,
+  buildStorage,
   buildBorder,
   buildFarm,
   buildJunction,
   buildLine,
   buildPlant,
-  buildPumpedStorage,
   buyForecastSystem,
   cancelConstruction,
   cancelLine,
   cancelLineUpgrade,
   connectCity,
-  expandBattery,
+  expandStorageCapacity,
+  expandStoragePower,
   expandBorder,
   expandFarm,
   expandPlant,
-  expandPumpedStorage,
   splitLinesAtObjects,
   upgradeLine,
 } from "./build";
@@ -34,13 +33,13 @@ import {
   LINE_TYPES,
   NODE_FIXED_CAPEX_SHARE_PER_YEAR,
   PLANT_TECHS,
-  PUMPED_BLOCK,
   STORAGE_TECHS,
   KM_PER_HEX,
   type FarmTech,
+  type StorageTech,
   type ForecastLevel,
   type LineType,
-  type PlantBlockSize,
+  type BuildSize,
   type PlantTech,
 } from "./config";
 import { cityDemandForecast, farmProductionForecast } from "./forecast";
@@ -107,18 +106,23 @@ export type Action =
   | { type: "setFarmEnabled"; farmId: string; enabled: boolean }
   | { type: "setImport"; borderId: string; mw: number }
   | { type: "setExport"; borderId: string; mw: number }
-  | { type: "buildPlant"; tech: PlantTech; size: PlantBlockSize; hex: HexCoord }
-  | { type: "buildFarm"; tech: FarmTech; capacityMw: number; hex: HexCoord }
-  | { type: "buildBattery"; powerMw: number; capacityMwh: number; hex: HexCoord }
-  | { type: "buildPumpedStorage"; hex: HexCoord }
+  | { type: "buildPlant"; tech: PlantTech; size: BuildSize; hex: HexCoord }
+  | { type: "buildFarm"; tech: FarmTech; size: BuildSize; hex: HexCoord }
+  | {
+      type: "buildStorage";
+      tech: StorageTech;
+      powerSize: BuildSize;
+      capacitySize: BuildSize;
+      hex: HexCoord;
+    }
   | { type: "buildJunction"; hex: HexCoord }
   | { type: "buildBorder"; hex: HexCoord }
   | { type: "buildLine"; lineType: LineType; path: HexCoord[] }
   | { type: "upgradeLine"; lineId: string; lineType: LineType }
-  | { type: "expandPlant"; plantId: string; size: PlantBlockSize }
-  | { type: "expandFarm"; farmId: string; capacityMw: number }
-  | { type: "expandBattery"; storageId: string; powerMw: number; capacityMwh: number }
-  | { type: "expandPumpedStorage"; storageId: string }
+  | { type: "expandPlant"; plantId: string; size: BuildSize }
+  | { type: "expandFarm"; farmId: string; size: BuildSize }
+  | { type: "expandStoragePower"; storageId: string; size: BuildSize }
+  | { type: "expandStorageCapacity"; storageId: string; size: BuildSize }
   | { type: "expandBorder"; borderId: string }
   | { type: "cancelConstruction"; constructionId: string }
   | { type: "cancelLine"; lineId: string }
@@ -179,11 +183,9 @@ export function applyAction(state: GameState, action: Action): GameState {
     case "buildPlant":
       return buildPlant(state, action.tech, action.size, action.hex);
     case "buildFarm":
-      return buildFarm(state, action.tech, action.capacityMw, action.hex);
-    case "buildBattery":
-      return buildBattery(state, action.powerMw, action.capacityMwh, action.hex);
-    case "buildPumpedStorage":
-      return buildPumpedStorage(state, action.hex);
+      return buildFarm(state, action.tech, action.size, action.hex);
+    case "buildStorage":
+      return buildStorage(state, action.tech, action.powerSize, action.capacitySize, action.hex);
     case "buildJunction":
       return buildJunction(state, action.hex);
     case "buildBorder":
@@ -195,11 +197,11 @@ export function applyAction(state: GameState, action: Action): GameState {
     case "expandPlant":
       return expandPlant(state, action.plantId, action.size);
     case "expandFarm":
-      return expandFarm(state, action.farmId, action.capacityMw);
-    case "expandBattery":
-      return expandBattery(state, action.storageId, action.powerMw, action.capacityMwh);
-    case "expandPumpedStorage":
-      return expandPumpedStorage(state, action.storageId);
+      return expandFarm(state, action.farmId, action.size);
+    case "expandStoragePower":
+      return expandStoragePower(state, action.storageId, action.size);
+    case "expandStorageCapacity":
+      return expandStorageCapacity(state, action.storageId, action.size);
     case "expandBorder":
       return expandBorder(state, action.borderId);
     case "cancelConstruction":
@@ -732,18 +734,16 @@ export function resolveTurn(state: GameState): GameState {
           capacityMw: farm.capacityMw + pending.capacityMw,
         }));
         break;
-      case "batteryExpansion":
+      case "storagePowerExpansion":
         spawned.storages = upgrade(spawned.storages, pending.storageId, (storage) => ({
           ...storage,
           powerMw: storage.powerMw + pending.powerMw,
-          capacityMwh: storage.capacityMwh + pending.capacityMwh,
         }));
         break;
-      case "pumpedExpansion":
+      case "storageCapacityExpansion":
         spawned.storages = upgrade(spawned.storages, pending.storageId, (storage) => ({
           ...storage,
-          powerMw: storage.powerMw + PUMPED_BLOCK.powerMw,
-          capacityMwh: storage.capacityMwh + PUMPED_BLOCK.capacityMwh,
+          capacityMwh: storage.capacityMwh + pending.capacityMwh,
         }));
         break;
       case "borderExpansion":

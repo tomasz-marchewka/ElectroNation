@@ -7,7 +7,6 @@
 // UI bugs.
 
 import {
-  BATTERY,
   BORDER_SPEC,
   CITY_CONNECTION_COST_PLN,
   EXPANSION,
@@ -22,16 +21,19 @@ import {
   MAX_LINES_PER_HEX_PER_TYPE,
   MAX_PLANT_BLOCKS_PER_HEX,
   PLANT_TECHS,
-  PUMPED_BLOCK,
   STORAGE_TECHS,
   TERRAIN,
   farmSiting,
+  farmSizeMw,
   plantBlockMw,
+  storageCapacityMwh,
+  storagePowerMw,
+  type BuildSize,
   type FarmTech,
   type ForecastLevel,
   type LineType,
-  type PlantBlockSize,
   type PlantTech,
+  type StorageTech,
   type TerrainId,
 } from "./config";
 import { areNeighbors, hexNeighbors, isInsideMap } from "./map";
@@ -184,7 +186,7 @@ function queueObject(
 export function buildPlant(
   state: GameState,
   tech: PlantTech,
-  size: PlantBlockSize,
+  size: BuildSize,
   hex: HexCoord,
 ): GameState {
   const spec = PLANT_TECHS[tech];
@@ -199,16 +201,18 @@ export function buildPlant(
 export function buildFarm(
   state: GameState,
   tech: FarmTech,
-  capacityMw: number,
+  size: BuildSize,
   hex: HexCoord,
 ): GameState {
   // 01 §5.2, 02 §8.1, §8.4 (0.22): the SITE sets the price, the hex cap and the
   // countdown. A wind farm at sea is the same technology as on land — the water
   // just fits twice as much of it and takes twice as long to build on.
+  //
+  // The SIZE, by contrast, is the technology's (01 §5.2 in 0.26): the sea does
+  // not sell bigger farms, it just holds two extra-large ones.
   const site = farmSiting(tech, terrainIdAt(state, hex));
-  if (!Number.isFinite(capacityMw) || capacityMw <= 0 || capacityMw > site.maxMwPerHex) {
-    return state;
-  }
+  const capacityMw = farmSizeMw(tech, size);
+  if (capacityMw === null || capacityMw > site.maxMwPerHex) return state;
   // Location properties are frozen at build time (01 §3.2), like the wind class.
   const windClass = state.windClasses[hexKey(hex)] ?? "open";
   const solarMultiplier = state.solarMultipliers[hexKey(hex)] ?? 1;
@@ -235,53 +239,41 @@ export function buildFarm(
   );
 }
 
-export function buildBattery(
+/**
+ * 01 §5.3 (0.26): one build for both storage technologies, because since 0.26
+ * they have the same shape — power and capacity are two independent axes, each
+ * ordered from its own four-rung ladder. Pumped storage is no longer a fixed
+ * block: 250 MW / 2 500 MWh is simply its MEDIUM/MEDIUM order.
+ */
+export function buildStorage(
   state: GameState,
-  powerMw: number,
-  capacityMwh: number,
+  tech: StorageTech,
+  powerSize: BuildSize,
+  capacitySize: BuildSize,
   hex: HexCoord,
 ): GameState {
-  if (
-    !Number.isFinite(powerMw) ||
-    !Number.isFinite(capacityMwh) ||
-    powerMw <= 0 ||
-    capacityMwh <= 0 ||
-    powerMw > BATTERY.maxPowerMwPerHex ||
-    capacityMwh > BATTERY.maxCapacityMwhPerHex
-  ) {
-    return state;
+  const spec = STORAGE_TECHS[tech];
+  const powerMw = storagePowerMw(tech, powerSize);
+  const capacityMwh = storageCapacityMwh(tech, capacitySize);
+  if (powerMw === null || capacityMwh === null) return state;
+  if (powerMw > spec.maxPowerMwPerHex || capacityMwh > spec.maxCapacityMwhPerHex) return state;
+  // 01 §3.2, 02 §8.1: pumped storage stands only on mountains or highlands with
+  // water next to them — elevation for the head, a lake or the sea to pump from.
+  if (tech === "pumped") {
+    const terrainId = terrainIdAt(state, hex);
+    if (terrainId !== "mountains" && terrainId !== "highlands") return state;
+    if (!hasWaterNeighbor(state, hex)) return state;
   }
-  const cost = powerMw * BATTERY.powerCapexPlnPerMw + capacityMwh * BATTERY.energyCapexPlnPerMwh;
-  return queueObject(state, cost, STORAGE_TECHS.battery.buildDays, hex, (id) => ({
+  const cost = powerMw * spec.powerCapexPlnPerMw + capacityMwh * spec.energyCapexPlnPerMwh;
+  return queueObject(state, cost, spec.buildDays, hex, (id) => ({
     kind: "storage",
     storage: {
       id,
       name: id,
       hex,
-      tech: "battery",
+      tech,
       powerMw,
       capacityMwh,
-      socMwh: 0,
-      setpoint: { mode: "idle", mw: 0 },
-    },
-  }));
-}
-
-export function buildPumpedStorage(state: GameState, hex: HexCoord): GameState {
-  // 01 §3.2, 02 §8.1: the only legal sites are mountains or highlands with
-  // water next to them — elevation for the head, a lake or the sea to pump from.
-  const terrainId = state.terrain[hexKey(hex)] ?? "plains";
-  if (terrainId !== "mountains" && terrainId !== "highlands") return state;
-  if (!hasWaterNeighbor(state, hex)) return state;
-  return queueObject(state, PUMPED_BLOCK.capexPln, STORAGE_TECHS.pumped.buildDays, hex, (id) => ({
-    kind: "storage",
-    storage: {
-      id,
-      name: id,
-      hex,
-      tech: "pumped",
-      powerMw: PUMPED_BLOCK.powerMw,
-      capacityMwh: PUMPED_BLOCK.capacityMwh,
       socMwh: 0,
       setpoint: { mode: "idle", mw: 0 },
     },
@@ -676,7 +668,7 @@ function queueExpansion(
  * The new block is sized from the same four-rung catalogue as a new site
  * (01 §5.1 in 0.24); it need not match the blocks already standing here.
  */
-export function expandPlant(state: GameState, plantId: string, size: PlantBlockSize): GameState {
+export function expandPlant(state: GameState, plantId: string, size: BuildSize): GameState {
   const plant = state.plants.find((p) => p.id === plantId);
   if (!plant) return state;
   const spec = PLANT_TECHS[plant.tech];
@@ -701,11 +693,12 @@ export function expandPlant(state: GameState, plantId: string, size: PlantBlockS
  * the farm already stands on — expanding offshore is 85%/70% of an offshore
  * site, not of a land one (01 §7 in 0.22).
  */
-export function expandFarm(state: GameState, farmId: string, capacityMw: number): GameState {
+export function expandFarm(state: GameState, farmId: string, size: BuildSize): GameState {
   const farm = state.farms.find((f) => f.id === farmId);
   if (!farm) return state;
   const site = farmSiting(farm.tech, terrainIdAt(state, farm.hex));
-  if (!Number.isFinite(capacityMw) || capacityMw <= 0) return state;
+  const capacityMw = farmSizeMw(farm.tech, size);
+  if (capacityMw === null) return state;
   const queued = pendingSum(state, (p) =>
     p.kind === "farmExpansion" && p.farmId === farmId ? p.capacityMw : 0,
   );
@@ -721,56 +714,55 @@ export function expandFarm(state: GameState, farmId: string, capacityMw: number)
 }
 
 /**
- * Buys battery power and/or energy modules (02 §8.2). The doc's per-MW/per-MWh
- * prices are already module prices, so the 85% expansion discount does NOT
- * apply here — see EXPANSION in config.ts.
+ * 01 §5.3, §7 (0.26): storage grows along two axes and they are two separate
+ * acts — buying MW never buys MWh. Both technologies use the same pair of
+ * actions; what differs is the ladder and the price per unit. The doc prints
+ * these prices per MW and per MWh directly, so they are already module prices
+ * and the 85% expansion discount does NOT apply — see EXPANSION in config.ts.
  */
-export function expandBattery(
+export function expandStoragePower(
   state: GameState,
   storageId: string,
-  powerMw: number,
-  capacityMwh: number,
+  size: BuildSize,
 ): GameState {
   const storage = state.storages.find((s) => s.id === storageId);
-  if (!storage || storage.tech !== "battery") return state;
-  if (!Number.isFinite(powerMw) || !Number.isFinite(capacityMwh)) return state;
-  if (powerMw < 0 || capacityMwh < 0 || powerMw + capacityMwh <= 0) return state;
-  const queuedPower = pendingSum(state, (p) =>
-    p.kind === "batteryExpansion" && p.storageId === storageId ? p.powerMw : 0,
+  if (!storage) return state;
+  const spec = STORAGE_TECHS[storage.tech];
+  const powerMw = storagePowerMw(storage.tech, size);
+  if (powerMw === null) return state;
+  const queued = pendingSum(state, (p) =>
+    p.kind === "storagePowerExpansion" && p.storageId === storageId ? p.powerMw : 0,
   );
-  const queuedCapacity = pendingSum(state, (p) =>
-    p.kind === "batteryExpansion" && p.storageId === storageId ? p.capacityMwh : 0,
+  if (storage.powerMw + queued + powerMw > spec.maxPowerMwPerHex) return state;
+  return queueExpansion(state, powerMw * spec.powerCapexPlnPerMw, spec.buildDays, storage.hex, {
+    kind: "storagePowerExpansion",
+    storageId,
+    powerMw,
+  });
+}
+
+/** The capacity axis of {@link expandStoragePower} — same rules, other unit. */
+export function expandStorageCapacity(
+  state: GameState,
+  storageId: string,
+  size: BuildSize,
+): GameState {
+  const storage = state.storages.find((s) => s.id === storageId);
+  if (!storage) return state;
+  const spec = STORAGE_TECHS[storage.tech];
+  const capacityMwh = storageCapacityMwh(storage.tech, size);
+  if (capacityMwh === null) return state;
+  const queued = pendingSum(state, (p) =>
+    p.kind === "storageCapacityExpansion" && p.storageId === storageId ? p.capacityMwh : 0,
   );
-  if (storage.powerMw + queuedPower + powerMw > BATTERY.maxPowerMwPerHex) return state;
-  if (storage.capacityMwh + queuedCapacity + capacityMwh > BATTERY.maxCapacityMwhPerHex) {
-    return state;
-  }
+  if (storage.capacityMwh + queued + capacityMwh > spec.maxCapacityMwhPerHex) return state;
   return queueExpansion(
     state,
-    powerMw * BATTERY.powerCapexPlnPerMw + capacityMwh * BATTERY.energyCapexPlnPerMwh,
-    STORAGE_TECHS.battery.buildDays,
+    capacityMwh * spec.energyCapexPlnPerMwh,
+    spec.buildDays,
     storage.hex,
-    { kind: "batteryExpansion", storageId, powerMw, capacityMwh },
+    { kind: "storageCapacityExpansion", storageId, capacityMwh },
   );
-}
-
-/** Blocks standing (and queued) on a pumped-storage site — 4 max (02 §8.2). */
-function pumpedBlocks(powerMw: number): number {
-  return Math.round(powerMw / PUMPED_BLOCK.powerMw);
-}
-
-/** Adds one 250 MW / 2 500 MWh block to a pumped storage, up to 4 (02 §8.2). */
-export function expandPumpedStorage(state: GameState, storageId: string): GameState {
-  const storage = state.storages.find((s) => s.id === storageId);
-  if (!storage || storage.tech !== "pumped") return state;
-  const queued = pendingSum(state, (p) =>
-    p.kind === "pumpedExpansion" && p.storageId === storageId ? 1 : 0,
-  );
-  if (pumpedBlocks(storage.powerMw) + queued + 1 > PUMPED_BLOCK.maxBlocks) return state;
-  return queueExpansion(state, PUMPED_BLOCK.capexPln, STORAGE_TECHS.pumped.buildDays, storage.hex, {
-    kind: "pumpedExpansion",
-    storageId,
-  });
 }
 
 /** +500 MW of border capacity per module (01 §5.7); the doc sets no cap. */

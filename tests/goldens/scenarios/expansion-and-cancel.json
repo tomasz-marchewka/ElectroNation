@@ -43,11 +43,11 @@
       "action": {
         "type": "buildFarm",
         "tech": "wind",
-        "capacityMw": 100,
         "hex": {
           "q": 2,
           "r": 4
-        }
+        },
+        "size": "medium"
       }
     },
     {

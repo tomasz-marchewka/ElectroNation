@@ -7,7 +7,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import {
-  BATTERY,
+  STORAGE_TECHS,
   CITY_CONNECTION_COST_PLN,
   EXPANSION,
   JUNCTION_SPEC,
@@ -162,13 +162,16 @@ describe("catalogue — prices carry the terrain multiplier (02 §8.1)", () => {
     expect(value(mountains.container, "MNOŻNIK — OBIEKTY")).toBe("×2,5");
   });
 
-  test("the battery is priced from BATTERY, not from the design's catalogue", () => {
-    // The reference build prints "150 MW / 300 MWh — 900 mln"; 02 §8.2 makes it
-    // 150 × 0,8 mln + 300 × 0,55 mln = 285 mln (prices halved in 01 §5.1, 0.25).
+  test("the battery is priced from STORAGE_TECHS, not from the design's catalogue", () => {
+    // The reference build prints "150 MW / 300 MWh — 900 mln"; 02 §8.2 makes the
+    // catalogue's MEDIUM/MEDIUM battery 100 MW / 200 MWh = 80 + 110 = 190 mln.
     const { container } = renderPanel(newGame(7, fixture()), at(1, 1));
-    const expected = 150 * BATTERY.powerCapexPlnPerMw + 300 * BATTERY.energyCapexPlnPerMwh;
+    const spec = STORAGE_TECHS.battery;
+    const expected =
+      spec.powerMw.medium * spec.powerCapexPlnPerMw +
+      spec.capacityMwh.medium * spec.energyCapexPlnPerMwh;
 
-    expect(expected).toBe(285_000_000);
+    expect(expected).toBe(190_000_000);
     expect(priceOf(container, "Bateria BESS")).toBe(formatMoneyPln(expected));
   });
 
@@ -229,7 +232,7 @@ describe("catalogue — prices carry the terrain multiplier (02 §8.1)", () => {
 
     const wind = entry(container, "Farma wiatrowa");
     expect(wind.disabled).toBe(false);
-    const capacityMw = Math.min(DEFAULT_CATALOG_SIZES.farmMw.wind, OFFSHORE_WIND.maxMwPerHex);
+    const capacityMw = FARM_TECHS.wind.sizeMw[DEFAULT_CATALOG_SIZES.farmSize.wind];
     expect(priceOf(container, "Farma wiatrowa")).toBe(
       formatMoneyPln(capacityMw * FARM_TECHS.wind.capexPlnPerMw * (TERRAIN.sea.windFarm ?? 0)),
     );
@@ -241,24 +244,26 @@ describe("catalogue — prices carry the terrain multiplier (02 §8.1)", () => {
     }
   });
 
-  test("the sea hex stretches the wind stepper to 600 MW, the land hex stops at 300", async () => {
+  // 01 §5.2 (0.26): the ladder is the TECHNOLOGY's, the cap is the SITE's — so
+  // both hexes walk the same four rungs and stop at 300 MW. The sea's extra
+  // room is reached by expanding, not by ordering a bigger farm.
+  test("the wind ladder tops out at 300 MW on both the sea hex and the land hex", async () => {
     const user = userEvent.setup();
     const plus = (container: HTMLElement) =>
-      [...container.querySelectorAll<HTMLButtonElement>("button")].find((button) =>
-        button.getAttribute("aria-label")?.startsWith("Farma wiatrowa · MOC +"),
+      [...container.querySelectorAll<HTMLButtonElement>("button")].find(
+        (button) => button.getAttribute("aria-label") === "Farma wiatrowa · MOC większy",
       );
 
-    for (const [hex, cap] of [
-      [at(4, 0), OFFSHORE_WIND.maxMwPerHex],
-      [at(1, 1), FARM_TECHS.wind.maxMwPerHex],
-    ] as const) {
+    for (const hex of [at(4, 0), at(1, 1)] as const) {
       const { container, unmount } = renderPanel(newGame(7, fixture()), hex);
-      for (let click = 0; click < 20; click++) {
+      for (let click = 0; click < 6; click++) {
         const button = plus(container);
         if (!button || button.disabled) break;
         await user.click(button);
       }
-      expect(entry(container, "Farma wiatrowa").textContent).toContain(`${cap} MW`);
+      expect(entry(container, "Farma wiatrowa").textContent).toContain(
+        `${FARM_TECHS.wind.sizeMw.xlarge} MW`,
+      );
       expect(plus(container)?.disabled).toBe(true);
       unmount();
     }
@@ -383,15 +388,19 @@ describe("object — parameters and contextual actions (01 §8 pt 6)", () => {
 
     expect(value(container, "MOC ZAINSTALOWANA")).toBe(`300 / ${OFFSHORE_WIND.maxMwPerHex} MW`);
 
-    const stepMw = 50;
+    // 300 MW standing, 600 MW of sea room: the largest rung that still fits is
+    // another extra-large farm (01 §7 in 0.26).
+    const growMw = FARM_TECHS.wind.sizeMw.xlarge;
     const expected = Math.round(
-      stepMw * FARM_TECHS.wind.capexPlnPerMw * EXPANSION.capexShare * (TERRAIN.sea.windFarm ?? 0),
+      growMw * FARM_TECHS.wind.capexPlnPerMw * EXPANSION.capexShare * (TERRAIN.sea.windFarm ?? 0),
     );
-    await userEvent.click(action(`ROZBUDUJ · +${stepMw} MW — ${formatMoneyPln(expected)}`));
+    await userEvent.click(
+      action(`ROZBUDUJ · +MOC WIELKI ${growMw} MW — ${formatMoneyPln(expected)}`),
+    );
     expect(onAction).toHaveBeenCalledWith({
       type: "expandFarm",
       farmId: "farm-sea",
-      capacityMw: stepMw,
+      size: "xlarge",
     });
   });
 
@@ -418,20 +427,20 @@ describe("object — parameters and contextual actions (01 §8 pt 6)", () => {
     expect(value(container, "MOC")).toBe("150 MW");
     expect(value(container, "POJEMNOŚĆ")).toBe("300 MWh");
 
-    await userEvent.click(action(/^ROZBUDUJ · \+MOC 50 MW/));
+    // 150 MW of 500, 300 MWh of 2 000: each axis offers the largest rung that
+    // still fits, and buying one never buys the other (01 §5.3 in 0.26).
+    await userEvent.click(action(/^ROZBUDUJ · \+MOC LARGE|^ROZBUDUJ · \+MOC DUŻY/));
     expect(onAction).toHaveBeenCalledWith({
-      type: "expandBattery",
+      type: "expandStoragePower",
       storageId: "storage-1",
-      powerMw: 50,
-      capacityMwh: 0,
+      size: "large",
     });
 
-    await userEvent.click(action(/^ROZBUDUJ · \+POJEMNOŚĆ 100 MWh/));
+    await userEvent.click(action(/^ROZBUDUJ · \+POJEMNOŚĆ WIELKI/));
     expect(onAction).toHaveBeenCalledWith({
-      type: "expandBattery",
+      type: "expandStorageCapacity",
       storageId: "storage-1",
-      powerMw: 0,
-      capacityMwh: 100,
+      size: "xlarge",
     });
   });
 

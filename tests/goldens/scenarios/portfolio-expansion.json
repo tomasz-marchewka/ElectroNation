@@ -172,11 +172,11 @@
       "action": {
         "type": "buildFarm",
         "tech": "wind",
-        "capacityMw": 100,
         "hex": {
           "q": 4,
           "r": 0
-        }
+        },
+        "size": "medium"
       }
     },
     {
@@ -249,13 +249,14 @@
       "beforeTurn": 24,
       "note": "battery 100 MW / 400 MWh next to Modrzyca",
       "action": {
-        "type": "buildBattery",
-        "powerMw": 100,
-        "capacityMwh": 400,
         "hex": {
           "q": 5,
           "r": 7
-        }
+        },
+        "type": "buildStorage",
+        "tech": "battery",
+        "powerSize": "medium",
+        "capacitySize": "large"
       }
     },
     {
