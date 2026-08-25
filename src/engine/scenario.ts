@@ -4,6 +4,7 @@
 // that needs a map without geography. City names are player-facing, hence Polish.
 
 import { LINE_TYPES, type TerrainId, type WindClass } from "./config";
+import { evenBlocks } from "./dispatch";
 import { DEFAULT_MAP_SIZE, type MapSize } from "./map";
 import type { HexCoord } from "./network";
 import type {
@@ -19,7 +20,9 @@ import type {
 
 /**
  * Fields a scenario may leave out because they follow from the object itself:
- * a scenario plant is one block unless it says otherwise.
+ * a scenario plant names a BLOCK COUNT (one unless it says otherwise); the
+ * engine splits the capacity evenly into that many cold, offline blocks
+ * (01 §5.1 in 0.27).
  */
 export type ScenarioPlant = Omit<PlantState, "blocks"> & { blocks?: number };
 
@@ -97,6 +100,9 @@ export const MINIMAL_SCENARIO: Scenario = {
       hex: { q: 3, r: 4 },
       tech: "ccgt",
       capacityMw: 400,
+      // Four SMALL blocks, not one LARGE (01 §3.4 in 0.27): the minimum of one
+      // block must fit inside the starting city's night valley.
+      blocks: 4,
       setpointMw: 0,
     },
   ],
@@ -140,7 +146,10 @@ export function scenarioToStateFields(
     JSON.stringify({
       moneyPln: scenario.startingMoneyPln,
       cities: scenario.cities,
-      plants: scenario.plants.map((plant) => ({ ...plant, blocks: plant.blocks ?? 1 })),
+      plants: scenario.plants.map((plant) => ({
+        ...plant,
+        blocks: evenBlocks(plant.capacityMw, plant.blocks ?? 1),
+      })),
       farms: scenario.farms,
       storages: scenario.storages,
       junctions: scenario.junctions,

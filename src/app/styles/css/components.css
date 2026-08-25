@@ -64,6 +64,9 @@
 /* Ładowanie: ten sam kolor technologii, przygaszony — pobór, nie produkcja. */
 .en-setpoint__fill.is-below { opacity: 0.55; }
 .en-setpoint__zero { position: absolute; top: -2px; width: 1px; height: calc(100% + 4px); background: var(--en-border-strong); }
+/* Moc bieżąca bloku — bursztynowy znacznik tam, gdzie jednostka NAPRAWDĘ stoi,
+   gdy bezwładność (01 §5.1) trzyma ją jeszcze z dala od nastawy. */
+.en-setpoint__actual { position: absolute; top: -2px; width: 2px; height: calc(100% + 4px); background: var(--en-warn); }
 .en-setpoint__thumb { position: absolute; top: -3px; width: var(--en-thumb-w); height: var(--en-thumb-h); background: var(--en-text); }
 .en-setpoint__note { font-size: var(--en-fs-caption); color: var(--en-text-4); margin-top: 2px; }
 .en-setpoint.is-off .en-setpoint__head { color: var(--en-text-4); }

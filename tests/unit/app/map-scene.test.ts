@@ -181,6 +181,7 @@ function emptyReport(overrides: Partial<TurnReport>): TurnReport {
       revenueExportPln: 0,
       fuelCostPln: 0,
       importCostPln: 0,
+      startupCostPln: 0,
       ensPenaltyPln: 0,
       dumpPenaltyPln: 0,
       fixedCostPln: 0,

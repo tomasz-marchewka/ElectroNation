@@ -76,7 +76,7 @@ function bandPair(first: ForecastComparison, second: ForecastComparison): string
 export function reportTiles(state: GameState, digest: TurnDigest): ReportTile[] {
   const { totals, finance, forecastMiss } = digest;
   const revenuePln = finance.revenueEnergyPln + finance.revenueExportPln;
-  const costPln = finance.fuelCostPln + finance.importCostPln;
+  const costPln = finance.fuelCostPln + finance.importCostPln + finance.startupCostPln;
   const penaltyPln = finance.ensPenaltyPln + finance.dumpPenaltyPln;
   const short = totals.ensMw > ZERO_MW;
 
@@ -89,6 +89,7 @@ export function reportTiles(state: GameState, digest: TurnDigest): ReportTile[] 
   const costNote = [
     `PALIWO ${formatMoneyPln(finance.fuelCostPln)}`,
     finance.importCostPln > 0 ? `IMPORT ${formatMoneyPln(finance.importCostPln)}` : null,
+    finance.startupCostPln > 0 ? `ROZRUCHY ${formatMoneyPln(finance.startupCostPln)}` : null,
     // Fixed O&M lands once a day, in the last turn's report (01 §6).
     finance.fixedCostPln > 0 ? `+ KOSZTY STAŁE ${formatMoneyPln(finance.fixedCostPln)}` : null,
   ]

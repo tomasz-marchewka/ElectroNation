@@ -351,7 +351,8 @@ describe("object — parameters and contextual actions (01 §8 pt 6)", () => {
     const { container, onAction } = renderPanel(newGame(7, fixture()), at(0, 1));
 
     expect(value(container, "RODZAJ")).toBe("CCGT — blok gazowy");
-    expect(value(container, "BLOKI")).toBe(`1 / ${MAX_PLANT_BLOCKS_PER_HEX}`);
+    // The count carries the block states since 0.27 — a fresh block idles.
+    expect(value(container, "BLOKI")).toBe(`1 / ${MAX_PLANT_BLOCKS_PER_HEX} · 1 postój`);
     expect(value(container, "PRZYŁĄCZA")).toBe("0 / 6");
 
     const expected = 400 * PLANT_TECHS.ccgt.capexPlnPerMw * EXPANSION.capexShare;

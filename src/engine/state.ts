@@ -23,7 +23,7 @@ import type { MonthRegimes, RegimeId } from "./regimes";
  * by the build before it still loads. A bump without its migration turns every
  * existing save into a load error.
  */
-export const STATE_SCHEMA_VERSION = 14;
+export const STATE_SCHEMA_VERSION = 15;
 
 export const TURNS_PER_DAY = 8;
 export const HOURS_PER_TURN = 3;
@@ -72,16 +72,57 @@ export interface CityState {
   monthDeliveredMwh: number;
 }
 
+/**
+ * Life stage of one block (01 §5.1, 0.27). "starting" runs the startup counter
+ * at zero output; "online" holds output between the technical minimum and the
+ * rated power, moved by the ramp each turn.
+ */
+export type BlockStatus = "offline" | "starting" | "online";
+
+/**
+ * One block of a dispatchable plant (01 §5.1, 0.27). Every field is always
+ * present — an absent key would vanish through JSON.stringify and break the
+ * lossless round-trip the saves and golden hashes rely on.
+ */
+export interface PlantBlockState {
+  /** Rated power of this block [MW]; the dynamics shares scale from it. */
+  mw: number;
+  status: BlockStatus;
+  /** Output held through the last resolved turn [MW]; 0 unless online. */
+  outputMw: number;
+  /** Resolutions left before the block reaches minimum load; 0 unless starting. */
+  startupTurnsLeft: number;
+  /**
+   * Resolutions since the block last ran, capped at COLD_OFFLINE_TURNS — the
+   * warm/cold test at the next start order (01 §5.1). Meaningless while online.
+   */
+  offlineTurns: number;
+}
+
+/** Cap for `offlineTurns` — far beyond every warm window, so "fully cold". */
+export const COLD_OFFLINE_TURNS = 99;
+
 export interface PlantState {
   id: string;
   name: string;
   hex: HexCoord;
   tech: PlantTech;
   capacityMw: number;
-  /** Blocks standing on the hex — hard limit 6 (01 §7, 02 §8.4). */
-  blocks: number;
-  /** Player dispatch [MW], full 0–100% range each turn (01 §5.1). */
+  /** Blocks standing on the hex — hard limit 6 of them (01 §7, 02 §8.4). */
+  blocks: PlantBlockState[];
+  /**
+   * Player dispatch order [MW], full 0–100% range (01 §5.1). Since 0.27 an
+   * ORDER, not the output: blocks approach it through startup, ramps and
+   * technical minimum — see engine/dispatch.ts.
+   */
   setpointMw: number;
+}
+
+/** Actual output of the whole plant — the sum its blocks currently hold. */
+export function plantOutputMw(plant: PlantState): number {
+  let sum = 0;
+  for (const block of plant.blocks) sum += block.outputMw;
+  return sum;
 }
 
 export interface FarmState {
@@ -248,7 +289,7 @@ export interface TurnSourceReport {
   /** Object id; for imports the border point's id. */
   sourceId: string;
   kind: SourceKind;
-  /** Power offered to the flow: setpoint, weather production or discharge cap. */
+  /** Power offered to the flow: block output (0.27), weather production or discharge cap. */
   offeredMw: number;
   /** Power actually drawn by the flow (losses included at the sending end). */
   usedMw: number;
@@ -309,6 +350,8 @@ export interface TurnFinanceReport {
   revenueExportPln: number;
   fuelCostPln: number;
   importCostPln: number;
+  /** Start orders issued this resolution (01 §5.1, 0.27), day-weighted. */
+  startupCostPln: number;
   ensPenaltyPln: number;
   dumpPenaltyPln: number;
   /** Fixed O&M hits at day end only (01 §6); 0 mid-day. */

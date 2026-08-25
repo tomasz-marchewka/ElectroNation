@@ -13,6 +13,7 @@
 
 import { CONFIG, FORECAST_LEVELS, STORAGE_TECHS, type ForecastLevel } from "./config";
 import type { DayType } from "./demand";
+import { projectPlantOutputMw } from "./dispatch";
 import { FARM_LAYERS, PLANT_LAYERS } from "./history";
 import {
   COVERAGE_LAYERS,
@@ -354,12 +355,15 @@ interface SetpointPlan {
 }
 
 /**
- * The dispatchable part of the plan, read straight off the setpoints (01 §8
- * pt 3). Storage power is capped by the CURRENT state of charge, and held there
- * for every hour projected: the projection never simulates a turn, so it cannot
- * know how the charge would actually run down.
+ * The dispatchable part of the plan, read off the setpoints (01 §8 pt 3).
+ * Plants project their BLOCK DYNAMICS (01 §5.1 in 0.27): `stepsAhead`
+ * resolutions from now under the current setpoint — deterministic, so the plan
+ * honestly shows a coal order still ramping instead of the setpoint it will
+ * only reach later. Storage power is capped by the CURRENT state of charge and
+ * held there for every hour projected: the projection never simulates a turn,
+ * so it cannot know how the charge would actually run down.
  */
-function planAtSetpoints(state: GameState): SetpointPlan {
+function planAtSetpoints(state: GameState, stepsAhead: number): SetpointPlan {
   const coverageMw = COVERAGE_LAYERS.map(() => 0);
   const add = (layer: CoverageLayer, mw: number): void => {
     const index = COVERAGE_LAYERS.indexOf(layer);
@@ -368,7 +372,7 @@ function planAtSetpoints(state: GameState): SetpointPlan {
   let extraLoadMw = 0;
 
   for (const plant of state.plants) {
-    add(PLANT_LAYERS[plant.tech], Math.min(plant.setpointMw, plant.capacityMw));
+    add(PLANT_LAYERS[plant.tech], projectPlantOutputMw(plant, stepsAhead));
   }
   for (const border of state.borders) {
     add("import", border.importSetpointMw);
@@ -402,10 +406,22 @@ function planAtSetpoints(state: GameState): SetpointPlan {
  * `dayForecast` instead.
  */
 export function projectBalance(state: GameState): BalanceProjectionPoint[] {
-  const { dispatchableMw, extraLoadMw } = planAtSetpoints(state);
+  // One plan per future turn: the plant half moves with the block dynamics,
+  // so an hour three turns out shows what the blocks will hold by then.
+  const planCache = new Map<number, SetpointPlan>();
+  const planAtStep = (stepsAhead: number): SetpointPlan => {
+    let plan = planCache.get(stepsAhead);
+    if (!plan) {
+      plan = planAtSetpoints(state, stepsAhead);
+      planCache.set(stepsAhead, plan);
+    }
+    return plan;
+  };
 
   const points: BalanceProjectionPoint[] = [];
   for (let hour = state.calendar.turnIndex * HOURS_PER_TURN; hour < HOURS_PER_DAY; hour++) {
+    const stepsAhead = Math.floor(hour / HOURS_PER_TURN) - state.calendar.turnIndex + 1;
+    const { dispatchableMw, extraLoadMw } = planAtStep(stepsAhead);
     let demandMw = 0;
     let demandBandMw = 0;
     let resMw = 0;
@@ -480,7 +496,8 @@ export function projectTurnCoverage(
 ): TurnCoverageProjection | undefined {
   const forecast = turnForecast(state, dayOffset, turnIndex);
   if (forecast === undefined) return undefined;
-  const plan = planAtSetpoints(state);
+  const stepsAhead = dayOffset * TURNS_PER_DAY + turnIndex - state.calendar.turnIndex + 1;
+  const plan = planAtSetpoints(state, stepsAhead);
   const coverageMw = [...plan.coverageMw];
   const windIndex = COVERAGE_LAYERS.indexOf(FARM_LAYERS.wind);
   const pvIndex = COVERAGE_LAYERS.indexOf(FARM_LAYERS.pv);

@@ -176,23 +176,29 @@ w grze — dokument 06 obowiązuje. Tu zostaje reszta.)*
 
 ## 3. Unit commitment i ograniczenia techniczne jednostek
 
-W wersji uproszczonej elektrownia sterowalna ma tylko moc maksymalną i koszty, a nastawa
-działa od razu. Pełna karta jednostki:
+*(Rdzeń wszedł do gry w 01 v0.27 — §5.1: **minimum techniczne, rozruch zimny/ciepły,
+rampy w górę/w dół i koszt rozruchu**, w wersji growej przeskalowanej do tury 3 h,
+z jedną nastawą na elektrownię wykonywaną przez silnik. Tu zostaje reszta karty.)*
 
-- **minimum techniczne** (węgiel nie zejdzie poniżej ~40% — w nocy trzeba wyłączyć albo dopłacić),
-- **czas rozruchu** zimny/ciepły/gorący (węgiel 6–10 h, OCGT 5–10 min),
-- **minimalny czas pracy i postoju** — bloku nie włącza się co godzinę,
-- **rampy** [MW/min] — przy turze godzinowej tylko informacyjne (blok pokonuje cały zakres
-  w godzinę), ograniczeniem są rozruchy i minimum,
+Pozostała karta jednostki:
+
+- **minimalny czas pracy i postoju** — bloku nie włącza się co godzinę (w grze częściowo
+  zastąpione oknem ciepłym i kosztem rozruchu),
+- **rozruch gorący** jako trzeci stan obok zimnego i ciepłego; rozruch z realnym
+  profilem poboru paliwa zamiast jednej opłaty,
+- **rampy [MW/min] w realistycznej skali** — wymagałyby kroku gęstszego niż tura 3 h
+  (§13); dzisiejsze wartości są growe z założenia,
+- **plan per jednostka** — dziś gracz steruje elektrownią (silnik rozdziela bloki
+  deterministycznie); pełny UC oddaje graczowi decyzję per blok,
 - **dyspozycyjność** — awaryjność, remonty planowane,
 - **emisje** CO₂, SO₂, NOₓ, pyły — koszty i akceptacja społeczna,
 - **inercja (stała H)** i **zdolność black-start**.
 
 Z tego wyrasta właściwy problem dobowy pełnej gry: *które bloki uruchomić i kiedy, ile
 rezerwy trzymać* — klasyczny **plan pracy jednostek (unit commitment)** podejmowany
-w warunkach niepewności prognozy. To jest mechanika, dla której prognoza z pasmem błędu
-(już obecna w grze) pokaże pełną głębię: rozruch węgla trwa 6 godzin, a pasmo prognozy
-wiatru na tę godzinę wynosi ±120 MW.
+w warunkach niepewności prognozy. Wersja growa z 01 v0.27 już wymusza decyzje
+wielogodzinne (rozruch zimny węgla = 3 tury, jądrówki = 8 tur); pełna wersja pogłębia
+je o awaryjność i decyzje per blok.
 
 Powiązane mechaniki cyklu życia:
 
@@ -452,8 +458,8 @@ Kolejność jest propozycją — każdy krok wraca osobno i tylko jeśli przecho
 
 1. **Awarie jednostek i linii** (§8) — trzymanie zapasu mocy zaczyna mieć sens ponad błąd
    prognozy.
-2. **Unit commitment** (§3: rozruchy, minima techniczne) — prognoza z pasmem pokazuje pełną
-   głębię, decyzje stają się wielogodzinne.
+2. **Unit commitment — pozostała część** (§3; rdzeń — minima, rozruchy, rampy — wszedł
+   do gry w 01 v0.27): dyspozycyjność, remonty, rozruch gorący, plan per jednostka.
 3. **Merit order i cena krańcowa** (§5) — ekonomia zaczyna żyć.
 4. **DC power flow + częstotliwość + inercja + rezerwy** (§1) — przejście Arcade → Standard.
 5. **Stacje zaawansowane i poziomy napięć** (§4) oraz **N-1** (§1.6) — pełne planowanie sieci.

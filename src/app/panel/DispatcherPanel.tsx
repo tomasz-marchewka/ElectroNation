@@ -69,6 +69,7 @@ function SetpointRowView({ row, onAction }: RowProps) {
           max={row.maxMw}
           note={row.note}
           color={row.color}
+          actualMw={row.actualMw}
           onChange={(mw) => onAction({ type: "setPlantSetpoint", plantId: row.id, mw })}
         />
       );

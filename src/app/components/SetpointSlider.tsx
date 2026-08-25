@@ -38,6 +38,12 @@ export interface SetpointSliderProps {
    * needs it: `−100 / 150 MW` says nothing about which way the power flows.
    */
   valueText?: string;
+  /**
+   * Where the unit ACTUALLY stands [MW] — the amber tick. A plant follows its
+   * setpoint with inertia (01 §5.1 in 0.27), so the order and the output
+   * diverge for a few turns; without the tick that reads as a broken slider.
+   */
+  actualMw?: number;
   /** Without it the slider is read-only. */
   onChange?: (value: number) => void;
 }
@@ -53,6 +59,7 @@ export function SetpointSlider({
   color,
   step = 10,
   valueText,
+  actualMw,
   onChange,
 }: SetpointSliderProps) {
   const span = max - min;
@@ -85,6 +92,9 @@ export function SetpointSlider({
           }}
         />
         {min < 0 && <span className="en-setpoint__zero" style={{ left: `${zeroPercent}%` }} />}
+        {actualMw !== undefined && Math.abs(actualMw - value) > 0.5 && (
+          <span className="en-setpoint__actual" style={{ left: `${percentAt(actualMw)}%` }} />
+        )}
         <span className="en-setpoint__thumb" style={{ left: `${valuePercent}%` }} />
         <input
           className="en-setpoint__input"

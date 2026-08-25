@@ -8,9 +8,11 @@ import {
   CONFIG,
   PLANT_TECHS,
   farmProductionForecast,
+  plantOutputMw,
   HOURS_PER_TURN,
   type FarmTech,
   type GameState,
+  type PlantState,
   type PlantTech,
   type StorageMode,
 } from "../../engine";
@@ -44,7 +46,10 @@ export interface PlantSetpointRow {
   tech: string;
   valueMw: number;
   maxMw: number;
-  /** Variable cost, e.g. "250 zł/MWh". */
+  /** Where the blocks actually stand [MW] — diverges from the setpoint while
+   * they start up or ramp (01 §5.1 in 0.27); the slider draws it as a tick. */
+  actualMw: number;
+  /** Variable cost plus the dynamics status, e.g. "250 zł/MWh · MOC 210 MW · ROZRUCH ×1". */
   note: string;
   color: string;
 }
@@ -111,6 +116,24 @@ function farmBlockForecastMw(state: GameState, farmId: string): number {
   return sum / HOURS_PER_TURN;
 }
 
+/**
+ * The dynamics half of a plant's note (01 §5.1 in 0.27): silent while the
+ * blocks sit on the setpoint, otherwise the actual output plus what still
+ * moves — starting blocks first, a plain ramp otherwise.
+ */
+function plantDynamicsNote(plant: PlantState): string {
+  const actualMw = plantOutputMw(plant);
+  if (Math.abs(actualMw - plant.setpointMw) <= 0.5) return "";
+  const starting = plant.blocks.filter((block) => block.status === "starting").length;
+  const state =
+    starting > 0
+      ? ` · ROZRUCH ×${formatNumber(starting)}`
+      : actualMw < plant.setpointMw
+        ? " · RAMPA W GÓRĘ"
+        : " · RAMPA W DÓŁ";
+  return ` · MOC ${formatMw(actualMw)}${state}`;
+}
+
 function plantRows(state: GameState): PlantSetpointRow[] {
   // Merit order, cheapest first — the panel teaches it by listing it
   // (SetpointSlider.prompt.md); ties fall back to the id so the order is stable.
@@ -127,7 +150,8 @@ function plantRows(state: GameState): PlantSetpointRow[] {
       tech: PLANT_TECH_INLINE_LABELS[plant.tech],
       valueMw: plant.setpointMw,
       maxMw: plant.capacityMw,
-      note: `${formatNumber(PLANT_TECHS[plant.tech].varCostPlnPerMwh)} zł/MWh`,
+      actualMw: plantOutputMw(plant),
+      note: `${formatNumber(PLANT_TECHS[plant.tech].varCostPlnPerMwh)} zł/MWh${plantDynamicsNote(plant)}`,
       color: PLANT_COLORS[plant.tech],
     }));
 }

@@ -10,7 +10,7 @@ import {
   farmProductionForecast,
   newGame,
   type GameState,
-  type PlantState,
+  type ScenarioPlant,
   type StorageState,
 } from "../../../src/engine";
 import { formatMw } from "../../../src/app/format";
@@ -23,8 +23,8 @@ import {
 } from "../../../src/app/panel/setpoints";
 import { makeScenario } from "../../helpers/scenario";
 
-function plant(id: string, tech: PlantState["tech"], name = id): PlantState {
-  return { id, name, hex: { q: 0, r: 0 }, tech, capacityMw: 400, blocks: 1, setpointMw: 0 };
+function plant(id: string, tech: ScenarioPlant["tech"], name = id): ScenarioPlant {
+  return { id, name, hex: { q: 0, r: 0 }, tech, capacityMw: 400, setpointMw: 0 };
 }
 
 describe("plants — merit order as a lesson (SetpointSlider.prompt.md)", () => {

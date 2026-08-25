@@ -20,7 +20,7 @@ import {
   skipStop,
   skipTurns,
 } from "../../../src/app/store/skip";
-import { makeScenario } from "../../helpers/scenario";
+import { makeScenario, settlePlants } from "../../helpers/scenario";
 
 function at(q: number): HexCoord {
   return { q, r: 0 };
@@ -92,11 +92,15 @@ describe("01 §2.5: przewiń — until something happens", () => {
   });
 
   test("stops on a line at its limit, naming the line and the stretch", () => {
-    const state = applyAction(newGame(7, TIGHT_SCENARIO), {
-      type: "setPlantSetpoint",
-      plantId: "plant-1",
-      mw: 160,
-    });
+    // Blocks pre-warmed to the setpoint — the subject is the stop rule, not
+    // the cold start that would otherwise keep turn 1 under the line's limit.
+    const state = settlePlants(
+      applyAction(newGame(7, TIGHT_SCENARIO), {
+        type: "setPlantSetpoint",
+        plantId: "plant-1",
+        mw: 160,
+      }),
+    );
     const { game, stop } = skipTurns(state);
 
     expect(stop?.kind).toBe("overload");

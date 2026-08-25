@@ -297,6 +297,47 @@ describe("migrateState", () => {
     ]);
   });
 
+  test("14 → 15: plant block counts become block state; reports gain the startup entry", () => {
+    // What a schema-14 save carried: `blocks` as a count, a plain setpoint that
+    // acted instantly, and finance without `startupCostPln`.
+    const state = playTurns(11, 3);
+    const old = JSON.parse(JSON.stringify(state)) as Record<string, unknown> & {
+      plants: Record<string, unknown>[];
+      lastTurnReport: { finance: Record<string, unknown> } | null;
+      history: { finance: Record<string, unknown> }[];
+    };
+    old.schema = 14;
+    old.plants = [
+      {
+        id: "plant-old",
+        name: "EC Stara",
+        hex: { q: 1, r: 9 },
+        tech: "coal",
+        capacityMw: 1_000,
+        blocks: 2,
+        setpointMw: 300,
+      },
+    ];
+    if (old.lastTurnReport) delete old.lastTurnReport.finance.startupCostPln;
+    for (const digest of old.history) delete digest.finance.startupCostPln;
+
+    const result = migrateState(old);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const plant = result.state.plants[0]!;
+    // The capacity splits evenly — individual sizes were never recorded.
+    expect(plant.blocks.map((block) => block.mw)).toStrictEqual([500, 500]);
+    expect(plant.capacityMw).toBe(1_000);
+    // A running plant migrates RUNNING at its setpoint: no fake cold start.
+    expect(plant.blocks[0]).toMatchObject({ status: "online", outputMw: 300 });
+    expect(plant.blocks[1]?.status).toBe("offline");
+    expect(plant.setpointMw).toBe(300);
+    // Every archived report gains the new finance entry at zero.
+    expect(result.state.lastTurnReport?.finance.startupCostPln).toBe(0);
+    expect(result.state.history.every((d) => d.finance.startupCostPln === 0)).toBe(true);
+  });
+
   test("11 → 12: a save too broken to cut is handed on untouched", () => {
     const state = playTurns(11, 3);
     const result = migrateState({

@@ -196,6 +196,9 @@ export const MAP_V1: Scenario = {
       hex: at(1, 9),
       tech: "ccgt",
       capacityMw: 400,
+      // Four SMALL blocks (01 §3.4 in 0.27) — one block's minimum (30 MW) fits
+      // the starting city's night valley.
+      blocks: 4,
       setpointMw: 0,
     },
   ],

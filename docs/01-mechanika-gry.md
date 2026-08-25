@@ -1,8 +1,45 @@
 # ElectroNation — Dokument bazowy mechaniki gry
 
-**Wersja:** 0.26 (dokument koncepcyjny)
-**Data:** 2026-08-21
+**Wersja:** 0.27 (dokument koncepcyjny)
+**Data:** 2026-08-25
 **Status:** obowiązuje **wersja uproszczona** gry; mechaniki odłożone czekają w [90-pomysly-na-przyszlosc.md](90-pomysly-na-przyszlosc.md)
+
+**Zmiany 0.26 → 0.27 (dynamika bloków: minimum techniczne, rozruch, rampy):**
+
+1. **Elektrownia sterowalna przestaje osiągać nastawę natychmiast** (§5.1; częściowo
+   ściąga z parkingu 90 §3). Każdy blok jest odtąd jednostką o trzech stanach —
+   **wyłączony / w rozruchu / w ruchu** — a nastawa elektrowni jest rozkazem, do którego
+   bloki dochodzą z bezwładnością swojej technologii: rozruch trwa (zimny dłużej niż
+   ciepły), moc zmienia się najwyżej o rampę na turę, a blok w ruchu nie schodzi poniżej
+   minimum technicznego. Parametry — tabela dynamiki w §5.1.
+2. **Sterowanie się nie zmienia: jedna nastawa [MW] na elektrownię.** Silnik wykonuje ją
+   najlepiej, jak dynamika bloków pozwala: załącza kolejne bloki, gdy nastawa rośnie
+   (preferując te już w ruchu, potem będące w rozruchu, potem ciepłe), odstawia zbędne,
+   rozdziela moc i pilnuje minimów. To nie jest auto-dyspozycja (§8): silnik niczego nie
+   nastawia za gracza — wykonuje rozkaz, tylko nie natychmiast.
+3. **Rozruch kosztuje** (zł/MW bloku, płatny przy rozkazie załączenia — tabela §5.1)
+   i podlega wadze doby jak każdy koszt przepływowy (§2.1). Odstawianie węgla na noc
+   jest odtąd decyzją z rachunkiem: koszt rozruchu kontra kara za zrzut minimum.
+4. **Kara za nadwyżkę liczy się od produkcji, nie od nastawy** (§4.1, 02 §5) — blok
+   w rozruchu produkuje 0 (nie płaci kary), a blok trzymany na minimum ponad potrzebę
+   płaci zrzut, którego nie da się uniknąć inaczej niż odstawieniem. Nastawa poniżej
+   minimum jednego bloku oznacza produkcję na minimum, nie na nastawie.
+5. **OCGT jest w pełni elastyczny** (minimum 0, rozruch natychmiastowy, bez kosztu) —
+   „polisa od kary za niedobór" z §5.1 dostaje wreszcie mechaniczną treść: to jedyna
+   technologia, która odpowiada w tej samej turze. Po drugiej stronie skali jądrówka
+   staje się prawdziwą podstawą — jej odstawienie i powrót to decyzja na kilka dób.
+6. **Parametry dynamiki są growe, nie realistyczne.** Przy turze 3 h prawdziwe rampy
+   (węgiel ~2%/min) pokonywałyby cały zakres w ułamku tury i mechanika by nie istniała
+   (90 §3 zauważa to wprost). Rozruch i rampa są więc zlane w „czas reakcji" przeskalowany
+   do rytmu tur; realizm zachowany jest w **kolejności** technologii, nie w liczbach.
+7. **Zalążek startowy to cztery bloki CCGT MAŁE (4 × 100 MW), nie jeden DUŻY** (§3.4).
+   Moc łączna bez zmian (400 MW); zmiana jest konieczna, bo minimum jednego bloku DUŻEGO
+   (120 MW) przerastałoby dolinę nocną miasta startowego — gracz płaciłby karę zrzutu od
+   pierwszej tury. Minimum jednego bloku MAŁEGO (30 MW) mieści się w tej dolinie.
+8. **Zapis gry przechodzi na schemat 15.** Blok elektrowni niesie stan (moc znamionowa,
+   status, moc bieżąca, licznik rozruchu, licznik postoju); migracja dzieli moc starszej
+   elektrowni równo między jej bloki i przenosi dotychczasową nastawę na stan bloków.
+   Raport finansowy dostaje pozycję **koszt rozruchów**.
 
 **Zmiany 0.25 → 0.26 (cztery rozmiary w całym katalogu; magazyn rośnie dwiema osiami):**
 
@@ -568,10 +605,10 @@ Własności, które są sednem mechaniki:
 1. **Zapotrzebowanie jest niemal pewne, pogoda nie.** Gracz może ufać prognozie popytu
    i musi zabezpieczać się przed prognozą wiatru — zgodnie z rzeczywistością.
 2. **Prognoza na najbliższą turę jest dokładna — trudne są decyzje na kilka tur naprzód.**
-   W wersji uproszczonej (bez czasów rozruchu) dotyczy to głównie **gospodarki magazynem**
-   („ile zostawić na wieczorny szczyt, skoro prognoza wiatru na blok 18–21 ma pasmo
-   ±120 MW?") i utrzymywania zapasu mocy sterowalnej. Pełna głębia (rozruchy bloków = unit
-   commitment) wraca później — 90 §3.
+   Od 0.27 dotyczy to **rozruchów bloków** („czy rozkazać węgiel pod wieczorny szczyt już
+   rano, skoro prognoza wiatru na blok 18–21 ma pasmo ±120 MW?" — dynamika §5.1) obok
+   **gospodarki magazynem** i utrzymywania zapasu mocy sterowalnej. Pełny unit commitment
+   (dyspozycyjność, remonty, plan per jednostka) wraca później — 90 §3.
 3. **Trudność bierze się z wariancji, nie z poziomu.** Przewidywalny niedobór jest łatwiejszy
    od nieprzewidywalnej obfitości (obserwacja z pierwszego prototypu — 90 §1.8).
 4. **Prawda jest generowana w całości przy inicjalizacji doby**, prognoza jest jej zaszumionym
@@ -771,7 +808,9 @@ dawna topologia stacyjna czeka w 90 §4 (kandydatka do powrotu razem z poziomami
 
 **DECYZJA (0.10, zastępuje czysty greenfield z 0.3): gracz zawsze zaczyna z minimalnym
 stanem posiadania** — od pierwszej tury na mapie działa mały system: **jedna elektrownia
-średniej wielkości (np. CCGT ~400 MW), linia i jedno przyłączone małe miasto**.
+średniej wielkości (CCGT ~400 MW; od 0.27 jako cztery bloki MAŁE 4 × 100 MW — minimum
+techniczne jednego bloku musi mieścić się w dolinie nocnej miasta startowego, §5.1),
+linia i jedno przyłączone małe miasto**.
 Stan startowy jest darmowy (nie pomniejsza kapitału startowego) i należy do definicji
 scenariusza — scenariusze mogą go różnicować.
 
@@ -828,10 +867,13 @@ ZUŻYCIE:   zapotrzebowanie miast + ładowanie magazynów + eksport + straty prz
 
 - **Każda nadwyżka jest karana — 400 zł/MWh, niezależnie od źródła (0.23, 02 §5;
   uchyla darmowy zrzut OZE z 0.16).** Podstawą kary jest suma tego, czego rozpływ nie
-  odebrał: nastawa sterowalnych ponad wykorzystanie **plus** produkcja OZE ponad
-  wykorzystanie. Cel tury jest przez to symetryczny: pokryć zapotrzebowanie i **nie
-  produkować ponad nie**. Paliwo płaci się tylko od energii wykorzystanej (zrzucona MWh
-  nie pali paliwa, ale jest karana); import jest take-or-pay (płatny od nastawy).
+  odebrał: **produkcja** sterowalnych ponad wykorzystanie **plus** produkcja OZE ponad
+  wykorzystanie. Od 0.27 produkcja sterowalna wynika z nastawy przez dynamikę bloków
+  (§5.1) — blok w rozruchu daje 0, a blok na minimum potrafi produkować **ponad**
+  nastawę; karę liczy się od tego, co naprawdę wyprodukowano. Cel tury jest przez to
+  symetryczny: pokryć zapotrzebowanie i **nie produkować ponad nie**. Paliwo płaci się
+  tylko od energii wykorzystanej (zrzucona MWh nie pali paliwa, ale jest karana);
+  import jest take-or-pay (płatny od nastawy).
 - **Produkcja OZE jest niesterowalna** — wynika z pogody, więc jej nadwyżkę przycina
   automatyka. Rozpływ używa OZE pierwsze (koszt 0), zatem OZE jest przycinane **ostatnie**
   i kara sięga po nie dopiero, gdy pogoda przerasta cały odbiór sieci albo gdy wąskie
@@ -966,10 +1008,11 @@ elektrycznym (90 §1.7).
 
 ### 5.1 Elektrownie sterowalne
 
-W wersji uproszczonej elektrownia ma tylko: **moc maksymalną [MW]**, **koszt zmienny
-[zł/MWh]**, **koszt stały [zł/MW/rok]**, **CAPEX** i **czas budowy**. Nastawę mocy można
-zmieniać co turę w pełnym zakresie 0–100%. *(Minima techniczne, rozruchy, rampy,
-dyspozycyjność, emisje — 90 §3.)*
+Elektrownia ma: **moc maksymalną [MW]**, **koszt zmienny [zł/MWh]**, **koszt stały
+[zł/MW/rok]**, **CAPEX**, **czas budowy** — i od 0.27 **dynamikę bloku** (minimum
+techniczne, rozruch, rampy, koszt rozruchu; tabela niżej). Nastawa jest rozkazem
+w pełnym zakresie 0–100%, ale blok dochodzi do niej z bezwładnością swojej technologii.
+*(Dyspozycyjność, remonty, emisje, inercja — nadal 90 §3.)*
 
 | Technologia | CAPEX (0.25) | Czas budowy (doby gry) | Koszt zmienny | Rola |
 |---|---|---|---|---|
@@ -1017,6 +1060,53 @@ WIELKI ma 2 400 MW, a najgrubsza linia (WN) przenosi 1 500 MW (§4.2) — pełne
 wyprowadzi jeden tor, a sześć takich bloków na heksie (limit §7) to 14 400 MW, czyli
 połowa docelowej skali całego systemu (§3.4). Jądrówka jest więc decyzją o topologii
 korytarza, a nie tylko o pieniądzach.
+
+**DECYZJA (0.27): blok ma dynamikę — nastawa nie działa natychmiast.** Każdy blok jest
+jednostką o trzech stanach: **wyłączony**, **w rozruchu**, **w ruchu**. Sterowanie
+pozostaje jedną nastawą [MW] na elektrownię; silnik wykonuje ją wg reguł poniżej
+(to wykonanie rozkazu, nie auto-dyspozycja — silnik niczego nie nastawia za gracza).
+
+| Technologia | Minimum techn. | Rampa w górę | Rampa w dół | Rozruch zimny | Rozruch ciepły | Okno ciepłe | Koszt rozruchu |
+|---|---|---|---|---|---|---|---|
+| **Jądrowa** | 50% | 20%/turę | 40%/turę | 8 tur (24 h) | 4 tury (12 h) | 2 tury (6 h) | 4 000 zł/MW |
+| **Węgiel** | 40% | 30%/turę | 60%/turę | 3 tury (9 h) | 1 tura (3 h) | 4 tury (12 h) | 2 000 zł/MW |
+| **Gaz CCGT** | 30% | 60%/turę | 100%/turę | 1 tura (3 h) | 0 tur | 8 tur (24 h) | 600 zł/MW |
+| **Gaz OCGT** | 0% | 100%/turę | 100%/turę | 0 tur | 0 tur | — | 0 |
+
+Procenty liczą się od **mocy znamionowej bloku**; koszt rozruchu od MW bloku, płatny
+przy rozkazie załączenia i ważony wagą doby jak koszty przepływowe (§2.1). Reguły:
+
+1. **Załączanie i odstawianie wynika z nastawy.** Silnik załącza bloki w kolejności:
+   najpierw te już **w ruchu**, potem **w rozruchu**, potem wyłączone **ciepłe**, na
+   końcu **zimne** (remis rozstrzyga stała kolejność bloków) — aż moc znamionowa
+   załączonych pokryje nastawę. Bloki ponad tę potrzebę są odstawiane.
+2. **Rozruch N tur**: przez N−1 tur blok daje **0 MW**; w N-tej turze od rozkazu wchodzi
+   na **minimum techniczne**. Rozruch 0 tur = blok wchodzi na minimum i rampuje do celu
+   **w tej samej turze** (OCGT odpowiada natychmiast). Rozruch **ciepły** przysługuje,
+   gdy postój nie przekroczył okna ciepłego; dłuższy postój = rozruch zimny. Blok nowo
+   zbudowany (i blok z rozbudowy) wchodzi do świata **zimny i wyłączony**.
+3. **Rampa**: moc bloku w ruchu zmienia się między turami najwyżej o rampę; w dół
+   szybciej niż w górę (zrzut mocy jest technicznie łatwiejszy niż jej nabór).
+4. **Minimum techniczne**: blok w ruchu nie pracuje poniżej minimum. Nastawa poniżej
+   minimum jednego bloku = blok trzyma minimum, a nadwyżka produkcji ponad odbiór
+   podlega karze zrzutu (§4.1). Jedyna droga niżej to **odstawienie**: rampa w dół do
+   minimum, w kolejnej turze wyłączenie (0 MW).
+5. **Moc rozdziela się zachłannie**: każdy blok w ruchu dostaje najpierw swoje minimum,
+   potem kolejne bloki w stałej kolejności są dopełniane do mocy znamionowej, aż suma
+   pokryje nastawę. Rozkład jest deterministyczny; koszt zmienny bloków jednej
+   elektrowni jest wspólny, więc rozdział nie zmienia rachunku paliwa.
+6. **Kara za nadwyżkę liczy się od produkcji** (§4.1): blok w rozruchu produkuje 0 i nic
+   nie płaci; blok na minimum ponad potrzebę płaci zrzut od tego, czego rozpływ nie
+   odebrał — kara za przewymiarowanie podstawy jest celowa.
+
+**Parametry są growe, nie realistyczne** — przy turze 3 h realne rampy (węgiel ~2%/min)
+pokonywałyby cały zakres w ułamku tury i mechanika by nie istniała (90 §3). Rozruch
+i rampa są zlane w „czas reakcji" przeskalowany do rytmu tur; realizm siedzi
+w **kolejności technologii** (jądrówka ⩾ węgiel ⩾ CCGT ⩾ OCGT), nie w liczbach.
+Sedno rozgrywki: wieczorną rampę grudniową (06 §9) trzeba **planować z wyprzedzeniem**
+z prognozy — węgiel pod szczyt rozkazuje się rano, nie o 18:00 — a OCGT, magazyn
+i import są jedynymi dźwigniami „na już". *(Wartości do strojenia w doc 03/04 wraz
+z resztą ekonomii.)*
 
 *(wartości orientacyjne, do strojenia w dokumentach 03–04; wodna przepływowa i biomasa —
 90 §2)*
@@ -1276,8 +1366,11 @@ starzenie majątku i remonty, kolejka przyłączeniowa — 90 §3, §7, §10.)*
      stało; z czym się to rozminęło, mówią liczby paska raportu — tam zakład i wynik
      stoją obok siebie co do MW, zamiast dokładać kreski do stosu siedmiu warstw.
    - **Przed nami** — prognoza popytu z pasmem, do granicy horyzontu (§2.4), **plus plan
-     przy obecnych nastawach: te same warstwy co za nami** (0.20). Plan bierze nastawy
-     elektrowni, importu i magazynów (moc magazynu ograniczona bieżącym SOC), a wiatr
+     przy obecnych nastawach: te same warstwy co za nami** (0.20). Plan bierze **przebieg
+     dynamiki bloków przy trzymanej nastawie** (0.27, §5.1 — deterministyczny, więc to
+     rachunek, nie prognoza: węgiel w rozruchu rysuje się w planie zerem, a rampa
+     dochodzi do nastawy szczebel po szczeblu), nastawy importu i magazynów (moc
+     magazynu ograniczona bieżącym SOC), a wiatr
      i PV z prognozy produkcji — i **nie jest przycinany do popytu**: część stosu ponad
      prognozą popytu to zrzut, który tura ukarze (§4.1), a luka pod nią to niedobór,
      który gracz ma jeszcze czym domknąć. Jest przy tym **ślepy na sieć**, dokładnie jak
@@ -1306,7 +1399,10 @@ starzenie majątku i remonty, kolejka przyłączeniowa — 90 §3, §7, §10.)*
 3. **Panel prognozy** — pasma popytu i OZE na kolejne godziny + kolumna **„bilans przy
    obecnych nastawach"** (czy plan przeżyje najbliższe 6 h — 06 §8.6.4).
 4. **Panel nastaw** — jednostki z suwakami, magazyny (ładuj/oddawaj), import/eksport,
-   saldo bilansu. **DECYZJA: bez auto-nastaw** — wszystkie nastawy ustawia gracz ręcznie,
+   saldo bilansu. Od 0.27 suwak elektrowni pokazuje **obok nastawy moc bieżącą**
+   (bursztynowy znacznik na torze + nota „MOC … · ROZRUCH/RAMPA"), bo rozkaz i stan
+   rozjeżdżają się na kilka tur (§5.1) — bez tego bezwładność czytałaby się jak zepsuty
+   suwak. **DECYZJA: bez auto-nastaw** — wszystkie nastawy ustawia gracz ręcznie,
    nie ma przycisku „obsadź najtaniej".
 5. **Panel dyspozytora jest stale widoczny** (0.12) — prognoza, nastawy (edytowalne
    cały czas — §2.3), raport tury wybranej na wstędze oraz harmonogram budów i systemy
@@ -1360,7 +1456,7 @@ Wersja uproszczona jest **piaskownicą z celami**:
 |---|---|
 | DC power flow, częstotliwość, inercja, rezerwy, N-1, kaskady/SCO/blackout | 90 §1 |
 | OZE pozostałe: wodna, biomasa; hydrologia, złoża, strefy klimatyczne (**wiatr morski wszedł do gry w 0.22** — §5.2) | 90 §2 |
-| Unit commitment: minima, rozruchy, remonty, starzenie majątku | 90 §3 |
+| Unit commitment — **minima, rozruchy i rampy weszły do gry w 0.27 w wersji growej (§5.1)**; odłożone zostają dyspozycyjność, remonty, starzenie majątku, emisje, inercja | 90 §3 |
 | Stacje zaawansowane: układy rozdzielni, kompensacja, poziomy napięć, typy linii, topologia stacyjna | 90 §4 |
 | Merit order, cena krańcowa, PPA, kredyty, LCOE | 90 §5 |
 | Sąsiedzi z charakterami, NTC, przepływy kołowe, ryzyko polityczne | 90 §6 |
@@ -1410,6 +1506,7 @@ indeksem ceny.
 | ✅ | Czasy budowy K ≈ 40 (0.12; wcześniej K ≈ 5 → 20), linie 3/6/12 h/heks wg typu (0.13) | 2.6 |
 | ✅ | **Model zapotrzebowania i wzrost miast wg dokumentu 05** (0.14; uchyla formułę tymczasową z 0.13): miasto = gospodarstwa + firmy; wzrost 0–4%/mies. przy `U > 99%`, wysycanie pojemnością 16×, kurczenie o połowę niedoboru przy `U < 90%`, podłoga 100/10; miasta niepodłączone zamrożone | 2.7, 5.6, doc 05 |
 | ✅ | **Cztery rozmiary w całym katalogu (0.26)**: farmy OZE i magazyny dobiera się szczeblem tak jak bloki elektrowni; magazyn ma **dwie niezależne osie** (moc i pojemność), każda z własną drabiną i własną rozbudową. Szczytowo-pompowa przestaje być sztywnym blokiem 250/2 500 — jej limit to 1 000 MW / 10 000 MWh, a cena rozbita na 1,1 mln zł/MW + 0,11 mln zł/MWh (dawny blok nadal 550 mln) | 5.2, 5.3, 7, 02 §8.2 |
+| ✅ | **Dynamika bloków (0.27)**: blok = jednostka o stanach wyłączony / w rozruchu / w ruchu; minimum techniczne, rozruch zimny/ciepły, rampy w górę/w dół (w dół szybciej), koszt rozruchu — parametry growe wg tabeli §5.1. Sterowanie bez zmian: jedna nastawa na elektrownię, silnik wykonuje ją deterministycznie (załączanie: w ruchu → w rozruchu → ciepłe → zimne; rozdział zachłanny z minimami). Kara za nadwyżkę od **produkcji**, nie nastawy; OCGT w pełni elastyczny; zalążek startowy = 4 bloki CCGT MAŁE | 5.1, 4.1, 3.4, 02 §4–5 |
 | ✅ | **Blok elektrowni z czterech rozmiarów (0.24)**: MAŁY / ŚREDNI / DUŻY / WIELKI wg tabeli §5.1, nic pomiędzy (uchyla dobór mocy bloku co do MW); rozmiar względny wobec technologii, rozbudowa bierze z tej samej drabiny i nie musi trafiać w bloki już stojące. Farm OZE i magazynów zmiana nie dotyczy | 5.1, 7, 8 pkt 6 |
 | ✅ | Rozbudowa istniejących obiektów z twardymi limitami; obiekt zawsze zajmuje 1 heks (0.13) | 7 |
 | ✅ | **Rozbudowa linii do wyższego typu (0.17)**: NN→SN→WN na tej samej trasie, 85% CAPEX-u / 70% czasu, tylko w górę i tylko dla linii gotowej; linia przesyła na starym typie do końca robót i zajmuje korytarz dla obu typów. Kara 5% za ścieżkę „tanio teraz, grubo później" przyjęta świadomie — strojenie w doc 04 | 4.2, 7 |
