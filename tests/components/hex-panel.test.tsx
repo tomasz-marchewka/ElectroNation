@@ -22,6 +22,7 @@ import {
   finishedLine,
   hexKey,
   newGame,
+  settledBlocks,
   offsetToAxial,
   type Action,
   type GameState,
@@ -73,6 +74,9 @@ function fixture(overrides: Partial<Scenario> = {}): Scenario {
         hex: at(0, 1),
         tech: "ccgt",
         capacityMw: 400,
+        // Automation endowed: these fixtures dispatch through the aggregate
+        // setpoint (the AUTO controller path).
+        automation: true,
         setpointMw: 0,
       },
     ],
@@ -563,7 +567,16 @@ describe("alerts — the panel points at the tight spot (01 §8 pt 1, pt 6)", ()
   test("a city in deficit turns danger and offers the bottleneck", async () => {
     const game = newGame(7, starved());
     useGameStore.setState({
-      game: { ...game, plants: game.plants.map((plant) => ({ ...plant, setpointMw: 400 })) },
+      // Blocks pre-warmed to the setpoint — the subject is the bottleneck,
+      // not the cold start that would keep the line under its limit.
+      game: {
+        ...game,
+        plants: game.plants.map((plant) => ({
+          ...plant,
+          setpointMw: 400,
+          blocks: settledBlocks(plant.tech, plant.capacityMw, plant.blocks.length, 400),
+        })),
+      },
     });
     useGameStore.getState().resolve();
     const report = useGameStore.getState().game.lastTurnReport;

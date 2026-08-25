@@ -164,11 +164,16 @@ describe("doc 02 §8.6: the v1 map is a complete 24×16 country", () => {
 });
 
 describe("doc 01 §3.4: the map ships the minimal endowment", () => {
-  test("10 bn PLN, one 400 MW CCGT, one finished line into the connected city", () => {
+  test("10 bn PLN, one SMALL CCGT block in manual control, one finished line", () => {
     expect(state.moneyPln).toBe(10_000_000_000);
     expect(state.plants).toHaveLength(1);
     expect(state.plants[0]?.tech).toBe("ccgt");
-    expect(state.plants[0]?.capacityMw).toBe(400);
+    // 01 §3.4 (0.28): one SMALL block — its 30 MW minimum fits the starting
+    // city's night valley — without the automation retrofit.
+    expect(state.plants[0]?.capacityMw).toBe(100);
+    expect(state.plants[0]?.blocks).toHaveLength(1);
+    expect(state.plants[0]?.automation).toBe(false);
+    expect(state.plants[0]?.controlMode).toBe("manual");
     expect(state.farms).toHaveLength(0);
     expect(state.storages).toHaveLength(0);
     expect(state.borders).toHaveLength(0);

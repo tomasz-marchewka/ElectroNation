@@ -1,7 +1,7 @@
 {
   "name": "storm-cutout",
   "description": "A storm month (06 §8.2) with 600 MW of coastal wind against a 165–310 MW load — both halves of the regime in one run. Days 1–2: the farms sit at rated power for whole blocks and most of it is curtailed for free (200–430 MW per turn, 02 §5.1), the plants idle at zero. Day 3: gusts cross the 25 m/s cutout (06 §6.3) and the same farms fall to zero inside one block; the CCGT ramps to 390 MW and the dispatcher pays for the overshoot in dump. The farms are ordered on day 0 and held off (01 §4.1) until their MV spurs stand on turn 10 — an unwired farm the dispatcher trusted would have blacked out the cities.",
-  "map": "mapV1",
+  "map": "mapV1auto",
   "seed": 20261130,
   "days": 6,
   "actions": [

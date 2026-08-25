@@ -1,8 +1,41 @@
 # ElectroNation — Dokument bazowy mechaniki gry
 
-**Wersja:** 0.27 (dokument koncepcyjny)
+**Wersja:** 0.28 (dokument koncepcyjny)
 **Data:** 2026-08-25
 **Status:** obowiązuje **wersja uproszczona** gry; mechaniki odłożone czekają w [90-pomysly-na-przyszlosc.md](90-pomysly-na-przyszlosc.md)
+
+**Zmiany 0.27 → 0.28 (sterowanie per blok; automatyka elektrowni jako rozbudowa):**
+
+1. **Dyspozytor steruje każdym blokiem z osobna** (§5.1; uchyla „jedna nastawa na
+   elektrownię" z 0.27 pkt 2). Bazowym sterowaniem jest odtąd **nastawa [MW] per blok**
+   — każdy blok ma własny suwak i sam przechodzi swoją dynamikę (rozruch, minimum,
+   rampy — reguły z 0.27 bez zmian). To dopełnia zasadę „wszystkie nastawy ręczne"
+   (§8): w 0.27 silnik sam załączał i odstawiał bloki, teraz ta logika jest tym, czym
+   być powinna — **sterownikiem, który się kupuje**.
+2. **Automatyka elektrowni** (§5.1): rozbudowa per obiekt, **150 mln zł**, zakup
+   natychmiastowy jak systemy prognostyczne (bez mnożnika terenu, bez czasu budowy,
+   nigdy nie sprzedawana). Odblokowuje **tryb automatyczny**: jedna nastawa na całą
+   elektrownię, wykonywana przez sterownik dokładnie logiką z 0.27 (załączanie:
+   w ruchu → w rozruchu → ciepłe → zimne; rozdział zachłanny z minimami). **Tryb
+   ręczny pozostaje zawsze dostępny**, przełączanie jest darmowe i nie rusza czasu.
+3. **Automat jest wygodą, nie przewagą.** Sterownik widzi tylko sumaryczną nastawę —
+   ekspert w trybie ręcznym może więcej: utrzymać drugi blok w rezerwie na minimum
+   przed wieczorną rampą, schodkować rozruchy, dobrać bloki pod prognozę. Cena robi
+   z automatyki decyzję budżetową środkowej gry (~5 elektrowni ≈ cena systemu
+   ansamblowego), a bez niej flota wielu elektrowni staje się kosztem uwagi gracza —
+   to jest właściwy mechanizm skalowania interfejsu na późną grę. Strojenie: doc 03.
+4. **Przełączenie trybu niczego nie szarpie**: AUTO → RĘCZNY materializuje bieżący
+   rozdział sterownika w nastawy bloków; RĘCZNY → AUTO sumuje nastawy bloków w jedną.
+   Elektrownia produkuje po przełączeniu dokładnie to, co przed nim.
+5. **Zalążek startowy = jeden blok CCGT MAŁY (100 MW), bez automatyki** (§3.4; uchyla
+   4 × 100 MW z 0.27 pkt 7). Jeden suwak od pierwszej tury uczy dynamiki bloku;
+   minimum (30 MW) mieści się w dolinie nocnej miasta startowego; mniejszy zapas mocy
+   sprawia, że decyzja „rozbudować zalążek czy ciągnąć sieć" (§3.4) przychodzi
+   szybciej i ostrzej.
+6. **Zapis gry przechodzi na schemat 16.** Blok niesie własną nastawę; elektrownia —
+   automatykę (kupiona/nie) i tryb sterowania. Migracja: elektrownie sprzed 0.28
+   wchodzą w **tryb ręczny** z nastawami bloków odtworzonymi z rozdziału sterownika,
+   więc produkują po migracji dokładnie to samo; automatykę trzeba dokupić.
 
 **Zmiany 0.26 → 0.27 (dynamika bloków: minimum techniczne, rozruch, rampy):**
 
@@ -808,11 +841,13 @@ dawna topologia stacyjna czeka w 90 §4 (kandydatka do powrotu razem z poziomami
 
 **DECYZJA (0.10, zastępuje czysty greenfield z 0.3): gracz zawsze zaczyna z minimalnym
 stanem posiadania** — od pierwszej tury na mapie działa mały system: **jedna elektrownia
-średniej wielkości (CCGT ~400 MW; od 0.27 jako cztery bloki MAŁE 4 × 100 MW — minimum
-techniczne jednego bloku musi mieścić się w dolinie nocnej miasta startowego, §5.1),
-linia i jedno przyłączone małe miasto**.
+(od 0.28 jeden blok CCGT MAŁY, 100 MW, w trybie ręcznym — minimum techniczne bloku,
+30 MW, musi mieścić się w dolinie nocnej miasta startowego, §5.1; uchyla „~400 MW"
+z wersji wcześniejszych), linia i jedno przyłączone małe miasto**.
 Stan startowy jest darmowy (nie pomniejsza kapitału startowego) i należy do definicji
-scenariusza — scenariusze mogą go różnicować.
+scenariusza — scenariusze mogą go różnicować. Mniejszy zalążek jest celowy: jeden
+suwak bloku to samouczek dynamiki (§5.1), a ciasny zapas mocy sprawia, że pierwsza
+decyzja strategiczna przychodzi szybciej.
 
 **Powód zmiany (wniosek z prototypu):** przy pustej mapie pierwsze ~pół roku gry nie
 zawierało ani jednej decyzji dyspozytorskiej — gracz wyłącznie przewijał czas, czekając na
@@ -1062,9 +1097,21 @@ połowa docelowej skali całego systemu (§3.4). Jądrówka jest więc decyzją 
 korytarza, a nie tylko o pieniądzach.
 
 **DECYZJA (0.27): blok ma dynamikę — nastawa nie działa natychmiast.** Każdy blok jest
-jednostką o trzech stanach: **wyłączony**, **w rozruchu**, **w ruchu**. Sterowanie
-pozostaje jedną nastawą [MW] na elektrownię; silnik wykonuje ją wg reguł poniżej
-(to wykonanie rozkazu, nie auto-dyspozycja — silnik niczego nie nastawia za gracza).
+jednostką o trzech stanach: **wyłączony**, **w rozruchu**, **w ruchu**.
+
+**DECYZJA (0.28): sterowanie jest per blok; jedna nastawa na elektrownię to kupowana
+automatyka.** Bazowo każdy blok ma **własną nastawę [MW]** i sam przechodzi swoją
+dynamikę — rozkaz `> 0` na wyłączonym bloku to rozkaz rozruchu, rozkaz `0` to
+odstawienie, a nastawa między zerem a minimum trzyma minimum (reguła 4 niżej).
+Elektrownia z **zainstalowaną automatyką** (150 mln zł za obiekt, zakup natychmiastowy
+jak systemy prognostyczne — §2.4 — bez mnożnika terenu i bez czasu budowy, nigdy nie
+sprzedawana) może pracować w **trybie automatycznym**: gracz wydaje jedną nastawę na
+całą elektrownię, a sterownik wykonuje ją regułami 1 i 5 poniżej. Tryb **ręczny** jest
+zawsze dostępny; przełączanie jest darmowe i ciągłe (AUTO → RĘCZNY materializuje
+rozdział sterownika w nastawy bloków, RĘCZNY → AUTO je sumuje — produkcja nie drga).
+Automat to wygoda na skalę floty, nie przewaga: widzi tylko sumę, więc nie utrzyma
+bloku w rezerwie na minimum ani nie zschodkuje rozruchów pod prognozę — to umie tylko
+gracz w trybie ręcznym.
 
 | Technologia | Minimum techn. | Rampa w górę | Rampa w dół | Rozruch zimny | Rozruch ciepły | Okno ciepłe | Koszt rozruchu |
 |---|---|---|---|---|---|---|---|
@@ -1076,10 +1123,12 @@ pozostaje jedną nastawą [MW] na elektrownię; silnik wykonuje ją wg reguł po
 Procenty liczą się od **mocy znamionowej bloku**; koszt rozruchu od MW bloku, płatny
 przy rozkazie załączenia i ważony wagą doby jak koszty przepływowe (§2.1). Reguły:
 
-1. **Załączanie i odstawianie wynika z nastawy.** Silnik załącza bloki w kolejności:
-   najpierw te już **w ruchu**, potem **w rozruchu**, potem wyłączone **ciepłe**, na
-   końcu **zimne** (remis rozstrzyga stała kolejność bloków) — aż moc znamionowa
-   załączonych pokryje nastawę. Bloki ponad tę potrzebę są odstawiane.
+1. **(Tryb automatyczny) Załączanie i odstawianie wynika z nastawy elektrowni.**
+   Sterownik załącza bloki w kolejności: najpierw te już **w ruchu**, potem
+   **w rozruchu**, potem wyłączone **ciepłe**, na końcu **zimne** (remis rozstrzyga
+   stała kolejność bloków) — aż moc znamionowa załączonych pokryje nastawę. Bloki
+   ponad tę potrzebę są odstawiane. W trybie ręcznym o załączeniach decyduje wprost
+   nastawa bloku (`> 0` = blok chodzi, `0` = odstawiony).
 2. **Rozruch N tur**: przez N−1 tur blok daje **0 MW**; w N-tej turze od rozkazu wchodzi
    na **minimum techniczne**. Rozruch 0 tur = blok wchodzi na minimum i rampuje do celu
    **w tej samej turze** (OCGT odpowiada natychmiast). Rozruch **ciepły** przysługuje,
@@ -1091,10 +1140,11 @@ przy rozkazie załączenia i ważony wagą doby jak koszty przepływowe (§2.1).
    minimum jednego bloku = blok trzyma minimum, a nadwyżka produkcji ponad odbiór
    podlega karze zrzutu (§4.1). Jedyna droga niżej to **odstawienie**: rampa w dół do
    minimum, w kolejnej turze wyłączenie (0 MW).
-5. **Moc rozdziela się zachłannie**: każdy blok w ruchu dostaje najpierw swoje minimum,
-   potem kolejne bloki w stałej kolejności są dopełniane do mocy znamionowej, aż suma
-   pokryje nastawę. Rozkład jest deterministyczny; koszt zmienny bloków jednej
-   elektrowni jest wspólny, więc rozdział nie zmienia rachunku paliwa.
+5. **(Tryb automatyczny) Moc rozdziela się zachłannie**: każdy blok w ruchu dostaje
+   najpierw swoje minimum, potem kolejne bloki w stałej kolejności są dopełniane do
+   mocy znamionowej, aż suma pokryje nastawę. Rozkład jest deterministyczny; koszt
+   zmienny bloków jednej elektrowni jest wspólny, więc rozdział nie zmienia rachunku
+   paliwa. W trybie ręcznym celem każdego bloku jest po prostu jego własna nastawa.
 6. **Kara za nadwyżkę liczy się od produkcji** (§4.1): blok w rozruchu produkuje 0 i nic
    nie płaci; blok na minimum ponad potrzebę płaci zrzut od tego, czego rozpływ nie
    odebrał — kara za przewymiarowanie podstawy jest celowa.
@@ -1399,11 +1449,16 @@ starzenie majątku i remonty, kolejka przyłączeniowa — 90 §3, §7, §10.)*
 3. **Panel prognozy** — pasma popytu i OZE na kolejne godziny + kolumna **„bilans przy
    obecnych nastawach"** (czy plan przeżyje najbliższe 6 h — 06 §8.6.4).
 4. **Panel nastaw** — jednostki z suwakami, magazyny (ładuj/oddawaj), import/eksport,
-   saldo bilansu. Od 0.27 suwak elektrowni pokazuje **obok nastawy moc bieżącą**
+   saldo bilansu. Od 0.28 elektrownia w trybie ręcznym pokazuje **suwak na każdy
+   blok** (nazwa elektrowni · BLOK n), a w trybie automatycznym jeden suwak zbiorczy;
+   elektrownia z automatyką ma przy sobie przełącznik **AUTO / RĘCZNY** (§5.1).
+   Od 0.27 suwak pokazuje **obok nastawy moc bieżącą**
    (bursztynowy znacznik na torze + nota „MOC … · ROZRUCH/RAMPA"), bo rozkaz i stan
    rozjeżdżają się na kilka tur (§5.1) — bez tego bezwładność czytałaby się jak zepsuty
    suwak. **DECYZJA: bez auto-nastaw** — wszystkie nastawy ustawia gracz ręcznie,
-   nie ma przycisku „obsadź najtaniej".
+   nie ma przycisku „obsadź najtaniej"; kupiona automatyka (§5.1) nie łamie tej
+   zasady, bo nastawę zbiorczą nadal wydaje gracz — sterownik tylko rozdziela ją
+   na bloki.
 5. **Panel dyspozytora jest stale widoczny** (0.12) — prognoza, nastawy (edytowalne
    cały czas — §2.3), raport tury wybranej na wstędze oraz harmonogram budów i systemy
    prognostyczne; budżet i wynik doby w pasku górnym; przycisk **„następna tura"**
@@ -1506,7 +1561,8 @@ indeksem ceny.
 | ✅ | Czasy budowy K ≈ 40 (0.12; wcześniej K ≈ 5 → 20), linie 3/6/12 h/heks wg typu (0.13) | 2.6 |
 | ✅ | **Model zapotrzebowania i wzrost miast wg dokumentu 05** (0.14; uchyla formułę tymczasową z 0.13): miasto = gospodarstwa + firmy; wzrost 0–4%/mies. przy `U > 99%`, wysycanie pojemnością 16×, kurczenie o połowę niedoboru przy `U < 90%`, podłoga 100/10; miasta niepodłączone zamrożone | 2.7, 5.6, doc 05 |
 | ✅ | **Cztery rozmiary w całym katalogu (0.26)**: farmy OZE i magazyny dobiera się szczeblem tak jak bloki elektrowni; magazyn ma **dwie niezależne osie** (moc i pojemność), każda z własną drabiną i własną rozbudową. Szczytowo-pompowa przestaje być sztywnym blokiem 250/2 500 — jej limit to 1 000 MW / 10 000 MWh, a cena rozbita na 1,1 mln zł/MW + 0,11 mln zł/MWh (dawny blok nadal 550 mln) | 5.2, 5.3, 7, 02 §8.2 |
-| ✅ | **Dynamika bloków (0.27)**: blok = jednostka o stanach wyłączony / w rozruchu / w ruchu; minimum techniczne, rozruch zimny/ciepły, rampy w górę/w dół (w dół szybciej), koszt rozruchu — parametry growe wg tabeli §5.1. Sterowanie bez zmian: jedna nastawa na elektrownię, silnik wykonuje ją deterministycznie (załączanie: w ruchu → w rozruchu → ciepłe → zimne; rozdział zachłanny z minimami). Kara za nadwyżkę od **produkcji**, nie nastawy; OCGT w pełni elastyczny; zalążek startowy = 4 bloki CCGT MAŁE | 5.1, 4.1, 3.4, 02 §4–5 |
+| ✅ | **Sterowanie per blok + automatyka elektrowni (0.28)**: bazowo każdy blok ma własną nastawę i własny suwak (uchyla „jedna nastawa na elektrownię" z 0.27); **automatyka** to rozbudowa per obiekt (150 mln zł, natychmiastowa, bez mnożnika terenu, niesprzedawalna) odblokowująca tryb AUTO — jedna nastawa wykonywana przez sterownik logiką z 0.27; tryb ręczny zawsze dostępny, przełączenie darmowe i ciągłe (materializacja rozdziału / suma nastaw). Zalążek = 1 blok CCGT MAŁY 100 MW bez automatyki | 5.1, 3.4, 8 pkt 4 |
+| ✅ | **Dynamika bloków (0.27)**: blok = jednostka o stanach wyłączony / w rozruchu / w ruchu; minimum techniczne, rozruch zimny/ciepły, rampy w górę/w dół (w dół szybciej), koszt rozruchu — parametry growe wg tabeli §5.1. Kara za nadwyżkę od **produkcji**, nie nastawy; OCGT w pełni elastyczny. Reguły załączania (w ruchu → w rozruchu → ciepłe → zimne) i zachłannego rozdziału z minimami to od 0.28 logika **sterownika automatyki** | 5.1, 4.1, 02 §4–5 |
 | ✅ | **Blok elektrowni z czterech rozmiarów (0.24)**: MAŁY / ŚREDNI / DUŻY / WIELKI wg tabeli §5.1, nic pomiędzy (uchyla dobór mocy bloku co do MW); rozmiar względny wobec technologii, rozbudowa bierze z tej samej drabiny i nie musi trafiać w bloki już stojące. Farm OZE i magazynów zmiana nie dotyczy | 5.1, 7, 8 pkt 6 |
 | ✅ | Rozbudowa istniejących obiektów z twardymi limitami; obiekt zawsze zajmuje 1 heks (0.13) | 7 |
 | ✅ | **Rozbudowa linii do wyższego typu (0.17)**: NN→SN→WN na tej samej trasie, 85% CAPEX-u / 70% czasu, tylko w górę i tylko dla linii gotowej; linia przesyła na starym typie do końca robót i zajmuje korytarz dla obu typów. Kara 5% za ścieżkę „tanio teraz, grubo później" przyjęta świadomie — strojenie w doc 04 | 4.2, 7 |

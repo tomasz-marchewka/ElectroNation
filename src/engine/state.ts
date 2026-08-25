@@ -23,7 +23,7 @@ import type { MonthRegimes, RegimeId } from "./regimes";
  * by the build before it still loads. A bump without its migration turns every
  * existing save into a load error.
  */
-export const STATE_SCHEMA_VERSION = 15;
+export const STATE_SCHEMA_VERSION = 16;
 
 export const TURNS_PER_DAY = 8;
 export const HOURS_PER_TURN = 3;
@@ -88,6 +88,12 @@ export interface PlantBlockState {
   /** Rated power of this block [MW]; the dynamics shares scale from it. */
   mw: number;
   status: BlockStatus;
+  /**
+   * The block's own order [MW] — what MANUAL control reads (01 §5.1, 0.28).
+   * `> 0` on an offline block is a start order, `0` a shutdown; a value under
+   * the technical minimum holds the minimum. Ignored in automatic mode.
+   */
+  setpointMw: number;
   /** Output held through the last resolved turn [MW]; 0 unless online. */
   outputMw: number;
   /** Resolutions left before the block reaches minimum load; 0 unless starting. */
@@ -102,6 +108,13 @@ export interface PlantBlockState {
 /** Cap for `offlineTurns` — far beyond every warm window, so "fully cold". */
 export const COLD_OFFLINE_TURNS = 99;
 
+/**
+ * How the plant is dispatched (01 §5.1, 0.28): "manual" — every block follows
+ * its own setpoint; "auto" — the controller executes the plant-level setpoint
+ * (requires `automation`).
+ */
+export type PlantControlMode = "manual" | "auto";
+
 export interface PlantState {
   id: string;
   name: string;
@@ -110,10 +123,15 @@ export interface PlantState {
   capacityMw: number;
   /** Blocks standing on the hex — hard limit 6 of them (01 §7, 02 §8.4). */
   blocks: PlantBlockState[];
+  /** Whether the automation retrofit was bought (01 §5.1, 0.28); never sold. */
+  automation: boolean;
+  /** Active dispatch mode; "auto" only ever set while `automation` is owned. */
+  controlMode: PlantControlMode;
   /**
-   * Player dispatch order [MW], full 0–100% range (01 §5.1). Since 0.27 an
-   * ORDER, not the output: blocks approach it through startup, ramps and
-   * technical minimum — see engine/dispatch.ts.
+   * Plant-level dispatch order [MW] — what AUTOMATIC control reads (01 §5.1).
+   * Since 0.27 an ORDER, not the output: blocks approach it through startup,
+   * ramps and technical minimum — see engine/dispatch.ts. Ignored in manual
+   * mode, where each block carries its own order.
    */
   setpointMw: number;
 }

@@ -58,11 +58,11 @@ describe("gameStore", () => {
     useGameStore.getState().dispatch({
       type: "setPlantSetpoint",
       plantId: plant?.id ?? "",
-      mw: 123,
+      mw: 80,
     });
 
-    expect(useGameStore.getState().game.plants[0]?.setpointMw).toBe(123);
-    expect(before.plants[0]?.setpointMw).not.toBe(123);
+    expect(useGameStore.getState().game.plants[0]?.setpointMw).toBe(80);
+    expect(before.plants[0]?.setpointMw).not.toBe(80);
   });
 
   test("skip() scrubs and remembers why it stopped (01 §2.5)", () => {

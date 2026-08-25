@@ -30,8 +30,23 @@ interface ScenarioAction {
  * A fixture names its map, because hexes only mean something on one: the same
  * coordinates are a lake on map v1 and empty plains on the minimal map, and a
  * fixture that silently turned into no-ops would still go green.
+ *
+ * `mapV1auto` is map v1 with the pre-0.28 400 MW start plant, automated: the
+ * fixtures written against that endowment keep representing their subject
+ * (dunkelflaute, corridor limits, forecast upgrades) instead of drowning in
+ * the 100 MW seed's shortfall. The real endowment — one SMALL manual block —
+ * is exercised by `mapv1-first-days` and the minimal-map fixtures.
  */
-const MAPS = { mapV1: MAP_V1, minimal: MINIMAL_SCENARIO } as const;
+const MAP_V1_AUTO_400 = {
+  ...MAP_V1,
+  plants: MAP_V1.plants.map((plant) => ({
+    ...plant,
+    capacityMw: 400,
+    blocks: 4,
+    automation: true,
+  })),
+};
+const MAPS = { mapV1: MAP_V1, mapV1auto: MAP_V1_AUTO_400, minimal: MINIMAL_SCENARIO } as const;
 
 interface Scenario {
   name: string;

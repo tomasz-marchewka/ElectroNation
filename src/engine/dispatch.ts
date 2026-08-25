@@ -11,11 +11,12 @@ import { COLD_OFFLINE_TURNS, type PlantBlockState, type PlantState } from "./sta
 /** Float guard for MW comparisons; state MW are quantized to 0.01 anyway. */
 const EPS = 1e-6;
 
-/** A freshly built block: cold, offline, producing nothing (01 §5.1 pt 2). */
+/** A freshly built block: cold, offline, unordered (01 §5.1 pt 2). */
 export function newBlock(mw: number): PlantBlockState {
   return {
     mw,
     status: "offline",
+    setpointMw: 0,
     outputMw: 0,
     startupTurnsLeft: 0,
     offlineTurns: COLD_OFFLINE_TURNS,
@@ -110,13 +111,20 @@ export interface DispatchAdvance {
 
 /**
  * One resolution of a plant's block dynamics (02 §4 step 2). Returns the plant
- * with blocks advanced by one turn toward the setpoint and the startup cost of
+ * with blocks advanced by one turn toward their orders and the startup cost of
  * every start order this advance issued (charged at the order — 01 §5.1 pt 3).
+ *
+ * Two control modes (01 §5.1 in 0.28): MANUAL reads each block's own setpoint
+ * — commitment is simply `setpoint > 0`; AUTO reads the plant setpoint and
+ * derives commitment and allocation with the controller rules.
  */
 export function advancePlantDispatch(plant: PlantState): DispatchAdvance {
   const dynamics = PLANT_DYNAMICS[plant.tech];
+  const auto = plant.controlMode === "auto";
   const targetMw = Math.min(Math.max(0, plant.setpointMw), plant.capacityMw);
-  const desired = desiredBlocks(plant.blocks, targetMw, dynamics);
+  const desired = auto
+    ? desiredBlocks(plant.blocks, targetMw, dynamics)
+    : plant.blocks.map((block) => block.setpointMw > EPS);
   let startupCostPln = 0;
 
   // Pass 1 — statuses: start orders, startup countdowns, cancellations. Where a
@@ -191,9 +199,12 @@ export function advancePlantDispatch(plant: PlantState): DispatchAdvance {
     }
   }
 
-  // Pass 2 — outputs: allocate the order among producing blocks, then move each
-  // one toward its share within its ramp and above its minimum.
-  const targets = allocateTargets(producing, targetMw, dynamics);
+  // Pass 2 — outputs: each producing block moves toward its target within its
+  // ramp and above its minimum. AUTO derives the targets with the greedy split
+  // of the plant order; MANUAL reads each block's own order verbatim.
+  const targets = auto
+    ? allocateTargets(producing, targetMw, dynamics)
+    : plant.blocks.map((block) => Math.min(block.mw, Math.max(0, block.setpointMw)));
   for (let i = 0; i < advanced.length; i++) {
     const block = advanced[i]!;
     if (!producing[i] || pinned[i]) continue;
@@ -240,11 +251,35 @@ export function settledBlocks(
   return blocks.map((block, i) => {
     if (!desired[i]) return block;
     const floor = dynamics.minLoadShare * block.mw;
+    const outputMw = quantize001(Math.min(block.mw, Math.max(floor, targets[i] ?? 0)));
+    // The block order mirrors the output, so the settled plant behaves the
+    // same whichever control mode reads it next (01 §5.1, 0.28).
+    return { ...block, status: "online" as const, offlineTurns: 0, outputMw, setpointMw: outputMw };
+  });
+}
+
+/**
+ * The controller's split of a plant order, materialized as per-block orders
+ * (01 §5.1 pt 4 in 0.28): what the AUTO → MANUAL switch writes onto the
+ * sliders, and what the 15 → 16 migration seeds old saves with — so the next
+ * manual resolution dispatches exactly what the automatic one would have.
+ * Committed blocks (running or starting) get their allocation, the rest 0.
+ */
+export function manualOrdersFromPlantSetpoint(plant: PlantState): PlantBlockState[] {
+  const dynamics = PLANT_DYNAMICS[plant.tech];
+  const targetMw = Math.min(Math.max(0, plant.setpointMw), plant.capacityMw);
+  const desired = desiredBlocks(plant.blocks, targetMw, dynamics);
+  const targets = allocateTargets(
+    plant.blocks.map((block, i) => (desired[i] ? block : null)),
+    targetMw,
+    dynamics,
+  );
+  return plant.blocks.map((block, i) => {
+    if (!desired[i]) return { ...block, setpointMw: 0 };
+    const floor = dynamics.minLoadShare * block.mw;
     return {
       ...block,
-      status: "online" as const,
-      offlineTurns: 0,
-      outputMw: quantize001(Math.min(block.mw, Math.max(floor, targets[i] ?? 0))),
+      setpointMw: quantize001(Math.min(block.mw, Math.max(floor, targets[i] ?? 0))),
     };
   });
 }

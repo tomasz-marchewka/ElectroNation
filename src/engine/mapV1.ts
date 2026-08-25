@@ -195,10 +195,10 @@ export const MAP_V1: Scenario = {
       name: "EC Modrzyca",
       hex: at(1, 9),
       tech: "ccgt",
-      capacityMw: 400,
-      // Four SMALL blocks (01 §3.4 in 0.27) — one block's minimum (30 MW) fits
-      // the starting city's night valley.
-      blocks: 4,
+      // One SMALL block in manual control (01 §3.4 in 0.28) — its minimum
+      // (30 MW) fits the starting city's night valley, and the single slider
+      // is the block-dynamics tutorial. Automation is a purchase, not a gift.
+      capacityMw: 100,
       setpointMw: 0,
     },
   ],

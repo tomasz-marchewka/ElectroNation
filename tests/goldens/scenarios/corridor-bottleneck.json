@@ -1,7 +1,7 @@
 {
   "name": "corridor-bottleneck",
   "description": "01 §4.4 played out instead of asserted: enough power, too thin a corridor. An LV line of 150 MW runs from Modrzyca to Jasienica through a junction station at (7,6) — the station itself limits nothing (0.21), the line does. Jasienica connects on turn 14 and its 274–626 MW demand can only be served through that corridor: delivery pins at 166–197 MW (the line plus Modrzyca's own supply) and ENS runs 121–430 MW per turn. Day 3 wires in the second CCGT (500 MW) — offered power grows, delivery does not move, and the surplus setpoints turn into 332–398 MW of dump: more generation does not fix a corridor. The raise to MV ordered on the same turn lands during turn 30 — delivery jumps to 545 MW and ENS collapses to 0–62 MW.",
-  "map": "mapV1",
+  "map": "mapV1auto",
   "seed": 20260905,
   "days": 6,
   "actions": [
@@ -215,6 +215,22 @@
         "type": "setPlantSetpoint",
         "plantId": "plant-start-ccgt",
         "mw": 400
+      }
+    },
+    {
+      "beforeTurn": 26,
+      "note": "the freshly built plant buys its automation retrofit (01 §5.1, 0.28) so the aggregate setpoints below drive the controller",
+      "action": {
+        "type": "buyPlantAutomation",
+        "plantId": "obj-3"
+      }
+    },
+    {
+      "beforeTurn": 26,
+      "action": {
+        "type": "setPlantControlMode",
+        "plantId": "obj-3",
+        "mode": "auto"
       }
     },
     {

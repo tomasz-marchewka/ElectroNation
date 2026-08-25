@@ -122,6 +122,14 @@ export const PLANT_DYNAMICS = {
 } as const satisfies Record<PlantTech, PlantDynamicsSpec>;
 
 /**
+ * 01 §5.1 (0.28): the plant automation retrofit. Bought per plant, instantly —
+ * like a forecast system (01 §2.4), it is electronics, not civil works: no
+ * terrain multiplier, no construction time, never sold. Unlocks the AUTO
+ * control mode; manual stays available. Tuning owned by doc 03.
+ */
+export const PLANT_AUTOMATION = { capexPln: 150_000_000 } as const;
+
+/**
  * MW of one block, or null when the size is not one of the four (a JSON action
  * off the wire can carry anything — the engine refuses instead of guessing).
  */

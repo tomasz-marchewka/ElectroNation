@@ -32,6 +32,7 @@ import {
   JUNCTION_SPEC,
   LINE_TYPES,
   NODE_FIXED_CAPEX_SHARE_PER_YEAR,
+  PLANT_AUTOMATION,
   PLANT_TECHS,
   STORAGE_TECHS,
   KM_PER_HEX,
@@ -42,7 +43,7 @@ import {
   type BuildSize,
   type PlantTech,
 } from "./config";
-import { advancePlantDispatch, newBlock } from "./dispatch";
+import { advancePlantDispatch, manualOrdersFromPlantSetpoint, newBlock } from "./dispatch";
 import { cityDemandForecast, farmProductionForecast } from "./forecast";
 import { evaluateMonthlyGrowth } from "./growth";
 import { buildTurnDigest, coverageIndex } from "./history";
@@ -72,6 +73,7 @@ import {
   type GameState,
   type LineState,
   type SourceKind,
+  type PlantControlMode,
   type StorageMode,
   type TurnCityReport,
   type TurnReport,
@@ -104,6 +106,9 @@ export function newGame(seed: number, scenario: Scenario = MAP_V1): GameState {
 
 export type Action =
   | { type: "setPlantSetpoint"; plantId: string; mw: number }
+  | { type: "setBlockSetpoint"; plantId: string; blockIndex: number; mw: number }
+  | { type: "buyPlantAutomation"; plantId: string }
+  | { type: "setPlantControlMode"; plantId: string; mode: PlantControlMode }
   | { type: "setStorage"; storageId: string; mode: StorageMode; mw: number }
   | { type: "setFarmEnabled"; farmId: string; enabled: boolean }
   | { type: "setImport"; borderId: string; mw: number }
@@ -147,6 +152,54 @@ export function applyAction(state: GameState, action: Action): GameState {
         plants: state.plants.map((p) =>
           p.id === action.plantId ? { ...p, setpointMw: clampMw(action.mw, p.capacityMw) } : p,
         ),
+      };
+    case "setBlockSetpoint":
+      // The manual-mode order (01 §5.1, 0.28); an index the plant does not
+      // have is a no-op, like every unknown id on a replayed log.
+      return {
+        ...state,
+        plants: state.plants.map((p) =>
+          p.id === action.plantId
+            ? {
+                ...p,
+                blocks: p.blocks.map((block, i) =>
+                  i === action.blockIndex
+                    ? { ...block, setpointMw: clampMw(action.mw, block.mw) }
+                    : block,
+                ),
+              }
+            : p,
+        ),
+      };
+    case "buyPlantAutomation": {
+      // Instant, like a forecast system (01 §5.1, 0.28): flat price, no
+      // terrain multiplier, refused when already owned or unaffordable.
+      const plant = state.plants.find((p) => p.id === action.plantId);
+      if (!plant || plant.automation) return state;
+      if (state.moneyPln < PLANT_AUTOMATION.capexPln) return state;
+      return {
+        ...state,
+        moneyPln: state.moneyPln - PLANT_AUTOMATION.capexPln,
+        plants: state.plants.map((p) => (p.id === action.plantId ? { ...p, automation: true } : p)),
+      };
+    }
+    case "setPlantControlMode":
+      // AUTO needs the retrofit; both switches carry the current dispatch
+      // over, so production does not jump (01 §5.1 pt 4 in 0.28): to manual
+      // the controller's split lands on the block orders, to auto the block
+      // orders sum into the plant order.
+      return {
+        ...state,
+        plants: state.plants.map((p) => {
+          if (p.id !== action.plantId || p.controlMode === action.mode) return p;
+          if (action.mode === "auto") {
+            if (!p.automation) return p;
+            let sum = 0;
+            for (const block of p.blocks) sum += block.setpointMw;
+            return { ...p, controlMode: "auto", setpointMw: clampMw(sum, p.capacityMw) };
+          }
+          return { ...p, controlMode: "manual", blocks: manualOrdersFromPlantSetpoint(p) };
+        }),
       };
     case "setStorage":
       return {

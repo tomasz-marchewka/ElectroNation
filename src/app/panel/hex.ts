@@ -18,6 +18,7 @@ import {
   LINE_TYPES,
   MAX_PLANT_BLOCKS_PER_HEX,
   BUILD_SIZES,
+  PLANT_AUTOMATION,
   PLANT_TECHS,
   STORAGE_TECHS,
   TERRAIN,
@@ -858,6 +859,12 @@ function plantView(state: GameState, report: TurnReport | null, plant: PlantStat
   const pending = queued(state, (item) =>
     item.kind === "plantExpansion" && item.plantId === plant.id ? 1 : 0,
   );
+  // In manual control the plant-level setpoint is dormant — the order the
+  // panel reports is the sum of the block orders (01 §5.1, 0.28).
+  const orderedMw =
+    plant.controlMode === "auto"
+      ? plant.setpointMw
+      : plant.blocks.reduce((sum, block) => sum + block.setpointMw, 0);
   return {
     kind: PLANT_CATALOG_NAMES[plant.tech],
     status: alert
@@ -865,7 +872,15 @@ function plantView(state: GameState, report: TurnReport | null, plant: PlantStat
       : { tone: "ok", label: "praca normalna" },
     connections: connectionsLabel(state, plant.hex),
     rows: [
-      { key: "power", label: "NASTAWA", value: formatSetpoint(plant.setpointMw, plant.capacityMw) },
+      {
+        key: "mode",
+        label: "TRYB",
+        value:
+          plant.controlMode === "auto"
+            ? "AUTOMATYCZNY"
+            : `RĘCZNY${plant.automation ? "" : " · bez automatyki"}`,
+      },
+      { key: "power", label: "NASTAWA", value: formatSetpoint(orderedMw, plant.capacityMw) },
       // The order and the output differ while blocks start up or ramp (01 §5.1
       // in 0.27) — the panel shows both, or the inertia would read as a bug.
       {
@@ -887,6 +902,21 @@ function plantView(state: GameState, report: TurnReport | null, plant: PlantStat
     ],
     actions: [
       routeAction(state, plant.hex),
+      // The automation retrofit (01 §5.1, 0.28): instant like a forecast
+      // system, flat price, gone from the list once owned.
+      ...(plant.automation
+        ? []
+        : [
+            {
+              key: "automation",
+              label: `ZAINSTALUJ AUTOMATYKĘ — ${formatMoneyPln(PLANT_AUTOMATION.capexPln)}`,
+              note: moneyNote(state, PLANT_AUTOMATION.capexPln),
+              intent: {
+                kind: "action" as const,
+                action: { type: "buyPlantAutomation" as const, plantId: plant.id },
+              },
+            },
+          ]),
       expansionAction(state, plant.hex, {
         key: "expand",
         label: `ROZBUDUJ · +BLOK ${BUILD_SIZE_NAMES[blockSize]} ${formatMw(blockMw)}`,

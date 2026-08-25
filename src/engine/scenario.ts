@@ -22,9 +22,14 @@ import type {
  * Fields a scenario may leave out because they follow from the object itself:
  * a scenario plant names a BLOCK COUNT (one unless it says otherwise); the
  * engine splits the capacity evenly into that many cold, offline blocks
- * (01 §5.1 in 0.27).
+ * (01 §5.1 in 0.27). `automation: true` endows the plant with the retrofit
+ * and starts it in AUTO mode — test scenarios use it so an aggregate setpoint
+ * still dispatches; the played scenario starts manual (01 §3.4 in 0.28).
  */
-export type ScenarioPlant = Omit<PlantState, "blocks"> & { blocks?: number };
+export type ScenarioPlant = Omit<PlantState, "blocks" | "automation" | "controlMode"> & {
+  blocks?: number;
+  automation?: boolean;
+};
 
 export interface Scenario {
   startingMoneyPln: number;
@@ -99,10 +104,10 @@ export const MINIMAL_SCENARIO: Scenario = {
       name: "EC Jasienica",
       hex: { q: 3, r: 4 },
       tech: "ccgt",
-      capacityMw: 400,
-      // Four SMALL blocks, not one LARGE (01 §3.4 in 0.27): the minimum of one
-      // block must fit inside the starting city's night valley.
-      blocks: 4,
+      // One SMALL block in manual control (01 §3.4 in 0.28): its minimum
+      // (30 MW) fits the starting city's night valley, and the single slider
+      // is the block-dynamics tutorial.
+      capacityMw: 100,
       setpointMw: 0,
     },
   ],
@@ -149,6 +154,8 @@ export function scenarioToStateFields(
       plants: scenario.plants.map((plant) => ({
         ...plant,
         blocks: evenBlocks(plant.capacityMw, plant.blocks ?? 1),
+        automation: plant.automation ?? false,
+        controlMode: (plant.automation ?? false) ? "auto" : "manual",
       })),
       farms: scenario.farms,
       storages: scenario.storages,

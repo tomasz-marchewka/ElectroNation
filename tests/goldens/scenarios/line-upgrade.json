@@ -8,11 +8,20 @@
     {
       "beforeTurn": 0,
       "note": "Enough generation that the route carries a measurable flow.",
-      "action": { "type": "setPlantSetpoint", "plantId": "plant-start-ccgt", "mw": 80 }
+      "action": {
+        "type": "setBlockSetpoint",
+        "plantId": "plant-start-ccgt",
+        "blockIndex": 0,
+        "mw": 80
+      }
     },
     {
       "beforeTurn": 0,
-      "action": { "type": "upgradeLine", "lineId": "line-start", "lineType": "hv" }
+      "action": {
+        "type": "upgradeLine",
+        "lineId": "line-start",
+        "lineType": "hv"
+      }
     },
     {
       "beforeTurn": 12,
@@ -21,21 +30,40 @@
         "type": "buildLine",
         "lineType": "lv",
         "path": [
-          { "q": 3, "r": 4 },
-          { "q": 4, "r": 4 },
-          { "q": 5, "r": 4 },
-          { "q": 6, "r": 4 }
+          {
+            "q": 3,
+            "r": 4
+          },
+          {
+            "q": 4,
+            "r": 4
+          },
+          {
+            "q": 5,
+            "r": 4
+          },
+          {
+            "q": 6,
+            "r": 4
+          }
         ]
       }
     },
     {
       "beforeTurn": 16,
-      "action": { "type": "upgradeLine", "lineId": "obj-1", "lineType": "mv" }
+      "action": {
+        "type": "upgradeLine",
+        "lineId": "obj-1",
+        "lineType": "mv"
+      }
     },
     {
       "beforeTurn": 18,
       "note": "Abandoned mid-work: the line stays LV, the money is gone.",
-      "action": { "type": "cancelLineUpgrade", "lineId": "obj-1" }
+      "action": {
+        "type": "cancelLineUpgrade",
+        "lineId": "obj-1"
+      }
     }
   ]
 }

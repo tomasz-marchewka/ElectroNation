@@ -1,7 +1,7 @@
 {
   "name": "dunkelflaute-with-storage",
   "description": "Seed picked so that month 2 (days 6–8) runs under a foggy winter high — the Dunkelflaute of 06 §8.2: no wind, no PV, cold. The player doubles the MV corridor to Jasienica, connects the 620k-household city on day 2 and puts 300 MW of wind, 200 MW of PV and a 200 MW / 1 200 MWh battery straight onto the corridor, where the passing line taps them (01 §3.3). The interconnector ordered on day 0 only stands on day 4 and its MV line on day 5, so import is bought from turn 40 on. Storage rule: charge from any surplus and at night from spare plant capacity, discharge only what the plants cannot cover — the last resort before import. Pins the crisis: on days 3–4 the wind drops before the interconnector is wired and the shortfall is paid in ENS (318 and 214 MW-turns); on day 6 the battery starts full, empties by noon and import takes over at 800 zł/MWh (up to 234 MW — 01 §5.7); days 7–8 repeat it on a battery the night can only partly refill.",
-  "map": "mapV1",
+  "map": "mapV1auto",
   "seed": 20260837,
   "days": 9,
   "actions": [

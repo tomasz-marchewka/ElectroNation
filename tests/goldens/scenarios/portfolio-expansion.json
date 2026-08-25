@@ -1,7 +1,7 @@
 {
   "name": "portfolio-expansion",
   "description": "A full game year (36 days) of portfolio growth on map v1. The player drops a 500 MW coal block (the MEDIUM rung — 01 §5.1 in 0.24) onto the starting corridor (the existing MV line taps it — 01 §3.3), runs two MV corridors north, connects Turów and Nadmorze, adds a 100 MW coastal wind farm on an LV spur and a 100 MW / 400 MWh battery cycled night-charge / peak-discharge, and buys a second, SMALL coal block (+200 MW) on day 18. Setpoints follow one fixed rule: cover (demand − RES) at the ~92nd percentile of the forecast band (+1.4σ — 02 §5.2) plus 4% for losses, merit order coal → CCGT, re-sent only when the target moves by more than 6% (min. 10 MW). Pins the slow half of the game: revenue climbing turn by turn as the three cities grow (05 §6 — they end the year 12–30% larger), the day-end fixed-cost charge rising with every finished object, the steady dump the forecast margin costs, and the nine turns out of 288 where the band bet loses.",
-  "map": "mapV1",
+  "map": "mapV1auto",
   "seed": 20260901,
   "days": 36,
   "actions": [
@@ -384,6 +384,22 @@
         "storageId": "obj-6",
         "mode": "charge",
         "mw": 100
+      }
+    },
+    {
+      "beforeTurn": 40,
+      "note": "the freshly built plant buys its automation retrofit (01 §5.1, 0.28) so the aggregate setpoints below drive the controller",
+      "action": {
+        "type": "buyPlantAutomation",
+        "plantId": "obj-1"
+      }
+    },
+    {
+      "beforeTurn": 40,
+      "action": {
+        "type": "setPlantControlMode",
+        "plantId": "obj-1",
+        "mode": "auto"
       }
     },
     {

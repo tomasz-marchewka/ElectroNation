@@ -176,9 +176,10 @@ w grze — dokument 06 obowiązuje. Tu zostaje reszta.)*
 
 ## 3. Unit commitment i ograniczenia techniczne jednostek
 
-*(Rdzeń wszedł do gry w 01 v0.27 — §5.1: **minimum techniczne, rozruch zimny/ciepły,
-rampy w górę/w dół i koszt rozruchu**, w wersji growej przeskalowanej do tury 3 h,
-z jedną nastawą na elektrownię wykonywaną przez silnik. Tu zostaje reszta karty.)*
+*(Rdzeń wszedł do gry w 01 v0.27–0.28 — §5.1: **minimum techniczne, rozruch
+zimny/ciepły, rampy w górę/w dół i koszt rozruchu**, w wersji growej przeskalowanej do
+tury 3 h; od 0.28 gracz steruje **każdym blokiem z osobna**, a rozdział przez sterownik
+jest kupowaną automatyką. Tu zostaje reszta karty.)*
 
 Pozostała karta jednostki:
 
@@ -188,17 +189,18 @@ Pozostała karta jednostki:
   profilem poboru paliwa zamiast jednej opłaty,
 - **rampy [MW/min] w realistycznej skali** — wymagałyby kroku gęstszego niż tura 3 h
   (§13); dzisiejsze wartości są growe z założenia,
-- **plan per jednostka** — dziś gracz steruje elektrownią (silnik rozdziela bloki
-  deterministycznie); pełny UC oddaje graczowi decyzję per blok,
+- **mądrzejsze poziomy automatyki** — dzisiejszy sterownik (01 §5.1 w 0.28) jest
+  zachłanny i ślepy na prognozę; ulepszenia późnej gry mogłyby planować rozruchy
+  z wyprzedzeniem albo optymalizować odstawienia nocne,
 - **dyspozycyjność** — awaryjność, remonty planowane,
 - **emisje** CO₂, SO₂, NOₓ, pyły — koszty i akceptacja społeczna,
 - **inercja (stała H)** i **zdolność black-start**.
 
 Z tego wyrasta właściwy problem dobowy pełnej gry: *które bloki uruchomić i kiedy, ile
 rezerwy trzymać* — klasyczny **plan pracy jednostek (unit commitment)** podejmowany
-w warunkach niepewności prognozy. Wersja growa z 01 v0.27 już wymusza decyzje
-wielogodzinne (rozruch zimny węgla = 3 tury, jądrówki = 8 tur); pełna wersja pogłębia
-je o awaryjność i decyzje per blok.
+w warunkach niepewności prognozy. Wersja growa z 01 v0.27–0.28 już wymusza decyzje
+wielogodzinne (rozruch zimny węgla = 3 tury, jądrówki = 8 tur) i oddaje graczowi
+decyzję per blok; pełna wersja pogłębia je o awaryjność, remonty i lepsze sterowniki.
 
 Powiązane mechaniki cyklu życia:
 
@@ -458,8 +460,9 @@ Kolejność jest propozycją — każdy krok wraca osobno i tylko jeśli przecho
 
 1. **Awarie jednostek i linii** (§8) — trzymanie zapasu mocy zaczyna mieć sens ponad błąd
    prognozy.
-2. **Unit commitment — pozostała część** (§3; rdzeń — minima, rozruchy, rampy — wszedł
-   do gry w 01 v0.27): dyspozycyjność, remonty, rozruch gorący, plan per jednostka.
+2. **Unit commitment — pozostała część** (§3; rdzeń — minima, rozruchy, rampy,
+   sterowanie per blok — wszedł do gry w 01 v0.27–0.28): dyspozycyjność, remonty,
+   rozruch gorący, mądrzejsze poziomy automatyki.
 3. **Merit order i cena krańcowa** (§5) — ekonomia zaczyna żyć.
 4. **DC power flow + częstotliwość + inercja + rezerwy** (§1) — przejście Arcade → Standard.
 5. **Stacje zaawansowane i poziomy napięć** (§4) oraz **N-1** (§1.6) — pełne planowanie sieci.
