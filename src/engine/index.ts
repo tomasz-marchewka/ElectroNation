@@ -43,6 +43,7 @@ export {
   NODE_FIXED_CAPEX_SHARE_PER_YEAR,
   OFFSHORE_WIND,
   BUILD_SIZES,
+  PLANT_DYNAMICS,
   PLANT_TECHS,
   PV,
   STORAGE_TECHS,
@@ -62,11 +63,21 @@ export {
   type ForecastLevel,
   type LineType,
   type BuildSize,
+  type PlantDynamicsSpec,
   type PlantTech,
   type StorageTech,
   type TerrainId,
   type WindClass,
 } from "./config";
+export {
+  advancePlantDispatch,
+  evenBlocks,
+  isBlockWarm,
+  newBlock,
+  projectPlantOutputMw,
+  settledBlocks,
+  type DispatchAdvance,
+} from "./dispatch";
 export {
   cityDemandDayMw,
   cityDemandMwAtHour,
@@ -163,6 +174,7 @@ export {
   type ScenarioPlant,
 } from "./scenario";
 export {
+  COLD_OFFLINE_TURNS,
   COVERAGE_LAYERS,
   DAYS_PER_MONTH,
   DAYS_PER_YEAR,
@@ -173,6 +185,8 @@ export {
   isLineBuilt,
   isLineUpgrading,
   lineOccupiesType,
+  plantOutputMw,
+  type BlockStatus,
   type BorderState,
   type Calendar,
   type CityState,
@@ -186,6 +200,7 @@ export {
   type LineState,
   type LineUpgrade,
   type PendingObject,
+  type PlantBlockState,
   type PlantState,
   type SourceKind,
   type StorageMode,

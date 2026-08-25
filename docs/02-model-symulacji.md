@@ -1,10 +1,23 @@
 # ElectroNation — Model symulacji uproszczonej (silnik tury)
 
-**Wersja:** 0.11
-**Data:** 2026-08-21
+**Wersja:** 0.12
+**Data:** 2026-08-25
 **Status:** **obowiązuje** — formalizuje rdzeń mechaniki z dokumentu 01 §4 (graf sieci,
 rozpływ, straty, niedobory) oraz krok rozstrzygnięcia tury. Wprowadzona tu zmiana 01 §4.1
 (nadwyżka sterowalna karana) obowiązuje od 01 v0.16.
+
+**Zmiany 0.11 → 0.12 (dynamika bloków elektrowni):** §4 pkt 2 i 8, §5.1 — produkcja
+sterowalna przestaje równać się nastawie: przed rozpływem silnik wykonuje **krok dynamiki
+bloków** (01 §5.1 w 0.27) — rozkazy załączeń/odstawień z nastaw, liczniki rozruchów
+(zimny/ciepły), rampy i minima techniczne wyznaczają produkcję tury per blok; do rozpływu
+wchodzi jej suma. Zrzut sterowalnych liczy się odtąd od **produkcji** (`produkcja −
+wykorzystanie`), a finanse tury dostają pozycję **koszt rozruchów** (zł/MW bloku przy
+rozkazie załączenia, ważony wagą doby). Rozpływ, straty, priorytety przebiegów i alokacja
+niedoboru **bez zmian** — zmienia się wyłącznie to, ile sterowalne oferują. Wyliczenie
+92. percentyla (§5.2) zostaje w mocy z notą o bezwładności. **Schemat zapisu 15** — blok
+niesie stan (moc, status, moc bieżąca, liczniki), migracja 14 → 15 dzieli moc elektrowni
+równo między bloki i przenosi nastawę; raporty archiwum dostają `startupCostPln = 0`.
+Nowy test akceptacyjny §9.17.
 
 **Zmiany 0.10 → 0.11 (cztery rozmiary w całym katalogu; magazyn na dwóch osiach):**
 §8.2, §8.4 — farmy i magazyny zamawia się **szczeblem**, nie dowolną mocą (01 §5.2–§5.3
@@ -196,8 +209,12 @@ przychodem nikogo — gracz płaci za nie paliwem u źródła (01 §6).
 Kolejność jest częścią kontraktu silnika:
 
 1. **Ujawnienie prawdy**: pogoda bloku (06), popyt miast (05 §4).
-2. **Produkcja OZE** z pogody (farmy włączone); zebranie nastaw gracza: elektrownie,
-   magazyny (ładuj/oddawaj), import/eksport.
+2. **Produkcja OZE** z pogody (farmy włączone); **krok dynamiki bloków** (01 §5.1
+   w 0.27): nastawa elektrowni jest rozkazem — silnik załącza/odstawia bloki
+   (preferencja: w ruchu → w rozruchu → ciepłe → zimne), prowadzi liczniki rozruchów,
+   stosuje rampy i minima techniczne; **produkcją sterowalną tury** jest suma mocy
+   bloków po tym kroku, nie nastawa. Zebranie nastaw magazynów (ładuj/oddawaj)
+   i importu/eksportu.
 3. **Rozpływ — przebieg 1: miasta.** Wszystkie źródła, odbiory = miasta.
 4. **Rozpływ — przebieg 2: ładowanie magazynów** na przepustowościach rezydualnych.
    Do magazynu wchodzi energia × sprawność ładowania (połowa strat cyklu).
@@ -206,7 +223,8 @@ Kolejność jest częścią kontraktu silnika:
    i OZE) oraz import.
 7. **Niedobory i kary** (§6): energia niedostarczona per miasto (wejście do 05 §6.1).
 8. **Finanse tury**: przychód (taryfa × energia dostarczona), koszty zmienne
-   (od energii **wykorzystanej**, §5), kara za zrzut, kara za niedobór; postęp budów
+   (od energii **wykorzystanej**, §5), **koszty rozruchów** (zł/MW bloku za każdy rozkaz
+   załączenia z tego kroku, 01 §5.1), kara za zrzut, kara za niedobór; postęp budów
    (linie: długość bloku, obiekty: licznik dób). Koszty stałe nalicza się raz na dobę
    (01 §6). SOC magazynów po sprawnościach.
 9. **Archiwum**: dopisanie **skrótu tury** (§4.1) na koniec trwałego archiwum w stanie gry.
@@ -255,8 +273,10 @@ Trzy konsekwencje, które są częścią kontraktu:
 
 ### 5.1 Mechanika
 
-Po przebiegach rozpływu każdemu źródłu zostaje `zrzut = nastawa − wykorzystanie`
-(dla OZE: `produkcja − wykorzystanie`). **DECYZJA (2):**
+Po przebiegach rozpływu każdemu źródłu zostaje `zrzut = produkcja − wykorzystanie`
+(do 0.11 dla sterowalnych była to nastawa; od 0.12 produkcja sterowalna wynika
+z dynamiki bloków — 01 §5.1 w 0.27 — więc blok w rozruchu nie ma czego zrzucać,
+a blok na minimum ponad nastawę zrzuca to, co naprawdę wyprodukował). **DECYZJA (2):**
 
 - **OZE**: zrzut karany tak samo jak sterowalny — **400 zł/MWh** (0.8; uchyla darmowy
   zrzut OZE). Rozpływ używa OZE pierwsze (koszt 0), więc OZE jest przycinane efektywnie
@@ -296,6 +316,14 @@ zrzucaną MWh jest niemal zawsze blok sterowalny, a asymetria 4650:400 nie drgni
 OZE działa na **innej osi decyzyjnej** — nie na nastawie tury, lecz na rozmiarze floty OZE
 wobec sieci i magazynów: opłaca się dokładać farmę tylko dopóty, dopóki jest ją czym
 wyprowadzić i gdzie odłożyć. Do wystrojenia w dokumencie 03 wraz z resztą ekonomii.
+
+**Co zmienia dynamika bloków (0.12).** Wyliczenie percentyla zostaje w mocy jako
+uzasadnienie **wysokości** kary, ale gracz nie celuje już w percentyl co turę — rampy
+i rozruchy sprawiają, że nastawa jest planem na kilka tur naprzód, a błąd planu bywa
+nieusuwalny w turze (minimum techniczne produkuje ponad potrzebę, dopóki blok nie
+zostanie odstawiony). Dwie strony zakładu pozostają: niedobór wciąż boli ~12× mocniej
+niż nadwyżka, tylko decyzja przesuwa się z „ile nastawić teraz" na „które bloki mieć
+w ruchu, zanim przyjdzie szczyt". Strojenie — doc 03 wraz z kosztami rozruchu.
 
 Kara jest niższa od taryfy (650), więc nadwyżkę zawsze opłaca się zagospodarować:
 ładowanie magazynu unika kary i przechowuje energię wartą taryfę; eksport daje 150
@@ -559,6 +587,17 @@ Testy specyfikacyjne cytują sekcje tego dokumentu:
     osobno wraz z kolejką tej samej osi, a szczebel spoza czwórki jest odrzucany. Cena
     szczytowo-pompowej ŚREDNI/ŚREDNI wynosi 550 mln zł — tyle, ile dawny blok. Migracja
     13 → 14 rozbija starą pozycję kolejki na dwie, nie gubiąc ani MW, ani MWh.
+
+17. **§4 pkt 2, §5.1** — dynamika bloków (01 §5.1 w 0.27): rozkaz z zimna produkuje 0 MW
+    przez N−1 tur i wchodzi na minimum w N-tej; postój ⩽ okna ciepłego daje rozruch
+    ciepły, o turę dłuższy — zimny; moc bloku między turami nie zmienia się o więcej
+    niż rampa (w dół szybciej); nastawa poniżej minimum jednego bloku produkuje minimum
+    i płaci zrzut od produkcji, nie od nastawy; nastawa 0 odstawia (rampa do minimum,
+    potem 0); OCGT osiąga nastawę w tej samej turze i nie płaci rozruchu; każdy rozkaz
+    załączenia nalicza `koszt × MW bloku × waga doby` w `startupCostPln`; blok
+    z ukończonej budowy i rozbudowy wchodzi zimny i wyłączony; ta sama sekwencja nastaw
+    daje identyczny stan (determinizm); migracja 14 → 15 zachowuje moc łączną
+    i nastawę elektrowni.
 
 ## 10. Pytania otwarte
 

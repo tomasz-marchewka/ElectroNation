@@ -21,7 +21,7 @@ import {
   isNightBlock,
   panelForecast,
 } from "../../../src/app/panel/forecast";
-import { makeScenario } from "../../helpers/scenario";
+import { makeScenario, settlePlants } from "../../helpers/scenario";
 
 function windFarm(overrides: Partial<FarmState> = {}): FarmState {
   return {
@@ -221,11 +221,15 @@ describe("balance at current setpoints — 01 §8 pt 3", () => {
   });
 
   test("losses are NOT part of the plan — the projection is network-blind", () => {
-    const state = applyAction(newGame(7, makeScenario()), {
-      type: "setPlantSetpoint",
-      plantId: "plant-1",
-      mw: 300,
-    });
+    // Blocks pre-warmed to the setpoint: the subject is loss-blindness, not
+    // the cold start that would otherwise cap the pending turn at the minimum.
+    const state = settlePlants(
+      applyAction(newGame(7, makeScenario()), {
+        type: "setPlantSetpoint",
+        plantId: "plant-1",
+        mw: 300,
+      }),
+    );
     const { summary } = panelForecast(state);
     // 300 MW of setpoint reaches the plan whole; the 2% line loss of 01 §4.2
     // only shows up once the turn resolves.

@@ -36,6 +36,7 @@ import {
   type StorageTech,
   type TerrainId,
 } from "./config";
+import { newBlock } from "./dispatch";
 import { areNeighbors, hexNeighbors, isInsideMap } from "./map";
 import { hexKey, type HexCoord } from "./network";
 import {
@@ -194,7 +195,8 @@ export function buildPlant(
   if (capacityMw === null) return state;
   return queueObject(state, capacityMw * spec.capexPlnPerMw, spec.buildDays, hex, (id) => ({
     kind: "plant",
-    plant: { id, name: id, hex, tech, capacityMw, blocks: 1, setpointMw: 0 },
+    // The block lands cold and offline (01 §5.1 in 0.27).
+    plant: { id, name: id, hex, tech, capacityMw, blocks: [newBlock(capacityMw)], setpointMw: 0 },
   }));
 }
 
@@ -677,7 +679,7 @@ export function expandPlant(state: GameState, plantId: string, size: BuildSize):
   const queued = pendingSum(state, (p) =>
     p.kind === "plantExpansion" && p.plantId === plantId ? 1 : 0,
   );
-  if (plant.blocks + queued + 1 > MAX_PLANT_BLOCKS_PER_HEX) return state;
+  if (plant.blocks.length + queued + 1 > MAX_PLANT_BLOCKS_PER_HEX) return state;
   return queueExpansion(
     state,
     capacityMw * spec.capexPlnPerMw * EXPANSION.capexShare,

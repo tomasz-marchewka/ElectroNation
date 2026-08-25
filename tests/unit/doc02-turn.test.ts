@@ -12,6 +12,8 @@ import {
   type Scenario,
 } from "../../src/engine";
 
+import { settlePlants } from "../helpers/scenario";
+
 // Spec tests for the turn resolution step, docs/02 §4–§6 (acceptance list 02 §9).
 
 function makeScenario(overrides: Partial<Scenario> = {}): Scenario {
@@ -70,11 +72,13 @@ describe("doc 02 §5: dump penalty on dispatchable surplus", () => {
     const base = newGame(7, makeScenario());
     // Both setpoints fully cover the city (~100 MW peak incl. losses), so the
     // delivered energy and fuel burned are identical — only the dump differs.
+    // Blocks are pre-warmed to the setpoint: the subject here is the penalty,
+    // not the startup (01 §5.1 in 0.27).
     const lower = resolveTurn(
-      applyAction(base, { type: "setPlantSetpoint", plantId: "plant-1", mw: 300 }),
+      settlePlants(applyAction(base, { type: "setPlantSetpoint", plantId: "plant-1", mw: 300 })),
     );
     const higher = resolveTurn(
-      applyAction(base, { type: "setPlantSetpoint", plantId: "plant-1", mw: 350 }),
+      settlePlants(applyAction(base, { type: "setPlantSetpoint", plantId: "plant-1", mw: 350 })),
     );
     const expected = Math.round(50 * 3 * 400 * DAY_WEIGHTS.working);
     expect(lower.moneyPln - higher.moneyPln).toBe(expected);

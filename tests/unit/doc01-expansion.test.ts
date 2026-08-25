@@ -109,7 +109,9 @@ describe("doc 02 §8.4: plants and farms expand at 85% CAPEX and 70% time", () =
     expect(done.constructions).toHaveLength(0);
     expect(done.plants).toHaveLength(1); // expansion, not a second object
     expect(done.plants[0]?.capacityMw).toBe(500);
-    expect(done.plants[0]?.blocks).toBe(2);
+    expect(done.plants[0]?.blocks).toHaveLength(2);
+    // 01 §5.1 (0.27): the new block joins cold and offline.
+    expect(done.plants[0]?.blocks[1]).toMatchObject({ mw: 100, status: "offline", outputMw: 0 });
   });
 
   test.each([
@@ -160,7 +162,7 @@ describe("doc 01 §7: hard site limits, counting work already queued", () => {
     expect(refused).toBe(state);
 
     const done = run(state, 3 * TURNS_PER_DAY);
-    expect(done.plants[0]?.blocks).toBe(6);
+    expect(done.plants[0]?.blocks).toHaveLength(6);
     expect(done.plants[0]?.capacityMw).toBe(900); // 400 at start + 5 × 100
     expect(apply(done, { type: "expandPlant", plantId: "plant-1", size: "small" })).toBe(done);
   });

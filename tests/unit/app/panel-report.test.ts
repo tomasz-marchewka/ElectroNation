@@ -15,7 +15,7 @@ import {
 } from "../../../src/engine";
 import { formatBand, formatMw, formatNumber, formatSignedMoneyPln } from "../../../src/app/format";
 import { reportTiles, reportTitle } from "../../../src/app/panel/report";
-import { makeScenario } from "../../helpers/scenario";
+import { makeScenario, settlePlants } from "../../helpers/scenario";
 
 function resolved(state: GameState): { state: GameState; report: TurnDigest } {
   const next = resolveTurn(state);
@@ -116,7 +116,7 @@ describe("money — every tile traceable to the report", () => {
     );
     expect(tile(state, report, "PRZYCHÓD").note).toContain(`${CONFIG.tariffPlnPerMwh} zł/MWh`);
     expect(tile(state, report, "KOSZTY").value).toBe(
-      formatSignedMoneyPln(-(finance.fuelCostPln + finance.importCostPln)),
+      formatSignedMoneyPln(-(finance.fuelCostPln + finance.importCostPln + finance.startupCostPln)),
     );
     // Dumping 350 MW into a night-time city is penalized as well (02 §5).
     expect(finance.dumpPenaltyPln).toBeGreaterThan(0);
@@ -144,12 +144,19 @@ describe("money — every tile traceable to the report", () => {
   });
 
   test("a profitable turn highlights its result tile", () => {
+    // Four small blocks like the real endowment (01 §3.4 in 0.27): one block's
+    // minimum (30 MW) fits under the 40 MW order, and pre-warmed blocks mean
+    // no startup bill — the turn sells energy at a margin and nothing else.
+    const scenario = makeScenario();
+    scenario.plants[0]!.blocks = 4;
     const { state, report } = resolved(
-      applyAction(newGame(7, makeScenario()), {
-        type: "setPlantSetpoint",
-        plantId: "plant-1",
-        mw: 40,
-      }),
+      settlePlants(
+        applyAction(newGame(7, scenario), {
+          type: "setPlantSetpoint",
+          plantId: "plant-1",
+          mw: 40,
+        }),
+      ),
     );
     expect(report.finance.netPln).toBeGreaterThan(0);
     expect(tile(state, report, "WYNIK TURY").highlight).toBe(true);

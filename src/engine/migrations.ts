@@ -4,7 +4,8 @@
 // throwing — a foreign or broken file is a game situation, not a crash.
 
 import { splitLinesAtObjects } from "./build";
-import { LINE_TYPES, type FarmTech, type PlantTech } from "./config";
+import { LINE_TYPES, PLANT_TECHS, type FarmTech, type PlantTech } from "./config";
+import { settledBlocks } from "./dispatch";
 import { buildTurnDigest, coverageIndex } from "./history";
 import { STATE_SCHEMA_VERSION, type GameState, type TurnDigest, type TurnReport } from "./state";
 
@@ -116,6 +117,48 @@ export const MIGRATIONS: MigrationRegistry = {
       }
     }
     return { ...state, constructions };
+  },
+  /**
+   * 14 → 15: block dynamics (01 §5.1, 0.27). `blocks` stops being a count and
+   * becomes block state; the plant's capacity splits evenly between them —
+   * individual block sizes were never recorded, so even is the only honest
+   * split. A plant with a nonzero setpoint migrates RUNNING at that setpoint
+   * (no fake cold start for a save written when setpoints acted instantly);
+   * an idle plant migrates cold. Old reports gain `startupCostPln = 0`.
+   */
+  14: (state) => {
+    if (!isRecord(state)) return state;
+    const migratePlant = (plant: unknown): unknown => {
+      if (!isRecord(plant) || typeof plant.blocks !== "number") return plant;
+      const tech = typeof plant.tech === "string" && plant.tech in PLANT_TECHS ? plant.tech : null;
+      const capacityMw = numberOr(plant.capacityMw, 0);
+      if (tech === null || capacityMw <= 0) return plant;
+      const count = Math.max(1, Math.round(plant.blocks));
+      const setpointMw = numberOr(plant.setpointMw, 0);
+      return { ...plant, blocks: settledBlocks(tech as PlantTech, capacityMw, count, setpointMw) };
+    };
+    const plants = Array.isArray(state.plants) ? state.plants.map(migratePlant) : state.plants;
+    const constructions = Array.isArray(state.constructions)
+      ? state.constructions.map((construction) => {
+          if (!isRecord(construction) || !isRecord(construction.pending)) return construction;
+          if (construction.pending.kind !== "plant") return construction;
+          return {
+            ...construction,
+            pending: { ...construction.pending, plant: migratePlant(construction.pending.plant) },
+          };
+        })
+      : state.constructions;
+    const withStartup = (report: unknown): unknown =>
+      isRecord(report) && isRecord(report.finance)
+        ? { ...report, finance: { startupCostPln: 0, ...report.finance } }
+        : report;
+    return {
+      ...state,
+      plants,
+      constructions,
+      lastTurnReport: state.lastTurnReport === null ? null : withStartup(state.lastTurnReport),
+      history: Array.isArray(state.history) ? state.history.map(withStartup) : state.history,
+    };
   },
 };
 

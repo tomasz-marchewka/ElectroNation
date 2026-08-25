@@ -30,6 +30,7 @@ import {
   largestSizeWithin,
   linesAtHex,
   nearestPlantBlockSize,
+  plantOutputMw,
   type Action,
   type BorderState,
   type CityState,
@@ -831,6 +832,17 @@ function cityView(state: GameState, report: TurnReport | null, city: CityState):
   };
 }
 
+/** "2 w ruchu · 1 rozruch · 1 postój" — only the nonzero states, in this order. */
+function blockStatusLabel(plant: PlantState): string {
+  const counts = { online: 0, starting: 0, offline: 0 };
+  for (const block of plant.blocks) counts[block.status]++;
+  const parts: string[] = [];
+  if (counts.online > 0) parts.push(`${formatNumber(counts.online)} w ruchu`);
+  if (counts.starting > 0) parts.push(`${formatNumber(counts.starting)} rozruch`);
+  if (counts.offline > 0) parts.push(`${formatNumber(counts.offline)} postój`);
+  return parts.join(" · ");
+}
+
 function plantView(state: GameState, report: TurnReport | null, plant: PlantState): HexObjectView {
   const spec = PLANT_TECHS[plant.tech];
   const used = report?.sources.find((source) => source.sourceId === plant.id);
@@ -838,7 +850,10 @@ function plantView(state: GameState, report: TurnReport | null, plant: PlantStat
   // A new block matches the ones already standing here (01 §7 — expansion adds
   // blocks in place), snapped to the nearest rung of the catalogue: since 0.24
   // the average of what stands here need not be a size that can be ordered.
-  const blockSize = nearestPlantBlockSize(plant.tech, plant.capacityMw / plant.blocks);
+  const blockSize = nearestPlantBlockSize(
+    plant.tech,
+    plant.capacityMw / Math.max(1, plant.blocks.length),
+  );
   const blockMw = spec.blockMw[blockSize];
   const pending = queued(state, (item) =>
     item.kind === "plantExpansion" && item.plantId === plant.id ? 1 : 0,
@@ -851,10 +866,17 @@ function plantView(state: GameState, report: TurnReport | null, plant: PlantStat
     connections: connectionsLabel(state, plant.hex),
     rows: [
       { key: "power", label: "NASTAWA", value: formatSetpoint(plant.setpointMw, plant.capacityMw) },
+      // The order and the output differ while blocks start up or ramp (01 §5.1
+      // in 0.27) — the panel shows both, or the inertia would read as a bug.
+      {
+        key: "output",
+        label: "MOC BIEŻĄCA",
+        value: formatSetpoint(plantOutputMw(plant), plant.capacityMw),
+      },
       {
         key: "blocks",
         label: "BLOKI",
-        value: `${formatNumber(plant.blocks)} / ${formatNumber(MAX_PLANT_BLOCKS_PER_HEX)}`,
+        value: `${formatNumber(plant.blocks.length)} / ${formatNumber(MAX_PLANT_BLOCKS_PER_HEX)} · ${blockStatusLabel(plant)}`,
       },
       {
         key: "cost",
@@ -870,7 +892,7 @@ function plantView(state: GameState, report: TurnReport | null, plant: PlantStat
         label: `ROZBUDUJ · +BLOK ${BUILD_SIZE_NAMES[blockSize]} ${formatMw(blockMw)}`,
         basePln: blockMw * spec.capexPlnPerMw * EXPANSION.capexShare,
         action: { type: "expandPlant", plantId: plant.id, size: blockSize },
-        limit: limitNote(plant.blocks, pending, 1, MAX_PLANT_BLOCKS_PER_HEX, "bloków"),
+        limit: limitNote(plant.blocks.length, pending, 1, MAX_PLANT_BLOCKS_PER_HEX, "bloków"),
       }),
       ...expansionActions(state, plant.id),
       ...(alert ? bottleneckAction(report) : []),

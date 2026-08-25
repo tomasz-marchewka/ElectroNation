@@ -241,6 +241,11 @@ function financeSection(aggregate: PeriodAggregate): ReportSection {
       { label: "PALIWO", value: formatSignedMoneyPln(-finance.fuelCostPln) },
       { label: "IMPORT", value: formatSignedMoneyPln(-finance.importCostPln) },
       {
+        label: "ROZRUCHY BLOKÓW",
+        value: formatSignedMoneyPln(-finance.startupCostPln),
+        note: "PŁATNE PRZY ROZKAZIE ZAŁĄCZENIA",
+      },
+      {
         label: "KOSZTY STAŁE",
         value: formatSignedMoneyPln(-finance.fixedCostPln),
         note: "NALICZANE NA KONIEC DOBY",

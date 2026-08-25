@@ -3,7 +3,22 @@
 // field replaces it wholesale, so a test adding farms or storage says exactly
 // what stands on its map.
 
-import { finishedLine, type Scenario } from "../../src/engine";
+import { finishedLine, settledBlocks, type GameState, type Scenario } from "../../src/engine";
+
+/**
+ * Every plant's blocks warmed to its current setpoint (01 §5.1 in 0.27) — for
+ * tests whose subject is the flow, the money or the report, not the inertia:
+ * the next resolution then behaves exactly like the pre-0.27 instant dispatch.
+ */
+export function settlePlants(state: GameState): GameState {
+  return {
+    ...state,
+    plants: state.plants.map((plant) => ({
+      ...plant,
+      blocks: settledBlocks(plant.tech, plant.capacityMw, plant.blocks.length, plant.setpointMw),
+    })),
+  };
+}
 
 export function makeScenario(overrides: Partial<Scenario> = {}): Scenario {
   return {

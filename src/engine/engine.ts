@@ -42,6 +42,7 @@ import {
   type BuildSize,
   type PlantTech,
 } from "./config";
+import { advancePlantDispatch, newBlock } from "./dispatch";
 import { cityDemandForecast, farmProductionForecast } from "./forecast";
 import { evaluateMonthlyGrowth } from "./growth";
 import { buildTurnDigest, coverageIndex } from "./history";
@@ -66,6 +67,7 @@ import {
   TURNS_PER_DAY,
   TURN_PHASES,
   isLineBuilt,
+  plantOutputMw,
   type CityState,
   type GameState,
   type LineState,
@@ -295,10 +297,20 @@ export function resolveTurn(state: GameState): GameState {
     farmBlockMw.set(farm.id, sum / HOURS_PER_TURN);
   }
 
+  // 02 §4 step 2 (0.12): block dynamics — the setpoint is an order, the blocks
+  // advance one turn toward it (start orders, startup counters, ramps, minima;
+  // 01 §5.1 in 0.27). What the flow sees is their output, not the setpoint.
+  let startupCostBasePln = 0;
+  const plants = state.plants.map((plant) => {
+    const advance = advancePlantDispatch(plant);
+    startupCostBasePln += advance.startupCostPln;
+    return advance.plant;
+  });
+
   // Network graph: every object is a node; only border points carry a cap.
   const nodes: NetworkNode[] = [
     ...state.cities.map((c) => ({ id: c.id, hex: c.hex })),
-    ...state.plants.map((p) => ({ id: p.id, hex: p.hex })),
+    ...plants.map((p) => ({ id: p.id, hex: p.hex })),
     ...state.farms.map((f) => ({ id: f.id, hex: f.hex })),
     ...state.storages.map((s) => ({ id: s.id, hex: s.hex })),
     ...state.junctions.map((j) => ({ id: j.id, hex: j.hex })),
@@ -323,11 +335,11 @@ export function resolveTurn(state: GameState): GameState {
         : 0;
     sources.push({ id: storage.id, nodeId: storage.id, availableMw: available, costPlnPerMwh: 0 });
   }
-  for (const plant of state.plants) {
+  for (const plant of plants) {
     sources.push({
       id: plant.id,
       nodeId: plant.id,
-      availableMw: Math.min(plant.setpointMw, plant.capacityMw),
+      availableMw: plantOutputMw(plant),
       costPlnPerMwh: PLANT_TECHS[plant.tech].varCostPlnPerMwh,
     });
   }
@@ -437,8 +449,11 @@ export function resolveTurn(state: GameState): GameState {
     };
   });
 
-  for (const plant of state.plants) {
-    const available = Math.min(plant.setpointMw, plant.capacityMw);
+  // Dump measures PRODUCTION nobody took (02 §5.1 in 0.12): a block held at its
+  // technical minimum above the setpoint dumps what it really made, a block
+  // still starting made nothing and owes nothing.
+  for (const plant of plants) {
+    const available = plantOutputMw(plant);
     const used = usedTotal.get(plant.id) ?? 0;
     costsPln += used * hours * PLANT_TECHS[plant.tech].varCostPlnPerMwh;
     fuelCostPln += used * hours * PLANT_TECHS[plant.tech].varCostPlnPerMwh;
@@ -458,6 +473,9 @@ export function resolveTurn(state: GameState): GameState {
   // overproduction came from.
   const dumpPenaltyPln = (dumpMw + resCurtailedMw) * hours * CONFIG.dumpPenaltyPlnPerMwh;
   costsPln += dumpPenaltyPln;
+  // Start orders issued by the dynamics advance (01 §5.1 pt 3), day-weighted
+  // like every flow-derived cost — each represented day ran this start.
+  costsPln += startupCostBasePln;
   for (const border of state.borders) {
     costsPln += border.importSetpointMw * hours * CONFIG.importPricePlnPerMwh;
     revenuePln +=
@@ -623,6 +641,7 @@ export function resolveTurn(state: GameState): GameState {
       revenueExportPln: Math.round(revenueExportPln * weight),
       fuelCostPln: Math.round(fuelCostPln * weight),
       importCostPln: Math.round(importCostPln * weight),
+      startupCostPln: Math.round(startupCostBasePln * weight),
       ensPenaltyPln: Math.round(ensPenaltyPln * weight),
       dumpPenaltyPln: Math.round(dumpPenaltyPln * weight),
       fixedCostPln,
@@ -658,6 +677,7 @@ export function resolveTurn(state: GameState): GameState {
       calendar: { ...state.calendar, turnIndex: nextTurn },
       moneyPln,
       cities,
+      plants,
       storages,
       lines,
       lastTurnReport: report,
@@ -683,7 +703,7 @@ export function resolveTurn(state: GameState): GameState {
   const done = { ...state };
   const stillBuilding: typeof state.constructions = [];
   const spawned = {
-    plants: [...state.plants],
+    plants: [...plants],
     farms: [...state.farms],
     storages: [...storages],
     junctions: [...state.junctions],
@@ -722,10 +742,12 @@ export function resolveTurn(state: GameState): GameState {
         spawned.borders.push(pending.border);
         break;
       case "plantExpansion":
+        // The new block joins cold and offline (01 §5.1 pt 2) — it takes a
+        // start order and a full cold startup before it first produces.
         spawned.plants = upgrade(spawned.plants, pending.plantId, (plant) => ({
           ...plant,
           capacityMw: plant.capacityMw + pending.capacityMw,
-          blocks: plant.blocks + 1,
+          blocks: [...plant.blocks, newBlock(pending.capacityMw)],
         }));
         break;
       case "farmExpansion":

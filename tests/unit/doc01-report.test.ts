@@ -137,7 +137,10 @@ describe("01 §2.3 + 02 §4: finance breakdown", () => {
     expect(finance.netPln).toBe(next.moneyPln - base.moneyPln);
     expect(finance.revenueEnergyPln).toBeGreaterThan(0);
     expect(finance.fuelCostPln).toBeGreaterThan(0);
-    expect(finance.dumpPenaltyPln).toBeGreaterThan(0); // 350 MW ≫ night demand
+    // 01 §5.1 (0.27): the order wakes a cold block — the start is billed here,
+    // and the block enters at its minimum (120 MW), still above night demand.
+    expect(finance.startupCostPln).toBeGreaterThan(0);
+    expect(finance.dumpPenaltyPln).toBeGreaterThan(0);
     expect(finance.ensPenaltyPln).toBe(0);
     expect(finance.fixedCostPln).toBe(0); // mid-day
     const componentSum =
@@ -145,6 +148,7 @@ describe("01 §2.3 + 02 §4: finance breakdown", () => {
       finance.revenueExportPln -
       finance.fuelCostPln -
       finance.importCostPln -
+      finance.startupCostPln -
       finance.ensPenaltyPln -
       finance.dumpPenaltyPln -
       finance.fixedCostPln;
@@ -372,8 +376,13 @@ describe("01 §8 pt 3: balance projection at current setpoints", () => {
     expect(points).toHaveLength(24);
     expect(points[0]?.hour).toBe(0);
     expect(points[0]?.horizonHours).toBe(1);
+    // 01 §5.1 (0.27): the plan follows the BLOCK DYNAMICS, not the setpoint —
+    // the cold CCGT enters at its minimum (120 MW) on the pending turn and
+    // reaches the 300 MW order one ramp step later.
+    expect(points[0]?.dispatchableMw).toBe(120);
+    expect(points[2]?.dispatchableMw).toBe(120);
+    expect(points[3]?.dispatchableMw).toBe(300);
     for (const point of points) {
-      expect(point.dispatchableMw).toBe(300);
       expect(point.worstCaseBalanceMw).toBeLessThanOrEqual(point.expectedBalanceMw);
     }
     // The band widens with the horizon (06 §8.6.2).
@@ -444,7 +453,9 @@ describe("01 §8 pt 2: the plan of a turn ahead of TERAZ", () => {
     const forecast = turnForecast(state, 0, 0);
     if (!plan || !forecast) throw new Error("the pending turn is always inside the horizon");
 
-    expect(layerMw(plan.coverageMw, "gas")).toBe(300); // CCGT sits in the gas layer
+    // CCGT sits in the gas layer; the plan carries the block dynamics (01 §5.1
+    // in 0.27) — a cold block reaches only its minimum on the pending turn.
+    expect(layerMw(plan.coverageMw, "gas")).toBe(120);
     expect(layerMw(plan.coverageMw, "import")).toBe(50);
     expect(layerMw(plan.coverageMw, "wind")).toBe(forecast.wind.mw);
     expect(layerMw(plan.coverageMw, "wind")).toBeGreaterThan(0);
@@ -475,8 +486,12 @@ describe("01 §8 pt 2: the plan of a turn ahead of TERAZ", () => {
     });
     const plan = projectTurnCoverage(state, 0, 0);
     expect(layerMw(plan?.coverageMw ?? [], "wind")).toBe(0);
-    // 400 MW is the plant's whole capacity — the plan may not promise more.
-    expect(layerMw(plan?.coverageMw ?? [], "gas")).toBe(400);
+    // The pending turn only reaches the cold block's minimum (01 §5.1, 0.27);
+    // two turns later the ramp tops out at the plant's whole capacity — the
+    // plan may not promise more than 400 MW even then.
+    expect(layerMw(plan?.coverageMw ?? [], "gas")).toBe(120);
+    const later = projectTurnCoverage(state, 0, 2);
+    expect(layerMw(later?.coverageMw ?? [], "gas")).toBe(400);
   });
 
   test("storage discharge is capped by the state of charge, charging is extra load", () => {

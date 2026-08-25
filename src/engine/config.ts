@@ -85,6 +85,43 @@ export const PLANT_TECHS = {
 export type PlantTech = keyof typeof PLANT_TECHS;
 
 /**
+ * One row of the 01 §5.1 dynamics table (0.27). Shares are of the BLOCK's rated
+ * power; turn counts are whole resolutions. The values are game-scaled, not
+ * realistic — at a 3 h turn real ramps would cross the whole range within one
+ * block average and the mechanic would not exist (01 §5.1, 90 §3).
+ */
+export interface PlantDynamicsSpec {
+  /** An online block never holds output below this share of its rated MW. */
+  minLoadShare: number;
+  /** Max output gain per turn, as share of rated MW. */
+  rampUpSharePerTurn: number;
+  /** Max output drop per turn — faster than up (shedding is easier). */
+  rampDownSharePerTurn: number;
+  /** Turns from a cold start order to first output (at minimum load). */
+  startupColdTurns: number;
+  /** Same, when the block is still warm. */
+  startupWarmTurns: number;
+  /** Offline turns within which a restart still counts as warm. */
+  warmWindowTurns: number;
+  /** One-off cost per rated MW, charged at every start order (day-weighted). */
+  startupCostPlnPerMw: number;
+}
+
+/**
+ * 01 §5.1 (0.27): block dynamics per technology. OCGT is the fully flexible
+ * end on purpose — zero minimum, instant start, no startup cost — its whole
+ * role is the flexibility premium; nuclear is the immovable other end.
+ */
+// One line per doc row — reflowing the table would hide it.
+// prettier-ignore
+export const PLANT_DYNAMICS = {
+  nuclear: { minLoadShare: 0.5, rampUpSharePerTurn: 0.2, rampDownSharePerTurn: 0.4, startupColdTurns: 8, startupWarmTurns: 4, warmWindowTurns: 2, startupCostPlnPerMw: 4_000 },
+  coal: { minLoadShare: 0.4, rampUpSharePerTurn: 0.3, rampDownSharePerTurn: 0.6, startupColdTurns: 3, startupWarmTurns: 1, warmWindowTurns: 4, startupCostPlnPerMw: 2_000 },
+  ccgt: { minLoadShare: 0.3, rampUpSharePerTurn: 0.6, rampDownSharePerTurn: 1.0, startupColdTurns: 1, startupWarmTurns: 0, warmWindowTurns: 8, startupCostPlnPerMw: 600 },
+  ocgt: { minLoadShare: 0, rampUpSharePerTurn: 1.0, rampDownSharePerTurn: 1.0, startupColdTurns: 0, startupWarmTurns: 0, warmWindowTurns: 0, startupCostPlnPerMw: 0 },
+} as const satisfies Record<PlantTech, PlantDynamicsSpec>;
+
+/**
  * MW of one block, or null when the size is not one of the four (a JSON action
  * off the wire can carry anything — the engine refuses instead of guessing).
  */

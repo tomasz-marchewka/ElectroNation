@@ -134,7 +134,7 @@ function replay(seed: number, log: Action[]): GameState {
 
 function expectWithinSiteLimits(state: GameState): void {
   for (const plant of state.plants) {
-    expect(plant.blocks).toBeLessThanOrEqual(MAX_PLANT_BLOCKS_PER_HEX);
+    expect(plant.blocks.length).toBeLessThanOrEqual(MAX_PLANT_BLOCKS_PER_HEX);
   }
   for (const farm of state.farms) {
     expect(farm.capacityMw).toBeLessThanOrEqual(FARM_TECHS[farm.tech].maxMwPerHex);
