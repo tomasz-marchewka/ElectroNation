@@ -45,13 +45,14 @@ export const FORECAST_LEVEL_ORDER = ["basic", "advanced", "ensemble"] as const;
 export const DAY_WEIGHTS = { working: 10.9, free: 8.7 } as const;
 
 /**
- * 01 §5.1 (0.24): the four sizes a block is sold in, smallest first. The rung
- * is RELATIVE to the technology — a small nuclear block (800 MW) dwarfs an
- * extra-large gas one (500 MW) — so the ladder is per-technology and the order
- * here is the order the catalogue walks.
+ * 01 §5.1–§5.3 (0.24, extended in 0.26): the four sizes ANY buildable thing is
+ * sold in, smallest first — a plant block, a farm, and each of a storage's two
+ * axes. The rung is RELATIVE to what it sizes: a small nuclear block (800 MW)
+ * dwarfs an extra-large gas one (500 MW). The order here is the order the
+ * catalogue walks.
  */
-export const PLANT_BLOCK_SIZES = ["small", "medium", "large", "xlarge"] as const;
-export type PlantBlockSize = (typeof PLANT_BLOCK_SIZES)[number];
+export const BUILD_SIZES = ["small", "medium", "large", "xlarge"] as const;
+export type BuildSize = (typeof BUILD_SIZES)[number];
 
 /** One row of the 01 §5.1 table; every technology carries all four rungs. */
 interface PlantTechSpec {
@@ -59,7 +60,7 @@ interface PlantTechSpec {
   fixedPlnPerMwYear: number;
   capexPlnPerMw: number;
   buildDays: number;
-  blockMw: Record<PlantBlockSize, number>;
+  blockMw: Record<BuildSize, number>;
 }
 
 /**
@@ -87,7 +88,7 @@ export type PlantTech = keyof typeof PLANT_TECHS;
  * MW of one block, or null when the size is not one of the four (a JSON action
  * off the wire can carry anything — the engine refuses instead of guessing).
  */
-export function plantBlockMw(tech: PlantTech, size: PlantBlockSize): number | null {
+export function plantBlockMw(tech: PlantTech, size: BuildSize): number | null {
   const blocks: Partial<Record<string, number>> = PLANT_TECHS[tech].blockMw;
   return blocks[size] ?? null;
 }
@@ -98,10 +99,10 @@ export function plantBlockMw(tech: PlantTech, size: PlantBlockSize): number | nu
  * that is off the ladder, and the "add one more block like these" action still
  * has to name a size.
  */
-export function nearestPlantBlockSize(tech: PlantTech, mw: number): PlantBlockSize {
+export function nearestPlantBlockSize(tech: PlantTech, mw: number): BuildSize {
   const blocks = PLANT_TECHS[tech].blockMw;
-  let best: PlantBlockSize = PLANT_BLOCK_SIZES[0];
-  for (const size of PLANT_BLOCK_SIZES) {
+  let best: BuildSize = BUILD_SIZES[0];
+  for (const size of BUILD_SIZES) {
     if (Math.abs(blocks[size] - mw) <= Math.abs(blocks[best] - mw)) best = size;
   }
   return best;
@@ -111,12 +112,32 @@ export function nearestPlantBlockSize(tech: PlantTech, mw: number): PlantBlockSi
  * 01 §5.2, 02 §8.3–8.4: weather-dependent farm technologies. The wind row is
  * the ONSHORE site; offshore is the same technology on a sea hex and overrides
  * these two numbers through {@link OFFSHORE_WIND} (01 §5.2, 0.22).
+ *
+ * `sizeMw` is the four-rung ladder a farm is ordered in (01 §5.2 in 0.26). It
+ * belongs to the TECHNOLOGY, the cap belongs to the SITE — so the sea does not
+ * get bigger turbines, it just fits two extra-large farms instead of one.
  */
+interface FarmTechSpec {
+  fixedPlnPerMwYear: number;
+  capexPlnPerMw: number;
+  buildDays: number;
+  maxMwPerHex: number;
+  sizeMw: Record<BuildSize, number>;
+}
+
+// One line per doc row — reflowing the table would hide it.
+// prettier-ignore
 export const FARM_TECHS = {
-  wind: { fixedPlnPerMwYear: 130_000, capexPlnPerMw: 1_800_000, buildDays: 1, maxMwPerHex: 300 },
-  pv: { fixedPlnPerMwYear: 50_000, capexPlnPerMw: 900_000, buildDays: 1, maxMwPerHex: 200 },
-} as const;
+  wind: { fixedPlnPerMwYear: 130_000, capexPlnPerMw: 1_800_000, buildDays: 1, maxMwPerHex: 300, sizeMw: { small: 50, medium: 100, large: 200, xlarge: 300 } },
+  pv: { fixedPlnPerMwYear: 50_000, capexPlnPerMw: 900_000, buildDays: 1, maxMwPerHex: 200, sizeMw: { small: 25, medium: 50, large: 100, xlarge: 200 } },
+} as const satisfies Record<string, FarmTechSpec>;
 export type FarmTech = keyof typeof FARM_TECHS;
+
+/** MW of a farm of this size, or null when the size is not one of the four. */
+export function farmSizeMw(tech: FarmTech, size: BuildSize): number | null {
+  const sizes: Partial<Record<string, number>> = FARM_TECHS[tech].sizeMw;
+  return sizes[size] ?? null;
+}
 
 /**
  * 01 §5.2, §7, 02 §8.4 (0.22): what a sea hex changes for a wind farm. There is
@@ -127,28 +148,80 @@ export type FarmTech = keyof typeof FARM_TECHS;
  */
 export const OFFSHORE_WIND = { maxMwPerHex: 600, buildDays: 2 } as const;
 
-/** 01 §5.3, 02 §8.2: storage technologies (cycle efficiency split half per leg). */
+/** One row of the 01 §5.3 table; both technologies have the same shape. */
+interface StorageTechSpec {
+  cycleEfficiency: number;
+  fixedPlnPerMwYear: number;
+  buildDays: number;
+  /** Bought separately, so each axis has its own price and its own ladder. */
+  powerCapexPlnPerMw: number;
+  energyCapexPlnPerMwh: number;
+  powerMw: Record<BuildSize, number>;
+  capacityMwh: Record<BuildSize, number>;
+  maxPowerMwPerHex: number;
+  maxCapacityMwhPerHex: number;
+}
+
+/**
+ * 01 §5.3, 02 §8.2: storage technologies (cycle efficiency split half per leg).
+ *
+ * Since 0.26 BOTH technologies work the same way: **power and capacity are two
+ * independent axes**, each ordered from its own four-rung ladder and each
+ * expanded by its own action. Pumped storage stops being a fixed 250 MW /
+ * 2 500 MWh block — that pair is now simply its MEDIUM/MEDIUM order, and it
+ * still costs the 550 mln zł the block used to (250 × 1,1 mln + 2 500 ×
+ * 0,11 mln). The split of that price says what each technology is good at: a
+ * battery buys power cheaply and energy dearly, pumped storage the other way
+ * round — its reservoir is five times cheaper per MWh than a battery's cells.
+ */
+// One line per axis — reflowing the tables would hide them.
+// prettier-ignore
 export const STORAGE_TECHS = {
-  battery: { cycleEfficiency: 0.9, fixedPlnPerMwYear: 40_000, buildDays: 1 },
-  pumped: { cycleEfficiency: 0.75, fixedPlnPerMwYear: 80_000, buildDays: 5 },
-} as const;
+  battery: {
+    cycleEfficiency: 0.9, fixedPlnPerMwYear: 40_000, buildDays: 1,
+    powerCapexPlnPerMw: 800_000, energyCapexPlnPerMwh: 550_000,
+    powerMw: { small: 50, medium: 100, large: 250, xlarge: 500 },
+    capacityMwh: { small: 100, medium: 200, large: 500, xlarge: 1_000 },
+    maxPowerMwPerHex: 500, maxCapacityMwhPerHex: 2_000,
+  },
+  pumped: {
+    cycleEfficiency: 0.75, fixedPlnPerMwYear: 80_000, buildDays: 5,
+    powerCapexPlnPerMw: 1_100_000, energyCapexPlnPerMwh: 110_000,
+    powerMw: { small: 100, medium: 250, large: 500, xlarge: 1_000 },
+    capacityMwh: { small: 1_000, medium: 2_500, large: 5_000, xlarge: 10_000 },
+    maxPowerMwPerHex: 1_000, maxCapacityMwhPerHex: 10_000,
+  },
+} as const satisfies Record<string, StorageTechSpec>;
 export type StorageTech = keyof typeof STORAGE_TECHS;
 
-/** 02 §8.2: battery modules are bought separately; hard per-hex limits. */
-export const BATTERY = {
-  powerCapexPlnPerMw: 800_000,
-  energyCapexPlnPerMwh: 550_000,
-  maxPowerMwPerHex: 500,
-  maxCapacityMwhPerHex: 2_000,
-} as const;
+/**
+ * The largest rung that still fits in `room`, or null when even the smallest
+ * does not. This is what an expansion button offers (01 §7 in 0.26): the site
+ * cap rarely leaves room for an extra-large order, and proposing one the engine
+ * would refuse teaches the player nothing.
+ */
+export function largestSizeWithin(
+  sizes: Record<BuildSize, number>,
+  room: number,
+): BuildSize | null {
+  for (let i = BUILD_SIZES.length - 1; i >= 0; i--) {
+    const size = BUILD_SIZES[i]!;
+    if (sizes[size] <= room) return size;
+  }
+  return null;
+}
 
-/** 02 §8.2: pumped storage comes in fixed 10-hour blocks. */
-export const PUMPED_BLOCK = {
-  powerMw: 250,
-  capacityMwh: 2_500,
-  capexPln: 550_000_000,
-  maxBlocks: 4,
-} as const;
+/** MW of a storage of this size, or null when the size is not one of the four. */
+export function storagePowerMw(tech: StorageTech, size: BuildSize): number | null {
+  const sizes: Partial<Record<string, number>> = STORAGE_TECHS[tech].powerMw;
+  return sizes[size] ?? null;
+}
+
+/** MWh of a storage of this size, or null when the size is not one of the four. */
+export function storageCapacityMwh(tech: StorageTech, size: BuildSize): number | null {
+  const sizes: Partial<Record<string, number>> = STORAGE_TECHS[tech].capacityMwh;
+  return sizes[size] ?? null;
+}
 
 /** 01 §4.2: line types; loss is % of transmitted power per 100 km. */
 // One line per doc row — reflowing the table would hide it.

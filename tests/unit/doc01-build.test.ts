@@ -1,8 +1,10 @@
 import { describe, expect, test } from "vitest";
 import {
   CITY_CONNECTION_COST_PLN,
-  PLANT_BLOCK_SIZES,
+  BUILD_SIZES,
+  FARM_TECHS,
   PLANT_TECHS,
+  STORAGE_TECHS,
   TURNS_PER_DAY,
   applyAction,
   nearestPlantBlockSize,
@@ -11,7 +13,7 @@ import {
   resolveTurn,
   type Action,
   type GameState,
-  type PlantBlockSize,
+  type BuildSize,
   type PlantTech,
   type Scenario,
 } from "../../src/engine";
@@ -117,14 +119,19 @@ describe("doc 01 §2.6: objects pay up front and appear after the countdown", ()
     expect(onLake).toBe(base); // no-op
   });
 
-  test("invalid builds are no-ops: occupied hex, over-limit farm, empty wallet", () => {
+  test("invalid builds are no-ops: occupied hex, unknown size, empty wallet", () => {
     const base = newGame(3, makeScenario());
     expect(
       apply(base, { type: "buildPlant", tech: "ocgt", size: "medium", hex: { q: 4, r: 0 } }),
     ).toBe(base); // city hex
     expect(
-      apply(base, { type: "buildFarm", tech: "wind", capacityMw: 400, hex: { q: 1, r: 1 } }),
-    ).toBe(base); // > 300 MW/hex (02 §8.4)
+      apply(base, {
+        type: "buildFarm",
+        tech: "wind",
+        size: "giant" as BuildSize,
+        hex: { q: 1, r: 1 },
+      }),
+    ).toBe(base); // not one of the four rungs (01 §5.2 in 0.26)
     expect(
       apply(base, {
         type: "buildPlant",
@@ -140,7 +147,7 @@ describe("doc 01 §5.1: a block is one of four sizes, never a dialled-in number"
   const TECHS: PlantTech[] = ["nuclear", "coal", "ccgt", "ocgt"];
 
   test.each(TECHS)("%s sells exactly four rungs, listed smallest first", (tech) => {
-    const mw = PLANT_BLOCK_SIZES.map((size) => PLANT_TECHS[tech].blockMw[size]);
+    const mw = BUILD_SIZES.map((size) => PLANT_TECHS[tech].blockMw[size]);
     expect(mw).toHaveLength(4);
     expect([...mw].sort((a, b) => a - b)).toEqual(mw);
     expect(new Set(mw).size).toBe(4);
@@ -164,9 +171,9 @@ describe("doc 01 §5.1: a block is one of four sizes, never a dialled-in number"
   test("a size outside the four is refused, not rounded to the nearest one", () => {
     const base = newGame(3, makeScenario());
     const off = { type: "buildPlant" as const, tech: "ccgt" as const, hex: { q: 1, r: 1 } };
-    expect(apply(base, { ...off, size: "tiny" as PlantBlockSize })).toBe(base);
-    expect(apply(base, { ...off, size: "" as PlantBlockSize })).toBe(base);
-    expect(plantBlockMw("ccgt", "tiny" as PlantBlockSize)).toBeNull();
+    expect(apply(base, { ...off, size: "tiny" as BuildSize })).toBe(base);
+    expect(apply(base, { ...off, size: "" as BuildSize })).toBe(base);
+    expect(plantBlockMw("ccgt", "tiny" as BuildSize)).toBeNull();
   });
 
   test("a block off the ladder — a scenario endowment — reads as its nearest rung", () => {
@@ -207,6 +214,69 @@ describe("doc 01 §5.1: a block is one of four sizes, never a dialled-in number"
     expect(
       apply(base, { type: "buildPlant", tech: "nuclear", size: "xlarge", hex: { q: 2, r: 2 } }),
     ).toBe(base);
+  });
+});
+
+describe("doc 01 §5.2–§5.3: farms and storages are sized from the same four rungs", () => {
+  test.each(["wind", "pv"] as const)("%s sells four rungs, the largest filling its hex", (tech) => {
+    const spec = FARM_TECHS[tech];
+    const mw = BUILD_SIZES.map((size) => spec.sizeMw[size]);
+    expect(mw).toHaveLength(4);
+    expect([...mw].sort((a, b) => a - b)).toEqual(mw);
+    // The top rung is exactly the land cap, so a single order can never break
+    // the site limit — only an expansion can (01 §7).
+    expect(spec.sizeMw.xlarge).toBe(spec.maxMwPerHex);
+  });
+
+  test.each(["battery", "pumped"] as const)("%s sizes power and capacity apart", (tech) => {
+    const spec = STORAGE_TECHS[tech];
+    for (const ladder of [spec.powerMw, spec.capacityMwh]) {
+      const values = BUILD_SIZES.map((size) => ladder[size]);
+      expect(values).toHaveLength(4);
+      expect([...values].sort((a, b) => a - b)).toEqual(values);
+    }
+    // The two axes are independent, so their rungs need not line up: what an
+    // extra-large power buys says nothing about what an extra-large capacity does.
+    expect(spec.powerMw.xlarge).toBe(spec.maxPowerMwPerHex);
+    expect(spec.capacityMwh.xlarge).toBeLessThanOrEqual(spec.maxCapacityMwhPerHex);
+  });
+
+  test("the ordered farm gets the technology's MW, and an unknown rung is refused", () => {
+    const base = newGame(3, makeScenario());
+    const built = apply(base, {
+      type: "buildFarm",
+      tech: "pv",
+      size: "large",
+      hex: { q: 1, r: 1 },
+    });
+    const capacityMw = FARM_TECHS.pv.sizeMw.large;
+    expect(base.moneyPln - built.moneyPln).toBe(capacityMw * FARM_TECHS.pv.capexPlnPerMw);
+    expect(
+      apply(base, { type: "buildFarm", tech: "pv", size: "" as BuildSize, hex: { q: 1, r: 1 } }),
+    ).toBe(base);
+  });
+
+  test("a storage is priced from both axes, each on its own ladder (01 §5.3)", () => {
+    const base = newGame(3, makeScenario());
+    const spec = STORAGE_TECHS.battery;
+    const built = apply(base, {
+      type: "buildStorage",
+      tech: "battery",
+      powerSize: "medium",
+      capacitySize: "medium",
+      hex: { q: 1, r: 1 },
+    });
+    // 02 §8.2's own example: 100 MW / 200 MWh = 80 + 110 = 190 mln zł.
+    expect(base.moneyPln - built.moneyPln).toBe(190_000_000);
+    expect(spec.powerMw.medium).toBe(100);
+    expect(spec.capacityMwh.medium).toBe(200);
+
+    // A pumped storage of the same rungs is the block it used to be sold as.
+    const pumped = STORAGE_TECHS.pumped;
+    expect(
+      pumped.powerMw.medium * pumped.powerCapexPlnPerMw +
+        pumped.capacityMwh.medium * pumped.energyCapexPlnPerMwh,
+    ).toBe(550_000_000);
   });
 });
 
@@ -293,7 +363,7 @@ describe("doc 01 §3.3, §5.2 (0.23): a spur may be strung to a site still being
       type: "buildFarm",
       tech: "wind",
       hex,
-      capacityMw: 100,
+      size: "medium",
     });
     expect(next).not.toBe(state);
     expect(next.constructions).toHaveLength(1);

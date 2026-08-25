@@ -5,11 +5,10 @@
 //
 // Every price here is CAPEX × terrain multiplier computed from the engine's
 // own CONFIG, never a number typed into the design: the reference build's
-// catalogue is stale (its "150 MW / 300 MWh — 900 mln" battery costs 570 mln
-// out of BATTERY, and its biome multipliers predate 02 §8.1).
+// catalogue is stale (its "150 MW / 300 MWh — 900 mln" battery is not even a
+// size the game sells any more, and its biome multipliers predate 02 §8.1).
 
 import {
-  BATTERY,
   BORDER_SPEC,
   CITY_CONNECTION_COST_PLN,
   EXPANSION,
@@ -18,9 +17,8 @@ import {
   KM_PER_HEX,
   LINE_TYPES,
   MAX_PLANT_BLOCKS_PER_HEX,
-  PLANT_BLOCK_SIZES,
+  BUILD_SIZES,
   PLANT_TECHS,
-  PUMPED_BLOCK,
   STORAGE_TECHS,
   TERRAIN,
   WIND_CLASSES,
@@ -29,6 +27,7 @@ import {
   isLineBuilt,
   lineUpgradeCostPln,
   lineUpgradeTargets,
+  largestSizeWithin,
   linesAtHex,
   nearestPlantBlockSize,
   type Action,
@@ -41,10 +40,11 @@ import {
   type JunctionState,
   type LineState,
   type PendingObject,
-  type PlantBlockSize,
+  type BuildSize,
   type PlantState,
   type PlantTech,
   type StorageState,
+  type StorageTech,
   type TerrainId,
   type TurnReport,
 } from "../../engine";
@@ -64,7 +64,7 @@ import {
   FARM_CATALOG_NAMES,
   JUNCTION_CATALOG_NAME,
   LINE_TYPE_LABELS,
-  PLANT_BLOCK_SIZE_NAMES,
+  BUILD_SIZE_NAMES,
   PLANT_CATALOG_NAMES,
   STORAGE_CATALOG_NAMES,
   STORAGE_MODE_LABELS,
@@ -118,25 +118,25 @@ export interface HexAction {
  * rung is the engine's (`PLANT_TECHS.blockMw`) — this only says where the
  * ladder starts, roughly at the sizes the reference build's catalogue printed.
  */
-const DEFAULT_PLANT_SIZE: Record<PlantTech, PlantBlockSize> = {
+const DEFAULT_PLANT_SIZE: Record<PlantTech, BuildSize> = {
   ocgt: "large",
   ccgt: "large",
   coal: "medium",
   nuclear: "medium",
 };
 
-const FARM_BLOCKS: Record<FarmTech, { defaultMw: number; stepMw: number }> = {
-  wind: { defaultMw: 200, stepMw: 50 },
-  pv: { defaultMw: 100, stepMw: 50 },
-};
+const DEFAULT_FARM_SIZE: Record<FarmTech, BuildSize> = { wind: "large", pv: "large" };
 
-/** 01 §5.3: power and capacity are bought separately and shown separately. */
-const BATTERY_BLOCK = {
-  defaultPowerMw: 150,
-  stepPowerMw: 50,
-  defaultCapacityMwh: 300,
-  stepCapacityMwh: 100,
-} as const;
+/**
+ * 01 §5.3: power and capacity are bought separately and shown separately, so
+ * the catalogue opens each axis on its own rung. Battery MEDIUM/MEDIUM is the
+ * doc's own example — 100 MW / 200 MWh, full power for two hours — and pumped
+ * MEDIUM/MEDIUM is the 250 MW / 2 500 MWh pair that used to be its only block.
+ */
+const DEFAULT_STORAGE_SIZE: Record<StorageTech, { power: BuildSize; capacity: BuildSize }> = {
+  battery: { power: "medium", capacity: "medium" },
+  pumped: { power: "medium", capacity: "medium" },
+};
 
 /**
  * Sizes the player has dialled in on this hex's catalogue. A plant block is
@@ -144,28 +144,34 @@ const BATTERY_BLOCK = {
  * within the engine's limit.
  */
 export interface CatalogSizes {
-  plantSize: Record<PlantTech, PlantBlockSize>;
-  farmMw: Record<FarmTech, number>;
-  batteryPowerMw: number;
-  batteryCapacityMwh: number;
+  plantSize: Record<PlantTech, BuildSize>;
+  farmSize: Record<FarmTech, BuildSize>;
+  storagePowerSize: Record<StorageTech, BuildSize>;
+  storageCapacitySize: Record<StorageTech, BuildSize>;
 }
 
 export const DEFAULT_CATALOG_SIZES: CatalogSizes = {
   plantSize: { ...DEFAULT_PLANT_SIZE },
-  farmMw: { wind: FARM_BLOCKS.wind.defaultMw, pv: FARM_BLOCKS.pv.defaultMw },
-  batteryPowerMw: BATTERY_BLOCK.defaultPowerMw,
-  batteryCapacityMwh: BATTERY_BLOCK.defaultCapacityMwh,
+  farmSize: { ...DEFAULT_FARM_SIZE },
+  storagePowerSize: {
+    battery: DEFAULT_STORAGE_SIZE.battery.power,
+    pumped: DEFAULT_STORAGE_SIZE.pumped.power,
+  },
+  storageCapacitySize: {
+    battery: DEFAULT_STORAGE_SIZE.battery.capacity,
+    pumped: DEFAULT_STORAGE_SIZE.pumped.capacity,
+  },
 };
 
 /** Which value of {@link CatalogSizes} a stepper moves. */
 export type CatalogSizeTarget =
   | { kind: "plant"; tech: PlantTech }
   | { kind: "farm"; tech: FarmTech }
-  | { kind: "batteryPower" }
-  | { kind: "batteryCapacity" };
+  | { kind: "storagePower"; tech: StorageTech }
+  | { kind: "storageCapacity"; tech: StorageTech };
 
-/** What a step sets: a rung for a plant block, MW for everything else. */
-export type CatalogSizeValue = PlantBlockSize | number;
+/** Everything in the catalogue is now sized by a rung (01 §5.1–§5.3, 0.26). */
+export type CatalogSizeValue = BuildSize;
 
 export function applyCatalogSize(
   sizes: CatalogSizes,
@@ -176,17 +182,19 @@ export function applyCatalogSize(
   // come from a caller pairing the wrong two, and changes nothing.
   switch (target.kind) {
     case "plant":
-      return typeof value === "string"
-        ? { ...sizes, plantSize: { ...sizes.plantSize, [target.tech]: value } }
-        : sizes;
+      return { ...sizes, plantSize: { ...sizes.plantSize, [target.tech]: value } };
     case "farm":
-      return typeof value === "number"
-        ? { ...sizes, farmMw: { ...sizes.farmMw, [target.tech]: value } }
-        : sizes;
-    case "batteryPower":
-      return typeof value === "number" ? { ...sizes, batteryPowerMw: value } : sizes;
-    case "batteryCapacity":
-      return typeof value === "number" ? { ...sizes, batteryCapacityMwh: value } : sizes;
+      return { ...sizes, farmSize: { ...sizes.farmSize, [target.tech]: value } };
+    case "storagePower":
+      return {
+        ...sizes,
+        storagePowerSize: { ...sizes.storagePowerSize, [target.tech]: value },
+      };
+    case "storageCapacity":
+      return {
+        ...sizes,
+        storageCapacitySize: { ...sizes.storageCapacitySize, [target.tech]: value },
+      };
   }
 }
 
@@ -209,42 +217,30 @@ export interface CatalogStepper {
   increaseTo: CatalogSizeValue | null;
 }
 
-/** A `− MW +` control over a plain number: farms and battery modules. */
-function mwStepper(
+/**
+ * The one size control of the catalogue (01 §5.1–§5.3, 0.26). Everything
+ * buildable now walks the same four rungs, so there is one builder: a plant
+ * block, a farm, a storage's power and a storage's capacity differ only in
+ * caption, ladder and unit. A four-way segmented control is explicitly the
+ * wrong component in the design system (SegmentedControl.prompt.md: "cztery
+ * opcje = zły komponent"), so the ladder rides the stepper.
+ */
+function rungStepper(
   target: CatalogSizeTarget,
   label: string,
-  value: number,
-  unit: string,
-  { min, max, step }: { min: number; max: number; step: number },
+  size: BuildSize,
+  ladder: Record<BuildSize, number>,
+  format: (value: number) => string,
 ): CatalogStepper {
+  const rung = BUILD_SIZES.indexOf(size);
   return {
     target,
     label,
-    valueLabel: `${formatNumber(value)} ${unit}`,
-    decreaseLabel: `−${formatNumber(step)} ${unit}`,
-    increaseLabel: `+${formatNumber(step)} ${unit}`,
-    decreaseTo: value - step >= min ? value - step : null,
-    increaseTo: value + step <= max ? value + step : null,
-  };
-}
-
-/**
- * The block-size control: four rungs, walked one at a time (01 §5.1 in 0.24).
- * A four-way segmented control is explicitly the wrong component in the design
- * system (SegmentedControl.prompt.md: "cztery opcje = zły komponent"), so the
- * ladder rides the stepper the catalogue already uses.
- */
-function blockStepper(tech: PlantTech, size: PlantBlockSize): CatalogStepper {
-  const rung = PLANT_BLOCK_SIZES.indexOf(size);
-  const mw = PLANT_TECHS[tech].blockMw[size];
-  return {
-    target: { kind: "plant", tech },
-    label: "BLOK",
-    valueLabel: `${PLANT_BLOCK_SIZE_NAMES[size]} · ${formatMw(mw)}`,
+    valueLabel: `${BUILD_SIZE_NAMES[size]} · ${format(ladder[size])}`,
     decreaseLabel: "mniejszy",
     increaseLabel: "większy",
-    decreaseTo: PLANT_BLOCK_SIZES[rung - 1] ?? null,
-    increaseTo: PLANT_BLOCK_SIZES[rung + 1] ?? null,
+    decreaseTo: BUILD_SIZES[rung - 1] ?? null,
+    increaseTo: BUILD_SIZES[rung + 1] ?? null,
   };
 }
 
@@ -626,7 +622,7 @@ export function buildCatalog(
       size: `${formatMw(capacityMw)} · ${daysLabel(spec.buildDays)} BUDOWY`,
       basePln: capacityMw * spec.capexPlnPerMw,
       action: { type: "buildPlant", tech, size, hex },
-      steppers: [blockStepper(tech, size)],
+      steppers: [rungStepper({ kind: "plant", tech }, "BLOK", size, spec.blockMw, formatMw)],
     });
   });
 
@@ -634,53 +630,47 @@ export function buildCatalog(
   // the SITE — at sea it is the same turbine, priced and bounded differently.
   const farms = (["wind", "pv"] as const).map((tech) => {
     const site = farmSiting(tech, terrainAt(state, hex));
-    const capacityMw = Math.min(sizes.farmMw[tech], site.maxMwPerHex);
+    const size = sizes.farmSize[tech];
+    const capacityMw = FARM_TECHS[tech].sizeMw[size];
     return entry(state, hex, {
       key: `farm:${tech}`,
       name: FARM_CATALOG_NAMES[tech],
       size: `${formatMw(capacityMw)} · ${daysLabel(site.buildDays)} BUDOWY`,
       basePln: capacityMw * FARM_TECHS[tech].capexPlnPerMw,
-      action: { type: "buildFarm", tech, capacityMw, hex },
+      action: { type: "buildFarm", tech, size, hex },
       siteMultiplier: site.multiplier,
       steppers: [
-        mwStepper({ kind: "farm", tech }, "MOC", capacityMw, "MW", {
-          min: FARM_BLOCKS[tech].stepMw,
-          max: site.maxMwPerHex,
-          step: FARM_BLOCKS[tech].stepMw,
-        }),
+        rungStepper({ kind: "farm", tech }, "MOC", size, FARM_TECHS[tech].sizeMw, formatMw),
       ],
     });
   });
 
-  const powerMw = sizes.batteryPowerMw;
-  const capacityMwh = sizes.batteryCapacityMwh;
-  const battery = entry(state, hex, {
-    key: "storage:battery",
-    name: STORAGE_CATALOG_NAMES.battery,
-    size: `${formatMw(powerMw)} / ${formatMwh(capacityMwh)} · ${daysLabel(STORAGE_TECHS.battery.buildDays)} BUDOWY`,
-    basePln: powerMw * BATTERY.powerCapexPlnPerMw + capacityMwh * BATTERY.energyCapexPlnPerMwh,
-    action: { type: "buildBattery", powerMw, capacityMwh, hex },
-    steppers: [
-      mwStepper({ kind: "batteryPower" }, "MOC", powerMw, "MW", {
-        min: BATTERY_BLOCK.stepPowerMw,
-        max: BATTERY.maxPowerMwPerHex,
-        step: BATTERY_BLOCK.stepPowerMw,
-      }),
-      mwStepper({ kind: "batteryCapacity" }, "POJEMNOŚĆ", capacityMwh, "MWh", {
-        min: BATTERY_BLOCK.stepCapacityMwh,
-        max: BATTERY.maxCapacityMwhPerHex,
-        step: BATTERY_BLOCK.stepCapacityMwh,
-      }),
-    ],
-  });
-
-  const pumped = entry(state, hex, {
-    key: "storage:pumped",
-    name: STORAGE_CATALOG_NAMES.pumped,
-    size: `${formatMw(PUMPED_BLOCK.powerMw)} / ${formatMwh(PUMPED_BLOCK.capacityMwh)} · ${daysLabel(STORAGE_TECHS.pumped.buildDays)} BUDOWY`,
-    basePln: PUMPED_BLOCK.capexPln,
-    action: { type: "buildPumpedStorage", hex },
-    extraNote: pumpedSiteNote(state, hex),
+  // 01 §5.3 (0.26): both storage technologies are ordered the same way — two
+  // independent axes, each on its own ladder. Only the site rule differs.
+  const storages = (["battery", "pumped"] as const).map((tech) => {
+    const spec = STORAGE_TECHS[tech];
+    const powerSize = sizes.storagePowerSize[tech];
+    const capacitySize = sizes.storageCapacitySize[tech];
+    const powerMw = spec.powerMw[powerSize];
+    const capacityMwh = spec.capacityMwh[capacitySize];
+    return entry(state, hex, {
+      key: `storage:${tech}`,
+      name: STORAGE_CATALOG_NAMES[tech],
+      size: `${formatMw(powerMw)} / ${formatMwh(capacityMwh)} · ${daysLabel(spec.buildDays)} BUDOWY`,
+      basePln: powerMw * spec.powerCapexPlnPerMw + capacityMwh * spec.energyCapexPlnPerMwh,
+      action: { type: "buildStorage", tech, powerSize, capacitySize, hex },
+      extraNote: tech === "pumped" ? pumpedSiteNote(state, hex) : null,
+      steppers: [
+        rungStepper({ kind: "storagePower", tech }, "MOC", powerSize, spec.powerMw, formatMw),
+        rungStepper(
+          { kind: "storageCapacity", tech },
+          "POJEMNOŚĆ",
+          capacitySize,
+          spec.capacityMwh,
+          formatMwh,
+        ),
+      ],
+    });
   });
 
   const junction = entry(state, hex, {
@@ -701,7 +691,7 @@ export function buildCatalog(
     extraNote: borderSiteNote(state, hex),
   });
 
-  return [...plants, ...farms, battery, pumped, junction, border];
+  return [...plants, ...farms, ...storages, junction, border];
 }
 
 // --- object -----------------------------------------------------------------
@@ -755,8 +745,8 @@ function expansionActions(state: GameState, objectId: string): HexAction[] {
         return pending.plantId;
       case "farmExpansion":
         return pending.farmId;
-      case "batteryExpansion":
-      case "pumpedExpansion":
+      case "storagePowerExpansion":
+      case "storageCapacityExpansion":
         return pending.storageId;
       case "borderExpansion":
         return pending.borderId;
@@ -877,7 +867,7 @@ function plantView(state: GameState, report: TurnReport | null, plant: PlantStat
       routeAction(state, plant.hex),
       expansionAction(state, plant.hex, {
         key: "expand",
-        label: `ROZBUDUJ · +BLOK ${PLANT_BLOCK_SIZE_NAMES[blockSize]} ${formatMw(blockMw)}`,
+        label: `ROZBUDUJ · +BLOK ${BUILD_SIZE_NAMES[blockSize]} ${formatMw(blockMw)}`,
         basePln: blockMw * spec.capexPlnPerMw * EXPANSION.capexShare,
         action: { type: "expandPlant", plantId: plant.id, size: blockSize },
         limit: limitNote(plant.blocks, pending, 1, MAX_PLANT_BLOCKS_PER_HEX, "bloków"),
@@ -895,10 +885,14 @@ function farmView(state: GameState, report: TurnReport | null, farm: FarmState):
   const site = farmSiting(farm.tech, terrainAt(state, farm.hex));
   const produced = report?.sources.find((source) => source.sourceId === farm.id);
   const alert = inBottleneck(state, report, farm.hex);
-  const stepMw = FARM_BLOCKS[farm.tech].stepMw;
   const pending = queued(state, (item) =>
     item.kind === "farmExpansion" && item.farmId === farm.id ? item.capacityMw : 0,
   );
+  // 01 §7 (0.26): offer the largest rung the hex still has room for — proposing
+  // an order the engine would refuse teaches the player nothing.
+  const room = site.maxMwPerHex - farm.capacityMw - pending;
+  const growSize = largestSizeWithin(spec.sizeMw, room);
+  const growMw = growSize === null ? spec.sizeMw.small : spec.sizeMw[growSize];
   return {
     kind: FARM_CATALOG_NAMES[farm.tech],
     status: !farm.enabled
@@ -928,10 +922,10 @@ function farmView(state: GameState, report: TurnReport | null, farm: FarmState):
       routeAction(state, farm.hex),
       expansionAction(state, farm.hex, {
         key: "expand",
-        label: `ROZBUDUJ · +${formatMw(stepMw)}`,
-        basePln: stepMw * spec.capexPlnPerMw * EXPANSION.capexShare,
-        action: { type: "expandFarm", farmId: farm.id, capacityMw: stepMw },
-        limit: limitNote(farm.capacityMw, pending, stepMw, site.maxMwPerHex, "MW"),
+        label: `ROZBUDUJ · +MOC ${BUILD_SIZE_NAMES[growSize ?? "small"]} ${formatMw(growMw)}`,
+        basePln: growMw * spec.capexPlnPerMw * EXPANSION.capexShare,
+        action: { type: "expandFarm", farmId: farm.id, size: growSize ?? "small" },
+        limit: limitNote(farm.capacityMw, pending, growMw, site.maxMwPerHex, "MW"),
         siteMultiplier: site.multiplier,
       }),
       ...expansionActions(state, farm.id),
@@ -957,74 +951,56 @@ function storageView(
     },
     { key: "mode", label: "TRYB", value: STORAGE_MODE_LABELS[storage.setpoint.mode] },
   ];
-  const actions: HexAction[] = [routeAction(state, storage.hex)];
-
-  if (storage.tech === "battery") {
-    const power = queued(state, (item) =>
-      item.kind === "batteryExpansion" && item.storageId === storage.id ? item.powerMw : 0,
-    );
-    const capacity = queued(state, (item) =>
-      item.kind === "batteryExpansion" && item.storageId === storage.id ? item.capacityMwh : 0,
-    );
-    // 01 §5.3: power and capacity are two decisions, so they are two actions.
-    actions.push(
-      expansionAction(state, storage.hex, {
-        key: "expand-power",
-        label: `ROZBUDUJ · +MOC ${formatMw(BATTERY_BLOCK.stepPowerMw)}`,
-        basePln: BATTERY_BLOCK.stepPowerMw * BATTERY.powerCapexPlnPerMw,
-        action: {
-          type: "expandBattery",
-          storageId: storage.id,
-          powerMw: BATTERY_BLOCK.stepPowerMw,
-          capacityMwh: 0,
-        },
-        limit: limitNote(
-          storage.powerMw,
-          power,
-          BATTERY_BLOCK.stepPowerMw,
-          BATTERY.maxPowerMwPerHex,
-          "MW",
-        ),
-      }),
-      expansionAction(state, storage.hex, {
-        key: "expand-capacity",
-        label: `ROZBUDUJ · +POJEMNOŚĆ ${formatMwh(BATTERY_BLOCK.stepCapacityMwh)}`,
-        basePln: BATTERY_BLOCK.stepCapacityMwh * BATTERY.energyCapexPlnPerMwh,
-        action: {
-          type: "expandBattery",
-          storageId: storage.id,
-          powerMw: 0,
-          capacityMwh: BATTERY_BLOCK.stepCapacityMwh,
-        },
-        limit: limitNote(
-          storage.capacityMwh,
-          capacity,
-          BATTERY_BLOCK.stepCapacityMwh,
-          BATTERY.maxCapacityMwhPerHex,
-          "MWh",
-        ),
-      }),
-    );
-  } else {
-    const blocks = Math.round(storage.powerMw / PUMPED_BLOCK.powerMw);
-    const pending = queued(state, (item) =>
-      item.kind === "pumpedExpansion" && item.storageId === storage.id ? 1 : 0,
-    );
-    rows.splice(2, 0, {
-      key: "blocks",
-      label: "BLOKI",
-      value: `${formatNumber(blocks)} / ${formatNumber(PUMPED_BLOCK.maxBlocks)}`,
-    });
-    actions.push(
-      expansionAction(state, storage.hex, {
-        key: "expand",
-        label: `ROZBUDUJ · +BLOK ${formatMw(PUMPED_BLOCK.powerMw)}`,
-        basePln: PUMPED_BLOCK.capexPln,
-        action: { type: "expandPumpedStorage", storageId: storage.id },
-        limit: limitNote(blocks, pending, 1, PUMPED_BLOCK.maxBlocks, "bloków"),
-      }),
-    );
-  }
+  const spec = STORAGE_TECHS[storage.tech];
+  const queuedPower = queued(state, (item) =>
+    item.kind === "storagePowerExpansion" && item.storageId === storage.id ? item.powerMw : 0,
+  );
+  const queuedCapacity = queued(state, (item) =>
+    item.kind === "storageCapacityExpansion" && item.storageId === storage.id
+      ? item.capacityMwh
+      : 0,
+  );
+  // 01 §5.3, §7 (0.26): power and capacity are two decisions, so they are two
+  // actions — for BOTH technologies, since a pumped storage is no longer a
+  // block that moves them together. Each offers the largest rung its axis
+  // still has room for.
+  const powerSize = largestSizeWithin(
+    spec.powerMw,
+    spec.maxPowerMwPerHex - storage.powerMw - queuedPower,
+  );
+  const capacitySize = largestSizeWithin(
+    spec.capacityMwh,
+    spec.maxCapacityMwhPerHex - storage.capacityMwh - queuedCapacity,
+  );
+  const powerMw = spec.powerMw[powerSize ?? "small"];
+  const capacityMwh = spec.capacityMwh[capacitySize ?? "small"];
+  const actions: HexAction[] = [
+    routeAction(state, storage.hex),
+    expansionAction(state, storage.hex, {
+      key: "expand-power",
+      label: `ROZBUDUJ · +MOC ${BUILD_SIZE_NAMES[powerSize ?? "small"]} ${formatMw(powerMw)}`,
+      basePln: powerMw * spec.powerCapexPlnPerMw,
+      action: { type: "expandStoragePower", storageId: storage.id, size: powerSize ?? "small" },
+      limit: limitNote(storage.powerMw, queuedPower, powerMw, spec.maxPowerMwPerHex, "MW"),
+    }),
+    expansionAction(state, storage.hex, {
+      key: "expand-capacity",
+      label: `ROZBUDUJ · +POJEMNOŚĆ ${BUILD_SIZE_NAMES[capacitySize ?? "small"]} ${formatMwh(capacityMwh)}`,
+      basePln: capacityMwh * spec.energyCapexPlnPerMwh,
+      action: {
+        type: "expandStorageCapacity",
+        storageId: storage.id,
+        size: capacitySize ?? "small",
+      },
+      limit: limitNote(
+        storage.capacityMwh,
+        queuedCapacity,
+        capacityMwh,
+        spec.maxCapacityMwhPerHex,
+        "MWh",
+      ),
+    }),
+  ];
 
   actions.push(...expansionActions(state, storage.id), ...(alert ? bottleneckAction(report) : []));
   return {

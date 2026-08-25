@@ -39,8 +39,8 @@ function expandedName(state: GameState, pending: PendingObject): string {
       return named(state.plants, pending.plantId);
     case "farmExpansion":
       return named(state.farms, pending.farmId);
-    case "batteryExpansion":
-    case "pumpedExpansion":
+    case "storagePowerExpansion":
+    case "storageCapacityExpansion":
       return named(state.storages, pending.storageId);
     case "borderExpansion":
       return named(state.borders, pending.borderId);

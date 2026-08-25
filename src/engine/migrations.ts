@@ -74,7 +74,54 @@ export const MIGRATIONS: MigrationRegistry = {
       : state.constructions;
     return { ...state, junctions, constructions };
   },
+  /**
+   * 13 → 14: storage grows along two independent axes (01 §5.3, §7 in 0.26),
+   * so the queue carries `storagePowerExpansion` / `storageCapacityExpansion`
+   * instead of one entry per technology. Nothing is forfeited: a battery order
+   * that bought both axes at once splits into the two entries it always was
+   * underneath, and a pumped block becomes the 250 MW + 2 500 MWh pair it used
+   * to add. The split entry gets a derived id — construction ids are only used
+   * for cancelling, never as the object id of an expansion.
+   */
+  13: (state) => {
+    if (!isRecord(state) || !Array.isArray(state.constructions)) return state;
+    const constructions: unknown[] = [];
+    for (const construction of state.constructions) {
+      if (!isRecord(construction) || !isRecord(construction.pending)) {
+        constructions.push(construction);
+        continue;
+      }
+      const { pending } = construction;
+      const kind = pending.kind;
+      if (kind !== "batteryExpansion" && kind !== "pumpedExpansion") {
+        constructions.push(construction);
+        continue;
+      }
+      const { storageId } = pending;
+      // The old pumped block was a fixed 250 MW / 2 500 MWh pair.
+      const powerMw = kind === "pumpedExpansion" ? 250 : numberOr(pending.powerMw, 0);
+      const capacityMwh = kind === "pumpedExpansion" ? 2_500 : numberOr(pending.capacityMwh, 0);
+      if (powerMw > 0) {
+        constructions.push({
+          ...construction,
+          pending: { kind: "storagePowerExpansion", storageId, powerMw },
+        });
+      }
+      if (capacityMwh > 0) {
+        constructions.push({
+          id: powerMw > 0 ? `${String(construction.id)}-capacity` : construction.id,
+          remainingDays: construction.remainingDays,
+          pending: { kind: "storageCapacityExpansion", storageId, capacityMwh },
+        });
+      }
+    }
+    return { ...state, constructions };
+  },
 };
+
+function numberOr(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
 
 /** Hex-shaped enough for the split to read it. */
 function isHexLike(value: unknown): boolean {

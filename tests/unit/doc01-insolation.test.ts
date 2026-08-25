@@ -132,8 +132,8 @@ describe("doc 01 §3.2: insolation scales PV production", () => {
 describe("doc 01 §3.2: the multiplier is taken from the hex at build time", () => {
   test("a farm built on the dim hex keeps 0.8 forever; elsewhere it is 1.0", () => {
     let state: GameState = newGame(11, makeScenario());
-    state = applyAction(state, { type: "buildFarm", tech: "pv", capacityMw: 50, hex: DIM });
-    state = applyAction(state, { type: "buildFarm", tech: "pv", capacityMw: 50, hex: BRIGHT });
+    state = applyAction(state, { type: "buildFarm", tech: "pv", size: "medium", hex: DIM });
+    state = applyAction(state, { type: "buildFarm", tech: "pv", size: "medium", hex: BRIGHT });
     for (let i = 0; i < TURNS_PER_DAY; i++) state = resolveTurn(state); // PV builds 1 day
     expect(state.farms).toHaveLength(2);
     expect(state.farms[0]?.solarMultiplier).toBe(0.8);

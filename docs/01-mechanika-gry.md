@@ -1,8 +1,51 @@
 # ElectroNation — Dokument bazowy mechaniki gry
 
-**Wersja:** 0.25 (dokument koncepcyjny)
+**Wersja:** 0.26 (dokument koncepcyjny)
 **Data:** 2026-08-21
 **Status:** obowiązuje **wersja uproszczona** gry; mechaniki odłożone czekają w [90-pomysly-na-przyszlosc.md](90-pomysly-na-przyszlosc.md)
+
+**Zmiany 0.25 → 0.26 (cztery rozmiary w całym katalogu; magazyn rośnie dwiema osiami):**
+
+1. **Drabina czterech rozmiarów obejmuje wszystko, co się buduje** (§5.2, §5.3;
+   rozszerza §5.1 z 0.24). Farma wiatrowa i PV zamawiane są szczeblem, a magazyn —
+   **dwoma szczeblami naraz**: osobno moc, osobno pojemność. Suwaków mocy nie ma już
+   nigdzie w katalogu.
+
+| Co | MAŁY | ŚREDNI | DUŻY | WIELKI |
+|---|---|---|---|---|
+| **Wiatr** (ląd i morze) | 50 | 100 | 200 | 300 MW |
+| **PV** | 25 | 50 | 100 | 200 MW |
+| **Bateria — moc** | 50 | 100 | 250 | 500 MW |
+| **Bateria — pojemność** | 100 | 200 | 500 | 1 000 MWh |
+| **Szczytowo-pompowa — moc** | 100 | 250 | 500 | 1 000 MW |
+| **Szczytowo-pompowa — pojemność** | 1 000 | 2 500 | 5 000 | 10 000 MWh |
+
+2. **Moc i pojemność magazynu to dwie niezależne osie, także w rozbudowie** (§5.3, §7).
+   Kupienie MW nigdy nie kupuje MWh: to **dwie osobne akcje**, dwie kolejki i dwa
+   liczniki budowy. Dotyczy to **obu** technologii — bateria miała to od 0.16, teraz
+   dostaje to samo szczytowo-pompowa.
+3. **Szczytowo-pompowa przestaje być sztywnym blokiem** (§5.3; uchyla „blok 250 MW /
+   2 500 MWh, do 4 bloków na heksie" z 0.16). Stosunek pojemności do mocy wybiera
+   gracz, a nie tabela: 10 h to teraz **skutek** zamówienia ŚREDNI/ŚREDNI, a nie
+   właściwość technologii. Limit lokalizacji to odtąd **1 000 MW i 10 000 MWh** — dokładnie
+   to, co dawały cztery bloki.
+4. **Cena rozbita na dwie stawki, bez zmiany rachunku w punkcie kanonicznym**
+   (02 §8.2): szczytowo-pompowa kosztuje **1,1 mln zł/MW + 0,11 mln zł/MWh**, więc dawny
+   blok 250 MW / 2 500 MWh nadal kosztuje **550 mln zł**, a pełny heks nadal 2,2 mld zł.
+   Rozbicie mówi, w czym każda technologia jest dobra: **bateria kupuje moc tanio,
+   a energię drogo; szczytowo-pompowa odwrotnie** — jej zbiornik jest pięć razy tańszy
+   za MWh niż ogniwa (0,11 wobec 0,55 mln zł/MWh), za to maszynownia droższa (1,1 wobec
+   0,8 mln zł/MW). To jest właściwa różnica między nimi, obok sprawności i terenu.
+5. **Najwyższy szczebel farmy wypełnia heks lądowy dokładnie** (§5.2, §7): pojedyncze
+   zamówienie nie może już przekroczyć limitu lokalizacji — może to zrobić wyłącznie
+   rozbudowa. **Morze nie sprzedaje większych farm**: 600 MW na heksie morskim składa
+   się z dwóch zamówień WIELKICH, bo drabina należy do technologii, a limit do terenu.
+6. **Rozbudowa proponuje największy szczebel, który się jeszcze mieści** (§7). Panel nie
+   podsuwa zamówienia, które silnik i tak by odrzucił; gdy nie mieści się już najmniejszy,
+   przycisk gaśnie z notą o limicie.
+7. **Zapis gry przechodzi na schemat 14.** Kolejka budów niesie teraz osobne pozycje dla
+   mocy i pojemności; starsze zapisy migrują bez straty — zamówienie kupujące obie osie
+   naraz rozpada się na dwie pozycje, a blok szczytowo-pompowej na parę 250 MW + 2 500 MWh.
 
 **Zmiany 0.24 → 0.25 (wszystkie ceny inwestycji o połowę niżej):**
 
@@ -995,6 +1038,18 @@ pracuje. Włączenie po fakcie jest zwykłą akcją gracza — automatu, który 
 po dociągnięciu linii, nie ma. Pozostałe obiekty startują z nastawą zero i reguła ich
 nie dotyczy.
 
+**Farmę zamawia się szczeblem, tak jak blok elektrowni (0.26):** cztery rozmiary
+i nic pomiędzy. Drabina należy do **technologii**, limit heksa do **terenu** — dlatego
+morze nie sprzedaje większych farm, tylko mieści dwie WIELKIE.
+
+| Technologia | MAŁY | ŚREDNI | DUŻY | WIELKI | Limit heksa |
+|---|---|---|---|---|---|
+| **Wiatr** (ląd i morze) | 50 MW | 100 MW | 200 MW | 300 MW | 300 MW na lądzie, **600 MW na morzu** |
+| **PV** | 25 MW | 50 MW | 100 MW | 200 MW | 200 MW |
+
+Szczebel WIELKI wypełnia heks lądowy co do MW, więc **pojedyncze zamówienie nigdy nie
+przekroczy limitu lokalizacji** — może to zrobić tylko rozbudowa (§7).
+
 | Technologia | Typowa farma | CAPEX | Czas budowy (doby gry) | Roczny CF (kontrola: 06 §12) | Charakter |
 |---|---|---|---|---|---|
 | **Wiatr lądowy** | 50–300 MW | ~1,8 mln zł/MW | 1 | ~15–30% (zależnie od heksa) | najmocniej wieje zimą; **wyłączenie sztormowe przy 25 m/s** |
@@ -1028,16 +1083,40 @@ Magazyn rozdziela dwa parametry, które gracz musi rozumieć osobno: **moc [MW]*
 oddaje/pobiera) i **pojemność [MWh]** (ile mieści). Bateria 100 MW / 200 MWh oddaje pełną
 moc przez 2 godziny. UI musi to wyraźnie pokazywać.
 
+**DECYZJA (0.26): obie osie mają własną drabinę czterech rozmiarów i własną rozbudowę.**
+Magazyn zamawia się dwoma szczeblami naraz — osobno moc, osobno pojemność — a rozbudowa
+to **dwie niezależne akcje**: kupienie MW nigdy nie kupuje MWh. Dotyczy to obu technologii.
+
+| Technologia | oś | MAŁY | ŚREDNI | DUŻY | WIELKI | Limit heksa |
+|---|---|---|---|---|---|---|
+| **Bateria (BESS)** | moc | 50 | 100 | 250 | 500 MW | 500 MW |
+| | pojemność | 100 | 200 | 500 | 1 000 MWh | 2 000 MWh |
+| **Szczytowo-pompowa** | moc | 100 | 250 | 500 | 1 000 MW | 1 000 MW |
+| | pojemność | 1 000 | 2 500 | 5 000 | 10 000 MWh | 10 000 MWh |
+
+**Szczytowo-pompowa przestaje być sztywnym blokiem (0.26; uchyla „blok 250 MW / 2 500 MWh,
+do 4 bloków" z 0.16).** Stosunek pojemności do mocy wybiera gracz: 10 h jest odtąd
+**skutkiem** zamówienia ŚREDNI/ŚREDNI, a nie właściwością technologii. Wartości z tabeli
+„typowy stosunek" poniżej zostają jako **wskazówka projektowa**, nie jako reguła.
+
 | Typ | Sprawność cyklu | Typowy stosunek pojemność:moc | Budowa (doby gry) | Wymagania terenu |
 |---|---|---|---|---|
 | **Bateria (BESS)** | ~90% | 1–4 h | 1 | brak — wszędzie |
 | **Szczytowo-pompowa** | ~75% | 6–20 h | 5 | góry/wyżyna + woda (§3.2) |
 
-**CAPEX (0.16, ceny z 0.25; 02 §8.2):** bateria — moduł mocy **0,8 mln zł/MW** + moduł
-pojemności **0,55 mln zł/MWh** (kupowane osobno; limit 500 MW / 2 000 MWh na heks); szczytowo-pompowa —
-bloki **250 MW / 2 500 MWh** po **~550 mln zł** (do 4 bloków na heksie).
+**CAPEX (ceny z 0.25, drabiny z 0.26; 02 §8.2):** bateria — **0,8 mln zł/MW** mocy
++ **0,55 mln zł/MWh** pojemności; szczytowo-pompowa — **1,1 mln zł/MW** + **0,11 mln zł/MWh**.
+Obie osie kupuje się osobno, a ceny są modułowe, więc **nie stosuje się do nich rabatu 85%**
+za rozbudowę (§7). Dawny blok szczytowo-pompowej (250 MW / 2 500 MWh) nadal kosztuje
+dokładnie **550 mln zł**, a pełny heks — 2,2 mld zł.
 
-Moc i pojemność baterii rozbudowuje się **osobno** (moduły). Zastosowania w wersji
+**Rozbicie ceny na dwie stawki mówi, w czym każda technologia jest dobra:** bateria kupuje
+moc tanio, a energię drogo; szczytowo-pompowa odwrotnie — jej zbiornik jest **pięć razy
+tańszy za MWh** (0,11 wobec 0,55 mln zł/MWh), za to maszynownia droższa (1,1 wobec
+0,8 mln zł/MW). Bateria jest więc odpowiedzią na **szczyt**, a szczytowo-pompowa na
+**długą dolinę** — i to wynika z cennika, a nie z osobnej reguły.
+
+Zastosowania w wersji
 uproszczonej: przenoszenie taniej energii (nocna jądrowa/węgiel, nadwyżki wiatru) na szczyt
 oraz **bufor na błąd prognozy** — magazyn z zapasem energii to polisa na dolne pasmo wiatru.
 
@@ -1144,7 +1223,8 @@ LCOE — 90 §5.)*
 - **DECYZJA (bez zmian): istniejące obiekty można rozbudowywać, z twardym limitem lokalizacji:**
   elektrownia do **6 bloków** na heksie (0.16), farma OZE do limitu mocy heksa (**wiatr
   300 MW na lądzie i 600 MW na morzu — 0.22, PV 200 MW** — 02 §8.4), magazyn do limitu
-  modułów (moc i pojemność osobno — 02 §8.2), przyłącze graniczne o kolejne moduły
+  **każdej z dwóch osi osobno** (bateria 500 MW / 2 000 MWh, szczytowo-pompowa
+  1 000 MW / 10 000 MWh — 0.26, §5.3), przyłącze graniczne o kolejne moduły
   zdolności (**stacji rozdzielczej nie rozbudowuje się wcale — od 0.21 nie ma czego,
   §5.4**). Rozbudowa = **70% czasu i 85% CAPEX-u** nowej lokalizacji (0.16, przygważdża
   widełki z 0.13). Po osiągnięciu limitu jedyną drogą jest nowa lokalizacja.
@@ -1163,6 +1243,14 @@ LCOE — 90 §5.)*
   dostawić szczebel MAŁY (100 MW) albo WIELKI (500 MW). Panel podpowiada szczebel
   najbliższy średniemu blokowi obiektu — obiekt ze stanu startowego albo starego zapisu
   może mieć moc spoza drabiny, a rozbudowa musi mimo to nazwać rozmiar.
+- **Farma i magazyn rozbudowują się szczeblem, nie dowolną mocą** (0.26, §5.2–§5.3).
+  Dla magazynu **moc i pojemność to dwie osobne rozbudowy**: dwie akcje, dwie kolejki,
+  dwa liczniki budowy — kupienie MW nigdy nie kupuje MWh. Ceny modułowe magazynu są
+  wprost z tabeli, więc rabat 85% ich nie dotyczy; farma liczy 85% / 70% jak dotąd.
+- **Panel proponuje największy szczebel, który się jeszcze mieści** (0.26). Nie podsuwa
+  zamówienia, które silnik i tak odrzuci; gdy nie mieści się już najmniejszy, przycisk
+  gaśnie z notą o limicie. Ponieważ szczebel WIELKI farmy wypełnia heks lądowy co do MW,
+  **limit lokalizacji można przekroczyć wyłącznie rozbudową** — nigdy pierwszym zamówieniem.
 - Nowy blok ma własny licznik budowy; linie można dobudowywać równolegle na tej samej trasie
   — drugi tor zawsze pozostaje osobną linią, także po rozbudowie pierwszego.
 
@@ -1321,6 +1409,7 @@ indeksem ceny.
 | ✅ | Kapitał startowy 10 mld zł, konfigurowalny | 3.4 |
 | ✅ | Czasy budowy K ≈ 40 (0.12; wcześniej K ≈ 5 → 20), linie 3/6/12 h/heks wg typu (0.13) | 2.6 |
 | ✅ | **Model zapotrzebowania i wzrost miast wg dokumentu 05** (0.14; uchyla formułę tymczasową z 0.13): miasto = gospodarstwa + firmy; wzrost 0–4%/mies. przy `U > 99%`, wysycanie pojemnością 16×, kurczenie o połowę niedoboru przy `U < 90%`, podłoga 100/10; miasta niepodłączone zamrożone | 2.7, 5.6, doc 05 |
+| ✅ | **Cztery rozmiary w całym katalogu (0.26)**: farmy OZE i magazyny dobiera się szczeblem tak jak bloki elektrowni; magazyn ma **dwie niezależne osie** (moc i pojemność), każda z własną drabiną i własną rozbudową. Szczytowo-pompowa przestaje być sztywnym blokiem 250/2 500 — jej limit to 1 000 MW / 10 000 MWh, a cena rozbita na 1,1 mln zł/MW + 0,11 mln zł/MWh (dawny blok nadal 550 mln) | 5.2, 5.3, 7, 02 §8.2 |
 | ✅ | **Blok elektrowni z czterech rozmiarów (0.24)**: MAŁY / ŚREDNI / DUŻY / WIELKI wg tabeli §5.1, nic pomiędzy (uchyla dobór mocy bloku co do MW); rozmiar względny wobec technologii, rozbudowa bierze z tej samej drabiny i nie musi trafiać w bloki już stojące. Farm OZE i magazynów zmiana nie dotyczy | 5.1, 7, 8 pkt 6 |
 | ✅ | Rozbudowa istniejących obiektów z twardymi limitami; obiekt zawsze zajmuje 1 heks (0.13) | 7 |
 | ✅ | **Rozbudowa linii do wyższego typu (0.17)**: NN→SN→WN na tej samej trasie, 85% CAPEX-u / 70% czasu, tylko w górę i tylko dla linii gotowej; linia przesyła na starym typie do końca robót i zajmuje korytarz dla obu typów. Kara 5% za ścieżkę „tanio teraz, grubo później" przyjęta świadomie — strojenie w doc 04 | 4.2, 7 |

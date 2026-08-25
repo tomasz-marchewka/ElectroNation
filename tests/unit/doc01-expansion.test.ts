@@ -1,8 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
-  BATTERY,
   JUNCTION_SPEC,
-  PUMPED_BLOCK,
+  STORAGE_TECHS,
   TURNS_PER_DAY,
   applyAction,
   newGame,
@@ -11,7 +10,7 @@ import {
   type FarmState,
   type GameState,
   type LineType,
-  type PlantBlockSize,
+  type BuildSize,
   type Scenario,
 } from "../../src/engine";
 
@@ -65,8 +64,8 @@ function makeScenario(overrides: Partial<Scenario> = {}): Scenario {
         name: "S1",
         hex: { q: 6, r: 0 },
         tech: "pumped",
-        powerMw: PUMPED_BLOCK.powerMw,
-        capacityMwh: PUMPED_BLOCK.capacityMwh,
+        powerMw: STORAGE_TECHS.pumped.powerMw.medium,
+        capacityMwh: STORAGE_TECHS.pumped.capacityMwh.medium,
         socMwh: 0,
         setpoint: { mode: "idle", mw: 0 },
       },
@@ -131,13 +130,15 @@ describe("doc 02 §8.4: plants and farms expand at 85% CAPEX and 70% time", () =
   });
 
   test("a wind farm grows to the 300 MW hex limit; over it is a no-op", () => {
+    // The fixture farm is 100 MW, so LARGE (200 MW) is the rung that fills the
+    // hex exactly — 01 §5.2 in 0.26.
     const base = newGame(7, makeScenario());
-    const ordered = apply(base, { type: "expandFarm", farmId: "farm-1", capacityMw: 200 });
+    const ordered = apply(base, { type: "expandFarm", farmId: "farm-1", size: "large" });
     expect(base.moneyPln - ordered.moneyPln).toBe(Math.round(200 * 1_800_000 * 0.85));
     expect(ordered.constructions[0]?.remainingDays).toBe(1); // 0.7 × 1 day → 1
     const done = run(ordered, TURNS_PER_DAY);
     expect(done.farms[0]?.capacityMw).toBe(300);
-    expect(apply(done, { type: "expandFarm", farmId: "farm-1", capacityMw: 1 })).toBe(done);
+    expect(apply(done, { type: "expandFarm", farmId: "farm-1", size: "small" })).toBe(done);
   });
 
   test("terrain multiplies the expansion price too", () => {
@@ -164,57 +165,65 @@ describe("doc 01 §7: hard site limits, counting work already queued", () => {
     expect(apply(done, { type: "expandPlant", plantId: "plant-1", size: "small" })).toBe(done);
   });
 
-  test("doc 02 §8.2: battery modules are printed prices, capped at 500 MW / 2 000 MWh", () => {
+  test("doc 01 §5.3 (0.26): a battery's two axes grow independently, each capped", () => {
     const base = newGame(7, makeScenario());
-    const ordered = apply(base, {
-      type: "expandBattery",
+    const spec = STORAGE_TECHS.battery;
+    // Buying MW never buys MWh: two actions, two prices, two countdowns.
+    const power = apply(base, {
+      type: "expandStoragePower",
       storageId: "battery-1",
-      powerMw: 50,
-      capacityMwh: 100,
+      size: "small",
     });
-    expect(base.moneyPln - ordered.moneyPln).toBe(
-      50 * BATTERY.powerCapexPlnPerMw + 100 * BATTERY.energyCapexPlnPerMwh,
-    );
-    const done = run(ordered, TURNS_PER_DAY);
+    expect(base.moneyPln - power.moneyPln).toBe(spec.powerMw.small * spec.powerCapexPlnPerMw);
+    const both = apply(power, {
+      type: "expandStorageCapacity",
+      storageId: "battery-1",
+      size: "small",
+    });
+    expect(power.moneyPln - both.moneyPln).toBe(spec.capacityMwh.small * spec.energyCapexPlnPerMwh);
+    expect(both.constructions).toHaveLength(2);
+
+    const done = run(both, TURNS_PER_DAY);
     const battery = done.storages.find((s) => s.id === "battery-1");
-    expect(battery?.powerMw).toBe(150);
-    expect(battery?.capacityMwh).toBe(300);
+    expect(battery?.powerMw).toBe(100 + spec.powerMw.small); // 150
+    expect(battery?.capacityMwh).toBe(200 + spec.capacityMwh.small); // 300
+
+    // 150 + 500 > 500 MW, and 300 + 1 000 · 2 > 2 000 MWh once queued.
     expect(
-      apply(done, {
-        type: "expandBattery",
-        storageId: "battery-1",
-        powerMw: 400,
-        capacityMwh: 0,
-      }),
-    ).toBe(done); // 150 + 400 > 500 MW
+      apply(done, { type: "expandStoragePower", storageId: "battery-1", size: "xlarge" }),
+    ).toBe(done);
+    const queued = apply(done, {
+      type: "expandStorageCapacity",
+      storageId: "battery-1",
+      size: "xlarge",
+    });
     expect(
-      apply(done, {
-        type: "expandBattery",
-        storageId: "battery-1",
-        powerMw: 0,
-        capacityMwh: 1_800,
-      }),
-    ).toBe(done); // 300 + 1 800 > 2 000 MWh
+      apply(queued, { type: "expandStorageCapacity", storageId: "battery-1", size: "xlarge" }),
+    ).toBe(queued); // the queue counts toward the cap
   });
 
-  test("doc 02 §8.2: pumped storage grows by whole blocks, 4 per site", () => {
-    let state = newGame(7, makeScenario());
-    const before = state.moneyPln;
-    state = apply(state, { type: "expandPumpedStorage", storageId: "pumped-1" });
-    expect(before - state.moneyPln).toBe(PUMPED_BLOCK.capexPln);
-    expect(state.constructions[0]?.remainingDays).toBe(5); // STORAGE_TECHS.pumped
-    state = run(state, 5 * TURNS_PER_DAY);
-    const pumped = () => state.storages.find((s) => s.id === "pumped-1");
-    expect(pumped()?.powerMw).toBe(500);
-    expect(pumped()?.capacityMwh).toBe(5_000);
+  test("doc 01 §5.3 (0.26): pumped storage grows the same way — no more blocks", () => {
+    const base = newGame(7, makeScenario());
+    const spec = STORAGE_TECHS.pumped;
+    // The fixture is the old 250 MW / 2 500 MWh block, i.e. MEDIUM/MEDIUM.
+    const ordered = apply(base, {
+      type: "expandStoragePower",
+      storageId: "pumped-1",
+      size: "medium",
+    });
+    expect(base.moneyPln - ordered.moneyPln).toBe(spec.powerMw.medium * spec.powerCapexPlnPerMw);
+    expect(ordered.constructions[0]?.remainingDays).toBe(5); // STORAGE_TECHS.pumped
+    const done = run(ordered, 5 * TURNS_PER_DAY);
+    const pumped = done.storages.find((s) => s.id === "pumped-1");
+    // Power moved on its own — the reservoir did NOT follow it.
+    expect(pumped?.powerMw).toBe(500);
+    expect(pumped?.capacityMwh).toBe(2_500);
 
-    state = apply(state, { type: "expandPumpedStorage", storageId: "pumped-1" });
-    state = apply(state, { type: "expandPumpedStorage", storageId: "pumped-1" });
-    const refused = apply(state, { type: "expandPumpedStorage", storageId: "pumped-1" });
-    expect(refused).toBe(state); // 2 standing + 2 queued = the 4-block cap
-    state = run(state, 5 * TURNS_PER_DAY);
-    expect(pumped()?.powerMw).toBe(1_000);
-    expect(pumped()?.capacityMwh).toBe(10_000);
+    // The old fixed block is still expressible: MEDIUM + MEDIUM costs what it did.
+    expect(
+      spec.powerMw.medium * spec.powerCapexPlnPerMw +
+        spec.capacityMwh.medium * spec.energyCapexPlnPerMwh,
+    ).toBe(550_000_000);
   });
 
   test("doc 01 §5.4 (0.21): a junction station has nothing to expand", () => {
@@ -237,15 +246,23 @@ describe("doc 01 §7: hard site limits, counting work already queued", () => {
   test("unknown ids, zero sizes and an empty wallet are no-ops", () => {
     const base = newGame(7, makeScenario());
     expect(apply(base, { type: "expandPlant", plantId: "nope", size: "small" })).toBe(base);
-    expect(apply(base, { type: "expandFarm", farmId: "farm-1", capacityMw: 0 })).toBe(base);
+    expect(apply(base, { type: "expandFarm", farmId: "nope", size: "small" })).toBe(base);
+    expect(apply(base, { type: "expandStoragePower", storageId: "nope", size: "small" })).toBe(
+      base,
+    );
+    // 01 §5.3 (0.26): one pair of actions serves both technologies, so there is
+    // no "wrong technology" refusal left — only an unknown rung.
     expect(
-      apply(base, { type: "expandBattery", storageId: "pumped-1", powerMw: 10, capacityMwh: 0 }),
-    ).toBe(base); // wrong technology
-    expect(apply(base, { type: "expandPumpedStorage", storageId: "battery-1" })).toBe(base);
+      apply(base, {
+        type: "expandStorageCapacity",
+        storageId: "pumped-1",
+        size: "huge" as BuildSize,
+      }),
+    ).toBe(base);
     // 01 §5.1 (0.24): a block has one of four sizes — anything else off the
     // wire is refused, not rounded to the nearest one.
     expect(
-      apply(base, { type: "expandPlant", plantId: "plant-1", size: "huge" as PlantBlockSize }),
+      apply(base, { type: "expandPlant", plantId: "plant-1", size: "huge" as BuildSize }),
     ).toBe(base);
     const poor = { ...base, moneyPln: 1_000 };
     expect(apply(poor, { type: "expandBorder", borderId: "border-1" })).toBe(poor);

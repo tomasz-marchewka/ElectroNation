@@ -8,7 +8,7 @@ import type {
   ForecastLevel,
   LineType,
   LoadError,
-  PlantBlockSize,
+  BuildSize,
   PlantTech,
   RegimeId,
   StorageMode,
@@ -142,12 +142,14 @@ export const PLANT_CATALOG_NAMES: Record<PlantTech, string> = {
 };
 
 /**
- * 01 §5.1 (0.24): the four rungs a block is sold in. Masculine — the noun is
- * `blok`. The names are relative to the technology, never absolute: a MAŁY
- * nuclear block is 1 000 MW, a WIELKI gas one 500 MW, and the panel prints the
- * MW next to the name so the two never get confused.
+ * 01 §5.1–§5.3 (0.24, extended in 0.26): the four rungs anything is sold in.
+ * Masculine — the noun is `blok`, and for a farm or a storage axis the panel
+ * puts the name next to `MOC` / `POJEMNOŚĆ`, which carry their own gender in
+ * the caption. The names are relative to what they size, never absolute: a MAŁY
+ * nuclear block is 800 MW, a WIELKI gas one 500 MW, so the panel always prints
+ * the MW next to the name.
  */
-export const PLANT_BLOCK_SIZE_NAMES: Record<PlantBlockSize, string> = {
+export const BUILD_SIZE_NAMES: Record<BuildSize, string> = {
   small: "MAŁY",
   medium: "ŚREDNI",
   large: "DUŻY",

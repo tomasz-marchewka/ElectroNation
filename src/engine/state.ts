@@ -23,7 +23,7 @@ import type { MonthRegimes, RegimeId } from "./regimes";
  * by the build before it still loads. A bump without its migration turns every
  * existing save into a load error.
  */
-export const STATE_SCHEMA_VERSION = 13;
+export const STATE_SCHEMA_VERSION = 14;
 
 export const TURNS_PER_DAY = 8;
 export const HOURS_PER_TURN = 3;
@@ -192,8 +192,8 @@ export type PendingObject =
   | { kind: "border"; border: BorderState }
   | { kind: "plantExpansion"; plantId: string; capacityMw: number }
   | { kind: "farmExpansion"; farmId: string; capacityMw: number }
-  | { kind: "batteryExpansion"; storageId: string; powerMw: number; capacityMwh: number }
-  | { kind: "pumpedExpansion"; storageId: string }
+  | { kind: "storagePowerExpansion"; storageId: string; powerMw: number }
+  | { kind: "storageCapacityExpansion"; storageId: string; capacityMwh: number }
   | { kind: "borderExpansion"; borderId: string };
 
 export interface ConstructionState {

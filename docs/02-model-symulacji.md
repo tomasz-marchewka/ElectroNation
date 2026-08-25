@@ -1,10 +1,23 @@
 # ElectroNation — Model symulacji uproszczonej (silnik tury)
 
-**Wersja:** 0.10
+**Wersja:** 0.11
 **Data:** 2026-08-21
 **Status:** **obowiązuje** — formalizuje rdzeń mechaniki z dokumentu 01 §4 (graf sieci,
 rozpływ, straty, niedobory) oraz krok rozstrzygnięcia tury. Wprowadzona tu zmiana 01 §4.1
 (nadwyżka sterowalna karana) obowiązuje od 01 v0.16.
+
+**Zmiany 0.10 → 0.11 (cztery rozmiary w całym katalogu; magazyn na dwóch osiach):**
+§8.2, §8.4 — farmy i magazyny zamawia się **szczeblem**, nie dowolną mocą (01 §5.2–§5.3
+w 0.26), a magazyn dwoma szczeblami naraz: osobno moc, osobno pojemność. **Szczytowo-pompowa
+przestaje być sztywnym blokiem** — dostaje ten sam model co bateria, cenę rozbitą na
+**1,1 mln zł/MW + 0,11 mln zł/MWh** (dawny blok 250 MW / 2 500 MWh nadal kosztuje 550 mln,
+pełny heks 2,2 mld) i limity **1 000 MW / 10 000 MWh** zamiast czterech bloków.
+**Kontrakt akcji:** `buildBattery` i `buildPumpedStorage` zastępuje jedno `buildStorage`
+(`tech`, `powerSize`, `capacitySize`), a `expandBattery` i `expandPumpedStorage` — para
+`expandStoragePower` / `expandStorageCapacity`. Rozpływ, straty i rachunek tury bez zmian:
+magazyn wchodzi do grafu tak samo, zmienia się tylko to, co wolno zamówić. **Schemat zapisu
+14** — kolejka budów niesie osobne pozycje dla obu osi, a migracja 13 → 14 rozbija starą
+pozycję dwuosiową i blok szczytowo-pompowej bez straty. Nowy test akceptacyjny §9.16.
 
 **Zmiany 0.9 → 0.10 (wszystkie ceny inwestycji o połowę niżej):** §8.1–§8.4 — każdy CAPEX
 w grze spada o połowę (01 §5.1 w 0.25): elektrownie, farmy, magazyny, linie, stacje,
@@ -362,12 +375,20 @@ o 0,18 roku, więc nie kupuje tyle, ile kosztuje w komplikacji. Knob do strojeni
 
 ### 8.2 Magazyny — CAPEX i moduły (uzupełnia 01 §5.3)
 
-| Typ | CAPEX | Moduł rozbudowy | Limit na heks |
+| Typ | CAPEX | Rozbudowa | Limit na heks |
 |---|---|---|---|
-| **Bateria (BESS)** | moc: **0,8 mln zł/MW** · pojemność: **0,55 mln zł/MWh** (kupowane osobno) | dowolna kombinacja modułów mocy/pojemności | 500 MW / 2 000 MWh |
-| **Szczytowo-pompowa** | blok **250 MW / 2 500 MWh** (10 h): **~550 mln zł** | +1 blok | 4 bloki (1000 MW / 10 000 MWh) |
+| **Bateria (BESS)** | moc: **0,8 mln zł/MW** · pojemność: **0,55 mln zł/MWh** | dwie niezależne osie, każda szczeblem | 500 MW / 2 000 MWh |
+| **Szczytowo-pompowa** (0.11) | moc: **1,1 mln zł/MW** · pojemność: **0,11 mln zł/MWh** | dwie niezależne osie, każda szczeblem | 1 000 MW / 10 000 MWh |
 
-Przykład: bateria 100 MW / 200 MWh = 80 + 110 = **190 mln zł**, budowa 1 doba gry.
+Szczeble obu osi — 01 §5.3. Przykład: bateria ŚREDNI/ŚREDNI = 100 MW / 200 MWh =
+80 + 110 = **190 mln zł**, budowa 1 doba gry; szczytowo-pompowa ŚREDNI/ŚREDNI =
+250 MW / 2 500 MWh = 275 + 275 = **550 mln zł**, czyli dokładnie dawny blok.
+
+**Ceny są modułowe, więc rabat rozbudowy 85% ich nie dotyczy** (§8.4) — dokładnie jak
+dotąd przy baterii. Rozbicie na dwie stawki jest nośnikiem różnicy między technologiami:
+zbiornik szczytowo-pompowej jest **5× tańszy za MWh** niż ogniwa baterii, a jej maszynownia
+**1,4× droższa za MW**. Bateria jest więc tania na szczyt, pompowa na długą dolinę — bez
+osobnej reguły, samym cennikiem.
 
 ### 8.3 Koszty stałe utrzymania (uzupełnia 01 §5–6)
 
@@ -391,8 +412,19 @@ Naliczanie dobowe: roczne / 365 × liczba reprezentowanych dni doby (01 §6).
 **DECYZJA (9):** rozbudowa = **70% czasu** i **85% CAPEX-u** nowej lokalizacji
 (jednakowo dla wszystkich technologii). Limity: elektrownie sterowalne **6 bloków
 na heks**; farmy OZE do limitu mocy heksa: **wiatr 300 MW na lądzie i 600 MW na morzu
-(0.7), PV 200 MW**; magazyny wg tabel (§8.2). Stacji rozdzielczej nie rozbudowuje się
-w ogóle (01 §5.4 w 0.21).
+(0.7), PV 200 MW**; magazyny wg tabel (§8.2), **każda oś licząc się osobno** (0.11).
+Stacji rozdzielczej nie rozbudowuje się w ogóle (01 §5.4 w 0.21).
+
+**Rozszerzenie (01 §5.2–§5.3 w 0.26): farmy i magazyny zamawia się szczeblem.** Akcje
+`buildFarm` / `expandFarm` niosą `size`, `buildStorage` niesie `powerSize` i `capacitySize`,
+a rozbudowa magazynu to **dwie akcje** — `expandStoragePower` i `expandStorageCapacity`.
+Szczebel spoza czwórki jest odrzucany jak każda inna niedozwolona akcja. Dwie konsekwencje
+dla rachunku limitów:
+
+| Co | Jak |
+|---|---|
+| Farma | szczebel WIELKI = limit heksa lądowego co do MW, więc **pierwsze zamówienie nigdy nie przekroczy limitu** — może to zrobić tylko rozbudowa. Heks morski (600 MW) mieści dwa zamówienia WIELKIE: drabina należy do technologii, limit do terenu |
+| Magazyn | **każda oś ma własny licznik kolejki**: zamówiona moc nie blokuje pojemności i odwrotnie. Limit sprawdza się osobno dla MW i dla MWh, wliczając to, co już stoi w kolejce tej samej osi |
 
 **Rozszerzenie (01 §5.1, §7 w 0.24): moc bloku elektrowni jest wyborem z czterech
 rozmiarów**, nie liczbą. Akcje `buildPlant` i `expandPlant` niosą **szczebel**
@@ -519,6 +551,15 @@ Testy specyfikacyjne cytują sekcje tego dokumentu:
     scenariusza) czyta się jako szczebel najbliższy, a rozbudowa o dowolny szczebel działa
     i liczy limit 6 bloków bez względu na rozmiary.
 
+16. **§8.2, §8.4** — cztery rozmiary i dwie osie magazynu (01 §5.2–§5.3 w 0.26): każda
+    farma i każda oś magazynu ma dokładnie cztery szczeble o rosnących wartościach; szczebel
+    WIELKI farmy równa się limitowi heksa lądowego, więc pojedynczy `buildFarm` nigdy go nie
+    przekroczy, a heks morski wypełniają dwa zamówienia WIELKIE. `expandStoragePower` nie
+    zmienia pojemności, `expandStorageCapacity` nie zmienia mocy, obie liczą swój limit
+    osobno wraz z kolejką tej samej osi, a szczebel spoza czwórki jest odrzucany. Cena
+    szczytowo-pompowej ŚREDNI/ŚREDNI wynosi 550 mln zł — tyle, ile dawny blok. Migracja
+    13 → 14 rozbija starą pozycję kolejki na dwie, nie gubiąc ani MW, ani MWh.
+
 ## 10. Pytania otwarte
 
 1. **Strojenie kary bilansowej** (400 zł/MWh) i weryfikacja, czy import take-or-pay
@@ -544,6 +585,9 @@ Testy specyfikacyjne cytują sekcje tego dokumentu:
 - **01 §5.1, §7, §8 pkt 6** — zmiana (0.9): blok elektrowni sterowalnej ma jeden
   z czterech rozmiarów, a akcja budowy/rozbudowy nazywa szczebel. Zaktualizowane
   w 01 v0.24; tabela mocy szczebli jest w 01 §5.1 i to ona jest kanonem.
+- **01 §5.2, §5.3, §7** — zmiana (0.11): cztery rozmiary obejmują farmy i magazyny,
+  magazyn rośnie dwiema niezależnymi osiami, szczytowo-pompowa przestaje być blokiem.
+  Zaktualizowane w 01 v0.26; kontrakt akcji i schemat zapisu 14 opisane w nagłówku.
 - **01 §5.1, §5.2, §11** — zmiana (0.10): CAPEX elektrowni sterowalnych o połowę niżej;
   kolejność zwrotów odwrócona, porównanie z 0.7/01 0.22 uchylone. Zaktualizowane
   w 01 v0.25, z trzema pytaniami przekazanymi do **doc 03** (taryfa i kapitał startowy,

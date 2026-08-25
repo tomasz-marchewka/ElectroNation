@@ -13,6 +13,7 @@ import {
   offsetToAxial,
   resolveTurn,
   type Action,
+  type BuildSize,
   type GameState,
   type Scenario,
 } from "../../src/engine";
@@ -106,7 +107,7 @@ describe("doc 02 §8.1: terrain multiplies what a route costs", () => {
       expect(
         apply(state, { type: "buildPlant", tech: "ocgt", size: "medium", hex: at(1, 0) }),
       ).toBe(state);
-      expect(apply(state, { type: "buildFarm", tech: "pv", capacityMw: 50, hex: at(1, 0) })).toBe(
+      expect(apply(state, { type: "buildFarm", tech: "pv", size: "medium", hex: at(1, 0) })).toBe(
         state,
       );
     }
@@ -120,16 +121,16 @@ describe("doc 02 §8.1, §8.4: offshore wind", () => {
   const SITE = at(1, 0);
   const seaScenario = () => makeScenario({ terrain: { [key(1, 0)]: "sea" } });
   const lakeScenario = () => makeScenario({ terrain: { [key(1, 0)]: "lake" } });
-  const windAt = (capacityMw: number): Action => ({
+  const windAt = (size: BuildSize): Action => ({
     type: "buildFarm",
     tech: "wind",
-    capacityMw,
+    size,
     hex: SITE,
   });
 
   test("a wind farm stands on the sea and costs 2.5× the base CAPEX", () => {
     const state = newGame(5, seaScenario());
-    const built = apply(state, windAt(300));
+    const built = apply(state, windAt("xlarge"));
     expect(built.constructions).toHaveLength(1);
     expect(state.moneyPln - built.moneyPln).toBe(
       Math.round(300 * FARM_TECHS.wind.capexPlnPerMw * TERRAIN.sea.windFarm),
@@ -137,57 +138,84 @@ describe("doc 02 §8.1, §8.4: offshore wind", () => {
 
     // The land reference: same farm, same action, plain multiplier.
     const onLand = newGame(5, makeScenario());
-    const ashore = apply(onLand, windAt(300));
+    const ashore = apply(onLand, windAt("xlarge"));
     expect(onLand.moneyPln - ashore.moneyPln).toBe(300 * FARM_TECHS.wind.capexPlnPerMw);
   });
 
   test("a lake carries no turbines either", () => {
     const state = newGame(5, lakeScenario());
-    expect(apply(state, windAt(100))).toBe(state);
+    expect(apply(state, windAt("medium"))).toBe(state);
   });
 
   test("everything except a wind farm is still refused at sea", () => {
     const state = newGame(5, seaScenario());
     const refused: Action[] = [
-      { type: "buildFarm", tech: "pv", capacityMw: 50, hex: SITE },
+      { type: "buildFarm", tech: "pv", size: "medium", hex: SITE },
       { type: "buildPlant", tech: "ocgt", size: "medium", hex: SITE },
-      { type: "buildBattery", powerMw: 50, capacityMwh: 100, hex: SITE },
-      { type: "buildPumpedStorage", hex: SITE },
+      {
+        type: "buildStorage",
+        tech: "battery",
+        powerSize: "small",
+        capacitySize: "small",
+        hex: SITE,
+      },
+      {
+        type: "buildStorage",
+        tech: "pumped",
+        powerSize: "medium",
+        capacitySize: "medium",
+        hex: SITE,
+      },
       { type: "buildJunction", hex: SITE },
       { type: "buildBorder", hex: SITE },
     ];
     for (const action of refused) expect(apply(state, action)).toBe(state);
   });
 
-  test("the sea hex holds 600 MW, the land hex 300", () => {
-    const sea = newGame(5, seaScenario());
-    expect(apply(sea, windAt(600)).constructions).toHaveLength(1);
-    expect(apply(sea, windAt(601))).toBe(sea);
+  // 01 §5.2 (0.26): the ladder tops out at the LAND hex (300 MW), so the sea's
+  // extra room is reached by expanding, not by ordering a bigger farm.
+  test("the sea hex holds two extra-large farms, the land hex one", () => {
+    const run = (state: GameState, turns: number) => {
+      let current = state;
+      for (let i = 0; i < turns; i++) current = resolveTurn(current);
+      return current;
+    };
+    const sea = run(apply(newGame(5, seaScenario()), windAt("xlarge")), 2 * TURNS_PER_DAY);
+    const seaFarm = sea.farms[0];
+    expect(seaFarm?.capacityMw).toBe(300);
+    const grown = apply(sea, { type: "expandFarm", farmId: seaFarm?.id ?? "", size: "xlarge" });
+    expect(grown.constructions).toHaveLength(1);
+    expect(apply(grown, { type: "expandFarm", farmId: seaFarm?.id ?? "", size: "small" })).toBe(
+      grown,
+    ); // 300 standing + 300 queued fills the 600 MW sea hex
 
-    const land = newGame(5, makeScenario());
-    expect(apply(land, windAt(300)).constructions).toHaveLength(1);
-    expect(apply(land, windAt(301))).toBe(land);
+    const land = run(apply(newGame(5, makeScenario()), windAt("xlarge")), TURNS_PER_DAY);
+    const landFarm = land.farms[0];
+    expect(landFarm?.capacityMw).toBe(300);
+    expect(apply(land, { type: "expandFarm", farmId: landFarm?.id ?? "", size: "small" })).toBe(
+      land,
+    ); // the land hex is already full
   });
 
   test("building at sea takes 2 game days, on land 1", () => {
-    const sea = apply(newGame(5, seaScenario()), windAt(100));
+    const sea = apply(newGame(5, seaScenario()), windAt("medium"));
     expect(sea.constructions[0]?.remainingDays).toBe(OFFSHORE_WIND.buildDays);
 
-    const land = apply(newGame(5, makeScenario()), windAt(100));
+    const land = apply(newGame(5, makeScenario()), windAt("medium"));
     expect(land.constructions[0]?.remainingDays).toBe(FARM_TECHS.wind.buildDays);
   });
 
   test("the farm freezes the hex's baltic wind class at build time", () => {
     const scenario = seaScenario();
     const state = newGame(5, { ...scenario, windClasses: { [key(1, 0)]: "baltic" } });
-    const pending = apply(state, windAt(300)).constructions[0]?.pending;
+    const pending = apply(state, windAt("xlarge")).constructions[0]?.pending;
     expect(pending?.kind).toBe("farm");
     expect(pending?.kind === "farm" ? pending.farm.windClass : null).toBe("baltic");
   });
 
   test("expansion reads the cap, the price and the clock off the farm's own hex", () => {
     let state = newGame(5, seaScenario());
-    state = apply(state, windAt(300));
+    state = apply(state, windAt("xlarge"));
     state = runDays(state, OFFSHORE_WIND.buildDays);
     const farm = state.farms[0];
     expect(farm?.capacityMw).toBe(300);
@@ -196,7 +224,7 @@ describe("doc 02 §8.1, §8.4: offshore wind", () => {
     const expanded = apply(state, {
       type: "expandFarm",
       farmId: farm?.id ?? "",
-      capacityMw: 300,
+      size: "xlarge",
     });
     expect(state.moneyPln - expanded.moneyPln).toBe(
       Math.round(300 * FARM_TECHS.wind.capexPlnPerMw * EXPANSION.capexShare * TERRAIN.sea.windFarm),
@@ -204,7 +232,7 @@ describe("doc 02 §8.1, §8.4: offshore wind", () => {
     expect(expanded.constructions[0]?.remainingDays).toBe(2);
 
     // 600 MW is still the ceiling of the hex, queued capacity included.
-    expect(apply(expanded, { type: "expandFarm", farmId: farm?.id ?? "", capacityMw: 1 })).toBe(
+    expect(apply(expanded, { type: "expandFarm", farmId: farm?.id ?? "", size: "small" })).toBe(
       expanded,
     );
   });
@@ -215,7 +243,13 @@ describe("doc 01 §3.2: pumped storage needs elevation AND water next to it", ()
   const SITE_KEY = key(3, 2);
   /** One of the six neighbors of the site. */
   const NEIGHBOR_KEY = key(4, 2);
-  const build: Action = { type: "buildPumpedStorage", hex: site };
+  const build: Action = {
+    type: "buildStorage",
+    tech: "pumped",
+    powerSize: "medium",
+    capacitySize: "medium",
+    hex: site,
+  };
 
   test("mountains with no water in reach are refused", () => {
     const state = newGame(5, makeScenario({ terrain: { [SITE_KEY]: "mountains" } }));
@@ -265,7 +299,15 @@ describe("doc 01 §3.2: pumped storage needs elevation AND water next to it", ()
         },
       }),
     );
-    expect(apply(state, { type: "buildPumpedStorage", hex: corner })).toBe(state);
+    expect(
+      apply(state, {
+        type: "buildStorage",
+        tech: "pumped",
+        powerSize: "medium",
+        capacitySize: "medium",
+        hex: corner,
+      }),
+    ).toBe(state);
   });
 });
 

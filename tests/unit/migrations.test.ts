@@ -214,6 +214,89 @@ describe("migrateState", () => {
     }
   });
 
+  test("13 → 14: a storage order splits into its two axes, losing nothing", () => {
+    // What a schema-13 save carried: one battery order that bought both axes
+    // at once, and one pumped block — the fixed 250 MW / 2 500 MWh pair.
+    const state = playTurns(11, 3);
+    const old = {
+      ...JSON.parse(JSON.stringify(state)),
+      schema: 13,
+      constructions: [
+        {
+          id: "obj-7",
+          remainingDays: 1,
+          pending: {
+            kind: "batteryExpansion",
+            storageId: "bess-1",
+            powerMw: 50,
+            capacityMwh: 100,
+          },
+        },
+        {
+          id: "obj-8",
+          remainingDays: 4,
+          pending: { kind: "pumpedExpansion", storageId: "psh-1" },
+        },
+      ],
+    };
+
+    const result = migrateState(old);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // Nothing paid for is forfeited: each order becomes the two entries it
+    // always was underneath, keeping its countdown (01 §5.3, §7 in 0.26).
+    expect(result.state.constructions).toStrictEqual([
+      {
+        id: "obj-7",
+        remainingDays: 1,
+        pending: { kind: "storagePowerExpansion", storageId: "bess-1", powerMw: 50 },
+      },
+      {
+        id: "obj-7-capacity",
+        remainingDays: 1,
+        pending: { kind: "storageCapacityExpansion", storageId: "bess-1", capacityMwh: 100 },
+      },
+      {
+        id: "obj-8",
+        remainingDays: 4,
+        pending: { kind: "storagePowerExpansion", storageId: "psh-1", powerMw: 250 },
+      },
+      {
+        id: "obj-8-capacity",
+        remainingDays: 4,
+        pending: { kind: "storageCapacityExpansion", storageId: "psh-1", capacityMwh: 2_500 },
+      },
+    ]);
+  });
+
+  test("13 → 14: a single-axis order keeps its own id", () => {
+    const state = playTurns(11, 3);
+    const old = {
+      ...JSON.parse(JSON.stringify(state)),
+      schema: 13,
+      constructions: [
+        {
+          id: "obj-3",
+          remainingDays: 1,
+          pending: { kind: "batteryExpansion", storageId: "bess-1", powerMw: 0, capacityMwh: 200 },
+        },
+      ],
+    };
+
+    const result = migrateState(old);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.constructions).toStrictEqual([
+      {
+        id: "obj-3",
+        remainingDays: 1,
+        pending: { kind: "storageCapacityExpansion", storageId: "bess-1", capacityMwh: 200 },
+      },
+    ]);
+  });
+
   test("11 → 12: a save too broken to cut is handed on untouched", () => {
     const state = playTurns(11, 3);
     const result = migrateState({

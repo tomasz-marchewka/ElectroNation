@@ -314,8 +314,8 @@ function expansionSite(pending: PendingObject, state: GameState): HexCoord | nul
       return find(state.plants, pending.plantId);
     case "farmExpansion":
       return find(state.farms, pending.farmId);
-    case "batteryExpansion":
-    case "pumpedExpansion":
+    case "storagePowerExpansion":
+    case "storageCapacityExpansion":
       return find(state.storages, pending.storageId);
     case "borderExpansion":
       return find(state.borders, pending.borderId);
