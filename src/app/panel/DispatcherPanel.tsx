@@ -7,7 +7,7 @@
 // ./setpoints and ./constructions out of the engine's own API.
 
 import { useMemo } from "react";
-import type { Action, GameState, StorageMode } from "../../engine";
+import type { Action, GameState, PlantControlMode, StorageMode } from "../../engine";
 import { BalanceSummary } from "../components/BalanceSummary";
 import { Button } from "../components/Button";
 import { ForecastRow } from "../components/ForecastRow";
@@ -33,6 +33,34 @@ const STORAGE_MODES: readonly SegmentedOption<StorageMode>[] = [
   { value: "idle", label: STORAGE_MODE_LABELS.idle },
   { value: "discharge", label: STORAGE_MODE_LABELS.discharge },
 ];
+
+/** AUTO / RĘCZNY of a plant that owns the automation retrofit (01 §5.1, 0.28). */
+const CONTROL_MODES: readonly SegmentedOption<PlantControlMode>[] = [
+  { value: "auto", label: "AUTO" },
+  { value: "manual", label: "RĘCZNY" },
+];
+
+/** The mode switch under a plant's (or its first block's) slider. */
+function ControlModeSwitch({
+  plantId,
+  mode,
+  onAction,
+}: {
+  plantId: string;
+  mode: PlantControlMode;
+  onAction: (action: Action) => void;
+}) {
+  return (
+    <div className="en-unit__controls">
+      <SegmentedControl
+        options={CONTROL_MODES}
+        value={mode}
+        ariaLabel={`Tryb sterowania ${plantId}`}
+        onChange={(next) => onAction({ type: "setPlantControlMode", plantId, mode: next })}
+      />
+    </div>
+  );
+}
 
 /**
  * Signed setpoint a mode button dispatches: STOP rests the storage, the other
@@ -62,16 +90,46 @@ function SetpointRowView({ row, onAction }: RowProps) {
   switch (row.kind) {
     case "plant":
       return (
-        <SetpointSlider
-          name={row.name}
-          tech={row.tech}
-          value={row.valueMw}
-          max={row.maxMw}
-          note={row.note}
-          color={row.color}
-          actualMw={row.actualMw}
-          onChange={(mw) => onAction({ type: "setPlantSetpoint", plantId: row.id, mw })}
-        />
+        <div className="en-unit">
+          <SetpointSlider
+            name={row.name}
+            tech={row.tech}
+            value={row.valueMw}
+            max={row.maxMw}
+            note={row.note}
+            color={row.color}
+            actualMw={row.actualMw}
+            onChange={(mw) => onAction({ type: "setPlantSetpoint", plantId: row.id, mw })}
+          />
+          {row.modeToggle && (
+            <ControlModeSwitch plantId={row.id} mode={row.modeToggle} onAction={onAction} />
+          )}
+        </div>
+      );
+    case "plantBlock":
+      return (
+        <div className="en-unit">
+          <SetpointSlider
+            name={row.name}
+            tech={row.tech}
+            value={row.valueMw}
+            max={row.maxMw}
+            note={row.note}
+            color={row.color}
+            actualMw={row.actualMw}
+            onChange={(mw) =>
+              onAction({
+                type: "setBlockSetpoint",
+                plantId: row.id,
+                blockIndex: row.blockIndex,
+                mw,
+              })
+            }
+          />
+          {row.modeToggle && (
+            <ControlModeSwitch plantId={row.id} mode={row.modeToggle} onAction={onAction} />
+          )}
+        </div>
       );
     case "storage":
       return (

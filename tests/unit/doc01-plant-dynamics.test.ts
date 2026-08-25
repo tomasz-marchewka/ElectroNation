@@ -22,6 +22,7 @@ import {
 } from "../../src/engine";
 import { makeScenario, settlePlants } from "../helpers/scenario";
 
+/** A plant on the AUTO controller — the dynamics tests below exercise it. */
 function plant(
   tech: PlantTech,
   blocks: PlantBlockState[],
@@ -29,11 +30,21 @@ function plant(
   id = "plant-1",
 ): PlantState {
   const capacityMw = blocks.reduce((sum, block) => sum + block.mw, 0);
-  return { id, name: id, hex: { q: 0, r: 0 }, tech, capacityMw, blocks, setpointMw };
+  return {
+    id,
+    name: id,
+    hex: { q: 0, r: 0 },
+    tech,
+    capacityMw,
+    blocks,
+    automation: true,
+    controlMode: "auto",
+    setpointMw,
+  };
 }
 
-function online(mw: number, outputMw: number): PlantBlockState {
-  return { mw, status: "online", outputMw, startupTurnsLeft: 0, offlineTurns: 0 };
+function online(mw: number, outputMw: number, setpointMw = 0): PlantBlockState {
+  return { mw, status: "online", setpointMw, outputMw, startupTurnsLeft: 0, offlineTurns: 0 };
 }
 
 /** `advancePlantDispatch` n times; returns every intermediate plant state. */
@@ -267,11 +278,119 @@ describe("02 §9.17: the resolution bills, dumps and reports the PRODUCTION", ()
   });
 });
 
+describe("01 §5.1 (0.28): manual control — one order per block", () => {
+  function manualPlant(tech: PlantTech, blocks: PlantBlockState[], id = "plant-1"): PlantState {
+    const capacityMw = blocks.reduce((sum, block) => sum + block.mw, 0);
+    return {
+      id,
+      name: id,
+      hex: { q: 0, r: 0 },
+      tech,
+      capacityMw,
+      blocks,
+      automation: false,
+      controlMode: "manual",
+      setpointMw: 0,
+    };
+  }
+
+  test("each block follows its own order; the neighbours stay untouched", () => {
+    const two = manualPlant("coal", [online(500, 500, 300), newBlock(500)]);
+    const next = advancePlantDispatch(two);
+    expect(next.startupCostPln).toBe(0);
+    expect(next.plant.blocks[0]?.outputMw).toBe(300); // down the ramp to its order
+    expect(next.plant.blocks[1]?.status).toBe("offline");
+  });
+
+  test("an order wakes exactly its own block, and bills it", () => {
+    const cold = manualPlant("coal", [{ ...newBlock(500), setpointMw: 400 }, newBlock(500)]);
+    const next = advancePlantDispatch(cold);
+    expect(next.startupCostPln).toBe(2_000 * 500); // one block, one bill
+    expect(next.plant.blocks[0]?.status).toBe("starting");
+    expect(next.plant.blocks[1]?.status).toBe("offline");
+  });
+
+  test("an order under the minimum holds the minimum; order 0 shuts down", () => {
+    const running = manualPlant("coal", [online(500, 300, 100)]);
+    expect(advancePlantDispatch(running).plant.blocks[0]?.outputMw).toBe(200);
+    const shut = manualPlant("coal", [online(500, 200, 0)]);
+    expect(advancePlantDispatch(shut).plant.blocks[0]?.status).toBe("offline");
+  });
+
+  test("the plant-level setpoint is dormant in manual mode", () => {
+    const idle = { ...manualPlant("coal", [newBlock(500)]), setpointMw: 400 };
+    const next = advancePlantDispatch(idle);
+    expect(next.startupCostPln).toBe(0);
+    expect(next.plant.blocks[0]?.status).toBe("offline");
+  });
+});
+
+describe("01 §5.1 (0.28): the automation retrofit and the mode switch", () => {
+  test("buying charges the flat price once; a second buy is refused", () => {
+    const base = newGame(7, makeScenario());
+    // The test helper endows automation — strip it to exercise the purchase.
+    const manual = {
+      ...base,
+      plants: base.plants.map((p) => ({ ...p, automation: false, controlMode: "manual" as const })),
+    };
+    const bought = applyAction(manual, { type: "buyPlantAutomation", plantId: "plant-1" });
+    expect(manual.moneyPln - bought.moneyPln).toBe(150_000_000);
+    expect(bought.plants[0]?.automation).toBe(true);
+    // Instant, but not free twice — and not switching the mode by itself.
+    expect(bought.plants[0]?.controlMode).toBe("manual");
+    expect(applyAction(bought, { type: "buyPlantAutomation", plantId: "plant-1" })).toBe(bought);
+  });
+
+  test("AUTO without the retrofit is refused; with it the switch works", () => {
+    const base = newGame(7, makeScenario());
+    const manual = {
+      ...base,
+      plants: base.plants.map((p) => ({ ...p, automation: false, controlMode: "manual" as const })),
+    };
+    expect(
+      applyAction(manual, { type: "setPlantControlMode", plantId: "plant-1", mode: "auto" })
+        .plants[0]?.controlMode,
+    ).toBe("manual");
+    const bought = applyAction(manual, { type: "buyPlantAutomation", plantId: "plant-1" });
+    expect(
+      applyAction(bought, { type: "setPlantControlMode", plantId: "plant-1", mode: "auto" })
+        .plants[0]?.controlMode,
+    ).toBe("auto");
+  });
+
+  test("02 §9.18: switching modes does not move the next turn's dispatch", () => {
+    // A running, settled plant on the controller...
+    const running = settlePlants(
+      applyAction(newGame(7, makeScenario()), {
+        type: "setPlantSetpoint",
+        plantId: "plant-1",
+        mw: 300,
+      }),
+    );
+    const stayedAuto = resolveTurn(running);
+    // ...switched to manual right before the resolution: same production.
+    const toManual = resolveTurn(
+      applyAction(running, { type: "setPlantControlMode", plantId: "plant-1", mode: "manual" }),
+    );
+    expect(plantOutputMw(toManual.plants[0]!)).toBe(plantOutputMw(stayedAuto.plants[0]!));
+    // And back: the block orders sum into the plant order.
+    const backToAuto = applyAction(
+      applyAction(running, { type: "setPlantControlMode", plantId: "plant-1", mode: "manual" }),
+      { type: "setPlantControlMode", plantId: "plant-1", mode: "auto" },
+    );
+    expect(backToAuto.plants[0]?.setpointMw).toBe(300);
+    expect(plantOutputMw(resolveTurn(backToAuto).plants[0]!)).toBe(
+      plantOutputMw(stayedAuto.plants[0]!),
+    );
+  });
+});
+
 describe("block factories", () => {
   test("a new block is cold, offline and silent", () => {
     expect(newBlock(750)).toStrictEqual({
       mw: 750,
       status: "offline",
+      setpointMw: 0,
       outputMw: 0,
       startupTurnsLeft: 0,
       offlineTurns: COLD_OFFLINE_TURNS,

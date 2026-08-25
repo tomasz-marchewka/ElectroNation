@@ -68,6 +68,18 @@ const actionArb: fc.Arbitrary<Action> = fc.oneof(
     mw: mwArb,
   }),
   fc.record({
+    type: fc.constant("setBlockSetpoint" as const),
+    plantId: idArb,
+    blockIndex: fc.integer({ min: -1, max: 6 }),
+    mw: mwArb,
+  }),
+  fc.record({ type: fc.constant("buyPlantAutomation" as const), plantId: idArb }),
+  fc.record({
+    type: fc.constant("setPlantControlMode" as const),
+    plantId: idArb,
+    mode: fc.constantFrom("auto" as const, "manual" as const),
+  }),
+  fc.record({
     type: fc.constant("buildPlant" as const),
     tech: fc.constantFrom("ocgt" as const, "ccgt" as const),
     size: sizeArb,

@@ -33,7 +33,15 @@ function at(q: number): HexCoord {
  */
 const QUIET_SCENARIO: Scenario = makeScenario({
   plants: [
-    { id: "plant-1", name: "EC Cicha", hex: at(0), tech: "ccgt", capacityMw: 400, setpointMw: 0 },
+    {
+      id: "plant-1",
+      name: "EC Cicha",
+      hex: at(0),
+      tech: "ccgt",
+      capacityMw: 400,
+      automation: true,
+      setpointMw: 0,
+    },
   ],
   lines: [finishedLine("line-1", "hv", [0, 1, 2, 3, 4].map(at))],
 });
@@ -53,7 +61,15 @@ function quietDay(seed = 1): GameState {
  */
 const TIGHT_SCENARIO: Scenario = makeScenario({
   plants: [
-    { id: "plant-1", name: "EC Kres", hex: at(0), tech: "ccgt", capacityMw: 400, setpointMw: 0 },
+    {
+      id: "plant-1",
+      name: "EC Kres",
+      hex: at(0),
+      tech: "ccgt",
+      capacityMw: 400,
+      automation: true,
+      setpointMw: 0,
+    },
   ],
   storages: [
     {

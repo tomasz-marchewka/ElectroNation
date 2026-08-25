@@ -41,10 +41,11 @@ test("setting a setpoint and committing runs one turn of the loop", async ({ pag
 
   await expect(page.locator("[data-region='report']")).toHaveCount(0);
 
-  // The starting endowment is one 400 MW CCGT (01 §3.4); End runs it to full.
-  const setpoint = page.getByLabel("EC MODRZYCA");
+  // The starting endowment is one SMALL manual CCGT block (01 §3.4 in 0.28);
+  // End runs its own slider to full.
+  const setpoint = page.getByLabel("EC MODRZYCA · BLOK 1");
   await setpoint.press("End");
-  await expect(page.locator(".en-setpoint__head")).toContainText("400 / 400 MW");
+  await expect(page.locator(".en-setpoint__head")).toContainText("100 / 100 MW");
 
   await page.getByRole("button", { name: "ZATWIERDŹ TURĘ ▸" }).click();
 
@@ -119,7 +120,7 @@ test("scrubbing to the evening peak plays every turn on the way", async ({ page 
   page.on("pageerror", (error) => errors.push(String(error)));
   await page.goto("/");
 
-  await page.getByLabel("EC MODRZYCA").press("End");
+  await page.getByLabel("EC MODRZYCA · BLOK 1").press("End");
   // A click only READS the turn (01 §2.5): its forecast card comes up, the
   // calendar stays put, and moving time takes the explicit action next to it.
   await page.locator(".en-turn", { hasText: "SZCZYT WIECZ." }).click();
@@ -149,7 +150,7 @@ test("reading a turn back on the ribbon leaves the world where it is (01 §2.5)"
   await page.getByRole("button", { name: "POTWIERDŹ ✓" }).click();
 
   // A full day plus two turns, so the archive spans a day boundary.
-  await page.getByLabel("EC MODRZYCA").press("End");
+  await page.getByLabel("EC MODRZYCA · BLOK 1").press("End");
   for (let turn = 0; turn < 10; turn++) {
     await page.getByRole("button", { name: "ZATWIERDŹ TURĘ ▸" }).click();
   }
@@ -208,7 +209,7 @@ test("both themes render the whole screen without errors", async ({ page }) => {
 
 test("a resolved turn survives closing the tab", async ({ page }) => {
   await page.goto("/");
-  await page.getByLabel("EC MODRZYCA").press("End");
+  await page.getByLabel("EC MODRZYCA · BLOK 1").press("End");
   await page.getByRole("button", { name: "ZATWIERDŹ TURĘ ▸" }).click();
 
   const budget = page.locator(".en-kpi", { hasText: "BUDŻET" }).locator("b");
@@ -286,8 +287,8 @@ test("pełna pętla: nowa gra, budowa, linia, koniec doby, wznowienie po przeła
   await expect(page.locator(".en-topbar__ctx")).toContainText("DOBA ROBOCZA A");
 
   // Setpoints, then the turn (01 §2.3).
-  await page.getByLabel("EC MODRZYCA").press("End");
-  await expect(page.locator(".en-setpoint__head")).toContainText("400 / 400 MW");
+  await page.getByLabel("EC MODRZYCA · BLOK 1").press("End");
+  await expect(page.locator(".en-setpoint__head")).toContainText("100 / 100 MW");
   await page.getByRole("button", { name: "ZATWIERDŹ TURĘ ▸" }).click();
   await expect(page.locator(".en-report__label")).toContainText("TURA 1 · NOC");
   await expect(page.locator(".en-panel__meta")).toContainText("TURA 2/8");

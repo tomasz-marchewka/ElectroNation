@@ -6,12 +6,16 @@
 
 import {
   CONFIG,
+  PLANT_DYNAMICS,
   PLANT_TECHS,
   farmProductionForecast,
+  isBlockWarm,
   plantOutputMw,
   HOURS_PER_TURN,
   type FarmTech,
   type GameState,
+  type PlantBlockState,
+  type PlantControlMode,
   type PlantState,
   type PlantTech,
   type StorageMode,
@@ -52,6 +56,32 @@ export interface PlantSetpointRow {
   /** Variable cost plus the dynamics status, e.g. "250 zł/MWh · MOC 210 MW · ROZRUCH ×1". */
   note: string;
   color: string;
+  /** Current mode, present only when the plant owns automation (01 §5.1, 0.28)
+   * — the row then renders the AUTO / RĘCZNY switch. */
+  modeToggle?: PlantControlMode;
+}
+
+/** One block of a plant in MANUAL control — its own slider (01 §5.1, 0.28). */
+export interface PlantBlockSetpointRow {
+  kind: "plantBlock";
+  /** The PLANT's id — the action targets the block by index. */
+  id: string;
+  blockIndex: number;
+  /** "EC MODRZYCA · BLOK 2". */
+  name: string;
+  /** Technology under the name, lowercase. */
+  tech: string;
+  /** The block's own order [MW]. */
+  valueMw: number;
+  /** The block's rated power [MW]. */
+  maxMw: number;
+  /** The block's actual output [MW] — the amber tick. */
+  actualMw: number;
+  /** Variable cost plus the block's state, e.g. "250 zł/MWh · ROZRUCH · 2 TURY". */
+  note: string;
+  color: string;
+  /** On the plant's first block row when automation is owned — see above. */
+  modeToggle?: PlantControlMode;
 }
 
 export interface StorageSetpointRow {
@@ -99,10 +129,16 @@ export interface FarmSetpointRow {
 }
 
 export type SetpointRow =
-  PlantSetpointRow | StorageSetpointRow | TradeSetpointRow | FarmSetpointRow;
+  | PlantSetpointRow
+  | PlantBlockSetpointRow
+  | StorageSetpointRow
+  | TradeSetpointRow
+  | FarmSetpointRow;
 
-/** React key of a row — a border contributes two rows under one id. */
+/** React key of a row — a border contributes two rows under one id, a manual
+ * plant one row per block. */
 export function setpointRowKey(row: SetpointRow): string {
+  if (row.kind === "plantBlock") return `${row.kind}:${row.id}:${row.blockIndex}`;
   return `${row.kind}:${row.id}`;
 }
 
@@ -134,7 +170,22 @@ function plantDynamicsNote(plant: PlantState): string {
   return ` · MOC ${formatMw(actualMw)}${state}`;
 }
 
-function plantRows(state: GameState): PlantSetpointRow[] {
+/** "1 TURA", "2 TURY", "5 TUR" — the startup countdown, spelled out. */
+function turnsLabel(turns: number): string {
+  if (turns === 1) return "1 TURA";
+  return `${formatNumber(turns)} ${turns >= 2 && turns <= 4 ? "TURY" : "TUR"}`;
+}
+
+/** The state half of a block row's note (01 §5.1, 0.28). */
+function blockStateNote(plant: PlantState, block: PlantBlockState): string {
+  if (block.status === "offline") {
+    return `POSTÓJ · ${isBlockWarm(block, PLANT_DYNAMICS[plant.tech]) ? "CIEPŁY" : "ZIMNY"}`;
+  }
+  if (block.status === "starting") return `ROZRUCH · ${turnsLabel(block.startupTurnsLeft)}`;
+  return `MOC ${formatMw(block.outputMw)}`;
+}
+
+function plantRows(state: GameState): (PlantSetpointRow | PlantBlockSetpointRow)[] {
   // Merit order, cheapest first — the panel teaches it by listing it
   // (SetpointSlider.prompt.md); ties fall back to the id so the order is stable.
   return [...state.plants]
@@ -143,17 +194,42 @@ function plantRows(state: GameState): PlantSetpointRow[] {
         PLANT_TECHS[a.tech].varCostPlnPerMwh - PLANT_TECHS[b.tech].varCostPlnPerMwh ||
         a.id.localeCompare(b.id),
     )
-    .map((plant) => ({
-      kind: "plant",
-      id: plant.id,
-      name: plant.name.toUpperCase(),
-      tech: PLANT_TECH_INLINE_LABELS[plant.tech],
-      valueMw: plant.setpointMw,
-      maxMw: plant.capacityMw,
-      actualMw: plantOutputMw(plant),
-      note: `${formatNumber(PLANT_TECHS[plant.tech].varCostPlnPerMwh)} zł/MWh${plantDynamicsNote(plant)}`,
-      color: PLANT_COLORS[plant.tech],
-    }));
+    .flatMap((plant): (PlantSetpointRow | PlantBlockSetpointRow)[] => {
+      const varCost = `${formatNumber(PLANT_TECHS[plant.tech].varCostPlnPerMwh)} zł/MWh`;
+      // The switch shows up only where it can do anything (01 §5.1, 0.28).
+      const modeToggle = plant.automation ? plant.controlMode : undefined;
+      if (plant.controlMode === "auto") {
+        return [
+          {
+            kind: "plant",
+            id: plant.id,
+            name: plant.name.toUpperCase(),
+            tech: PLANT_TECH_INLINE_LABELS[plant.tech],
+            valueMw: plant.setpointMw,
+            maxMw: plant.capacityMw,
+            actualMw: plantOutputMw(plant),
+            note: `${varCost}${plantDynamicsNote(plant)}`,
+            color: PLANT_COLORS[plant.tech],
+            ...(modeToggle ? { modeToggle } : {}),
+          },
+        ];
+      }
+      // Manual control: one slider per block, the plant name on each so the
+      // list stays readable when several plants interleave (01 §8 pt 4).
+      return plant.blocks.map((block, blockIndex) => ({
+        kind: "plantBlock",
+        id: plant.id,
+        blockIndex,
+        name: `${plant.name.toUpperCase()} · BLOK ${formatNumber(blockIndex + 1)}`,
+        tech: PLANT_TECH_INLINE_LABELS[plant.tech],
+        valueMw: block.setpointMw,
+        maxMw: block.mw,
+        actualMw: block.outputMw,
+        note: `${varCost} · ${blockStateNote(plant, block)}`,
+        color: PLANT_COLORS[plant.tech],
+        ...(modeToggle && blockIndex === 0 ? { modeToggle } : {}),
+      }));
+    });
 }
 
 /**

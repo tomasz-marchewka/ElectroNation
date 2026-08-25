@@ -338,6 +338,43 @@ describe("migrateState", () => {
     expect(result.state.history.every((d) => d.finance.startupCostPln === 0)).toBe(true);
   });
 
+  test("15 → 16: plants enter manual control with the split as block orders", () => {
+    // What a schema-15 save carried: blocks without their own setpoints, no
+    // automation, no control mode — the plant ran on the controller.
+    const state = playTurns(11, 3);
+    const old = JSON.parse(JSON.stringify(state)) as Record<string, unknown> & {
+      plants: Record<string, unknown>[];
+    };
+    old.schema = 15;
+    old.plants = [
+      {
+        id: "plant-old",
+        name: "EC Stara",
+        hex: { q: 1, r: 9 },
+        tech: "coal",
+        capacityMw: 1_000,
+        blocks: [
+          { mw: 500, status: "online", outputMw: 300, startupTurnsLeft: 0, offlineTurns: 0 },
+          { mw: 500, status: "offline", outputMw: 0, startupTurnsLeft: 0, offlineTurns: 99 },
+        ],
+        setpointMw: 300,
+      },
+    ];
+
+    const result = migrateState(old);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const plant = result.state.plants[0]!;
+    // The retrofit is a purchase, not a grandfather right (01 §5.1, 0.28).
+    expect(plant.automation).toBe(false);
+    expect(plant.controlMode).toBe("manual");
+    // The controller split lands on the block orders, so the next manual
+    // resolution dispatches what the automatic one would have (02 §9.18).
+    expect(plant.blocks[0]).toMatchObject({ setpointMw: 300, status: "online", outputMw: 300 });
+    expect(plant.blocks[1]).toMatchObject({ setpointMw: 0, status: "offline" });
+  });
+
   test("11 → 12: a save too broken to cut is handed on untouched", () => {
     const state = playTurns(11, 3);
     const result = migrateState({

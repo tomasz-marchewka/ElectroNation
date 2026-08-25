@@ -1,10 +1,25 @@
 # ElectroNation — Model symulacji uproszczonej (silnik tury)
 
-**Wersja:** 0.12
+**Wersja:** 0.13
 **Data:** 2026-08-25
 **Status:** **obowiązuje** — formalizuje rdzeń mechaniki z dokumentu 01 §4 (graf sieci,
 rozpływ, straty, niedobory) oraz krok rozstrzygnięcia tury. Wprowadzona tu zmiana 01 §4.1
 (nadwyżka sterowalna karana) obowiązuje od 01 v0.16.
+
+**Zmiany 0.12 → 0.13 (sterowanie per blok; automatyka):** §4 pkt 2 — krok dynamiki
+bloków ma dwa tryby (01 §5.1 w 0.28): **ręczny** (bazowy) czyta nastawę per blok —
+każdy blok sam przechodzi rozruch, minimum i rampę wobec własnego rozkazu; **automatyczny**
+(po zakupie automatyki, 150 mln zł/obiekt, natychmiast) czyta jedną nastawę elektrowni
+i wykonuje ją dotychczasową logiką sterownika (załączanie wg preferencji, rozdział
+zachłanny). Dynamika bloku, rozpływ, kary, koszt rozruchu — **bez zmian**; zmienia się
+wyłącznie źródło celów bloków. **Kontrakt akcji:** dochodzą `setBlockSetpoint`
+(`plantId`, `blockIndex`, `mw`), `buyPlantAutomation` (`plantId`) i `setPlantControlMode`
+(`plantId`, `mode`); przełączenie trybu jest bezszarpnięciowe (AUTO → RĘCZNY
+materializuje rozdział w nastawy bloków, RĘCZNY → AUTO je sumuje). **Schemat zapisu
+16** — blok niesie nastawę, elektrownia automatykę i tryb; migracja 15 → 16 wprowadza
+elektrownie w tryb ręczny z nastawami odtworzonymi z rozdziału (produkcja bez zmian),
+automatyka do dokupienia. Zalążek scenariuszy = 1 blok CCGT 100 MW (01 §3.4). Nowy
+test akceptacyjny §9.18.
 
 **Zmiany 0.11 → 0.12 (dynamika bloków elektrowni):** §4 pkt 2 i 8, §5.1 — produkcja
 sterowalna przestaje równać się nastawie: przed rozpływem silnik wykonuje **krok dynamiki
@@ -210,11 +225,12 @@ Kolejność jest częścią kontraktu silnika:
 
 1. **Ujawnienie prawdy**: pogoda bloku (06), popyt miast (05 §4).
 2. **Produkcja OZE** z pogody (farmy włączone); **krok dynamiki bloków** (01 §5.1
-   w 0.27): nastawa elektrowni jest rozkazem — silnik załącza/odstawia bloki
-   (preferencja: w ruchu → w rozruchu → ciepłe → zimne), prowadzi liczniki rozruchów,
-   stosuje rampy i minima techniczne; **produkcją sterowalną tury** jest suma mocy
-   bloków po tym kroku, nie nastawa. Zebranie nastaw magazynów (ładuj/oddawaj)
-   i importu/eksportu.
+   w 0.27–0.28): w trybie **ręcznym** celem każdego bloku jest jego własna nastawa,
+   w trybie **automatycznym** sterownik wyznacza cele z nastawy elektrowni
+   (preferencja: w ruchu → w rozruchu → ciepłe → zimne; rozdział zachłanny). Silnik
+   prowadzi liczniki rozruchów, stosuje rampy i minima techniczne; **produkcją
+   sterowalną tury** jest suma mocy bloków po tym kroku, nie nastawa. Zebranie nastaw
+   magazynów (ładuj/oddawaj) i importu/eksportu.
 3. **Rozpływ — przebieg 1: miasta.** Wszystkie źródła, odbiory = miasta.
 4. **Rozpływ — przebieg 2: ładowanie magazynów** na przepustowościach rezydualnych.
    Do magazynu wchodzi energia × sprawność ładowania (połowa strat cyklu).
@@ -598,6 +614,17 @@ Testy specyfikacyjne cytują sekcje tego dokumentu:
     z ukończonej budowy i rozbudowy wchodzi zimny i wyłączony; ta sama sekwencja nastaw
     daje identyczny stan (determinizm); migracja 14 → 15 zachowuje moc łączną
     i nastawę elektrowni.
+
+18. **§4 pkt 2** — tryby sterowania (01 §5.1 w 0.28): w trybie ręcznym blok wykonuje
+    wyłącznie własną nastawę (rozkaz `> 0` na wyłączonym = rozruch z kosztem, `0` =
+    odstawienie, nastawa poniżej minimum trzyma minimum), a nastawa elektrowni niczego
+    nie zmienia; `setPlantControlMode` na `auto` bez kupionej automatyki jest
+    odrzucane; `buyPlantAutomation` pobiera 150 mln zł raz (ponowny zakup odrzucany,
+    bez mnożnika terenu) i działa od tej samej tury; przełączenie AUTO → RĘCZNY
+    materializuje rozdział sterownika w nastawy bloków, RĘCZNY → AUTO ustawia nastawę
+    elektrowni na sumę nastaw bloków — w obu kierunkach produkcja następnej tury jest
+    identyczna z tą bez przełączenia; migracja 15 → 16 zachowuje produkcję (tryb
+    ręczny, nastawy odtworzone) i nie przyznaje automatyki.
 
 ## 10. Pytania otwarte
 

@@ -5,7 +5,8 @@
 
 import { splitLinesAtObjects } from "./build";
 import { LINE_TYPES, PLANT_TECHS, type FarmTech, type PlantTech } from "./config";
-import { settledBlocks } from "./dispatch";
+import { manualOrdersFromPlantSetpoint, settledBlocks } from "./dispatch";
+import type { PlantState } from "./state";
 import { buildTurnDigest, coverageIndex } from "./history";
 import { STATE_SCHEMA_VERSION, type GameState, type TurnDigest, type TurnReport } from "./state";
 
@@ -160,7 +161,57 @@ export const MIGRATIONS: MigrationRegistry = {
       history: Array.isArray(state.history) ? state.history.map(withStartup) : state.history,
     };
   },
+  /**
+   * 15 → 16: per-block control and the automation retrofit (01 §5.1, 0.28).
+   * Every plant enters MANUAL mode without automation — the retrofit is a
+   * purchase, not a grandfather right — and each block gets its own order
+   * seeded from the controller split the save was running under, so the plant
+   * keeps producing exactly what it produced (02 §9.18).
+   */
+  15: (state) => {
+    if (!isRecord(state)) return state;
+    const migratePlant = (plant: unknown): unknown => {
+      if (!isRecord(plant) || !Array.isArray(plant.blocks)) return plant;
+      const blocks = plant.blocks.map((block) =>
+        isRecord(block) ? { setpointMw: 0, ...block } : block,
+      );
+      const base = { ...plant, blocks, automation: false, controlMode: "manual" };
+      const tech = typeof plant.tech === "string" && plant.tech in PLANT_TECHS ? plant.tech : null;
+      if (tech === null || !blocks.every(isBlockLike)) return base;
+      const typed = {
+        ...base,
+        tech: tech as PlantTech,
+        capacityMw: numberOr(plant.capacityMw, 0),
+        setpointMw: numberOr(plant.setpointMw, 0),
+      } as PlantState;
+      return { ...base, blocks: manualOrdersFromPlantSetpoint(typed) };
+    };
+    const plants = Array.isArray(state.plants) ? state.plants.map(migratePlant) : state.plants;
+    const constructions = Array.isArray(state.constructions)
+      ? state.constructions.map((construction) => {
+          if (!isRecord(construction) || !isRecord(construction.pending)) return construction;
+          if (construction.pending.kind !== "plant") return construction;
+          return {
+            ...construction,
+            pending: { ...construction.pending, plant: migratePlant(construction.pending.plant) },
+          };
+        })
+      : state.constructions;
+    return { ...state, plants, constructions };
+  },
 };
+
+/** Block-shaped enough for the 15 → 16 order seeding to run the real split. */
+function isBlockLike(block: unknown): boolean {
+  return (
+    isRecord(block) &&
+    typeof block.mw === "number" &&
+    typeof block.outputMw === "number" &&
+    typeof block.startupTurnsLeft === "number" &&
+    typeof block.offlineTurns === "number" &&
+    (block.status === "offline" || block.status === "starting" || block.status === "online")
+  );
+}
 
 function numberOr(value: unknown, fallback: number): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;

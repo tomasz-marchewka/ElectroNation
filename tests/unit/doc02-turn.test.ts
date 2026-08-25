@@ -41,6 +41,7 @@ function makeScenario(overrides: Partial<Scenario> = {}): Scenario {
         hex: { q: 0, r: 0 },
         tech: "ccgt",
         capacityMw: 400,
+        automation: true,
         setpointMw: 0,
       },
     ],

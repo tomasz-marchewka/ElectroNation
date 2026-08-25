@@ -1,7 +1,7 @@
 {
   "name": "forecast-upgrade",
   "description": "Three months under the same regime (atlantic low), one dispatch rule throughout and a single purchase: the advanced forecast system on day 5 (01 §2.4, 06 §8.6.3 — every σ ×0.7). Days 0–4 are bit-for-bit what the same rule produces without the purchase; from day 5 the narrower band puts the setpoints closer to the truth and the balancing penalties fall — 7,3 mln zł of ENS+dump over days 5–8 against 10,6 mln for the basic system (−31%, measured by re-authoring this scenario without the purchase). The 600 mln zł does not pay for itself at this scale: input for doc 03, not a reason to retune anything here.",
-  "map": "mapV1",
+  "map": "mapV1auto",
   "seed": 20260890,
   "days": 9,
   "actions": [

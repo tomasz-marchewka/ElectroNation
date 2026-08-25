@@ -195,8 +195,19 @@ export function buildPlant(
   if (capacityMw === null) return state;
   return queueObject(state, capacityMw * spec.capexPlnPerMw, spec.buildDays, hex, (id) => ({
     kind: "plant",
-    // The block lands cold and offline (01 §5.1 in 0.27).
-    plant: { id, name: id, hex, tech, capacityMw, blocks: [newBlock(capacityMw)], setpointMw: 0 },
+    // The block lands cold and offline (01 §5.1 in 0.27); a new plant starts
+    // in manual control — automation is a separate purchase (0.28).
+    plant: {
+      id,
+      name: id,
+      hex,
+      tech,
+      capacityMw,
+      blocks: [newBlock(capacityMw)],
+      automation: false,
+      controlMode: "manual",
+      setpointMw: 0,
+    },
   }));
 }
 

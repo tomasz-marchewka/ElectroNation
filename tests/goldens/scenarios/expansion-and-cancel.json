@@ -1,15 +1,16 @@
 {
   "name": "expansion-and-cancel",
   "map": "minimal",
-  "description": "Four days exercising the M3 mechanics: a plant block expanded in place (the last day's 500 MW setpoint only holds because the block landed — the plant started at 400), a junction station dropped onto the existing line (0.21: it takes no throughput and has nothing to expand), a farm order cancelled mid-build, a line cancelled mid-build, and the advanced forecast system bought.",
+  "description": "Four days exercising the M3 mechanics on the manual endowment (0.28): the starting SMALL block dispatched by its own order, a MEDIUM block expanded in place — the last day's orders only hold because the new block landed (cold, with a slider of its own), a junction station dropped onto the existing line (0.21), a farm order cancelled mid-build, a line cancelled mid-build, and the advanced forecast system bought.",
   "seed": 20260814,
   "days": 4,
   "actions": [
     {
       "beforeTurn": 0,
       "action": {
-        "type": "setPlantSetpoint",
+        "type": "setBlockSetpoint",
         "plantId": "plant-start-ccgt",
+        "blockIndex": 0,
         "mw": 80
       }
     },
@@ -83,10 +84,21 @@
     },
     {
       "beforeTurn": 24,
+      "note": "the expansion block landed cold — both blocks get their own orders (01 §5.1, 0.28)",
       "action": {
-        "type": "setPlantSetpoint",
+        "type": "setBlockSetpoint",
         "plantId": "plant-start-ccgt",
-        "mw": 500
+        "blockIndex": 0,
+        "mw": 100
+      }
+    },
+    {
+      "beforeTurn": 24,
+      "action": {
+        "type": "setBlockSetpoint",
+        "plantId": "plant-start-ccgt",
+        "blockIndex": 1,
+        "mw": 200
       }
     }
   ]

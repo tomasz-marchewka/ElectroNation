@@ -58,13 +58,16 @@ function midGameScenario(): Scenario {
     ...MAP_V1,
     cities: MAP_V1.cities.map((city) => ({ ...city, connected: CONNECTED.has(city.id) })),
     plants: [
-      ...MAP_V1.plants,
+      // Mid-game: the fleet already runs on bought automation (01 §5.1, 0.28),
+      // so the aggregate setpoints below exercise the controller path.
+      ...MAP_V1.plants.map((plant) => ({ ...plant, automation: true })),
       {
         id: "plant-coal",
         name: "EL WĘGLOWA",
         hex: { q: 2, r: 8 },
         tech: "coal",
         capacityMw: 800,
+        automation: true,
         setpointMw: 0,
       },
       {
@@ -73,6 +76,7 @@ function midGameScenario(): Scenario {
         hex: { q: 3, r: 7 },
         tech: "ocgt",
         capacityMw: 150,
+        automation: true,
         setpointMw: 0,
       },
     ],
@@ -133,7 +137,7 @@ function midGameScenario(): Scenario {
 
 /** Every dispatch lever pulled, so all three flow passes of 02 §4 do work. */
 const SETPOINTS: Action[] = [
-  { type: "setPlantSetpoint", plantId: "plant-start-ccgt", mw: 400 },
+  { type: "setPlantSetpoint", plantId: "plant-start-ccgt", mw: 100 },
   { type: "setPlantSetpoint", plantId: "plant-coal", mw: 800 },
   { type: "setPlantSetpoint", plantId: "plant-peaker", mw: 150 },
   { type: "setStorage", storageId: "storage-bess", mode: "charge", mw: 200 },

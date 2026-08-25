@@ -45,6 +45,9 @@ export function makeScenario(overrides: Partial<Scenario> = {}): Scenario {
         hex: { q: 0, r: 0 },
         tech: "ccgt",
         capacityMw: 400,
+        // Automation endowed (01 §5.1, 0.28): tests here dispatch through the
+        // aggregate setpoint, i.e. the AUTO controller path.
+        automation: true,
         setpointMw: 0,
       },
     ],

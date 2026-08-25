@@ -24,7 +24,8 @@ import {
 import { makeScenario } from "../../helpers/scenario";
 
 function plant(id: string, tech: ScenarioPlant["tech"], name = id): ScenarioPlant {
-  return { id, name, hex: { q: 0, r: 0 }, tech, capacityMw: 400, setpointMw: 0 };
+  // Automation endowed: these tests read the aggregate (AUTO) rows.
+  return { id, name, hex: { q: 0, r: 0 }, tech, capacityMw: 400, automation: true, setpointMw: 0 };
 }
 
 describe("plants — merit order as a lesson (SetpointSlider.prompt.md)", () => {
@@ -45,6 +46,32 @@ describe("plants — merit order as a lesson (SetpointSlider.prompt.md)", () => 
   test("object names are printed in caps (copy rules)", () => {
     const state = newGame(7, makeScenario({ plants: [plant("p-1", "ccgt", "EC Modrzyca")] }));
     expect(setpointRows(state)[0]?.name).toBe("EC MODRZYCA");
+  });
+});
+
+describe("plants — manual control is one slider per block (01 §5.1, 0.28)", () => {
+  test("a manual plant lists its blocks; an automated one carries the switch", () => {
+    const manual = newGame(
+      7,
+      makeScenario({
+        plants: [{ ...plant("p-1", "ccgt", "EC Modrzyca"), automation: false, blocks: 2 }],
+      }),
+    );
+    const rows = setpointRows(manual).filter((row) => row.kind === "plantBlock");
+    expect(rows.map((row) => row.name)).toEqual(["EC MODRZYCA · BLOK 1", "EC MODRZYCA · BLOK 2"]);
+    expect(rows.map((row) => row.blockIndex)).toEqual([0, 1]);
+    expect(rows[0]?.maxMw).toBe(200); // the BLOCK's rated power, not the plant's
+    // A cold block says so instead of pretending to ramp.
+    expect(rows[0]?.note).toContain("POSTÓJ · ZIMNY");
+    // No retrofit — no switch to render.
+    expect(rows.some((row) => row.modeToggle)).toBe(false);
+
+    const automated = newGame(
+      7,
+      makeScenario({ plants: [{ ...plant("p-1", "ccgt", "EC Modrzyca"), blocks: 2 }] }),
+    );
+    const auto = setpointRows(automated).find((row) => row.kind === "plant");
+    expect(auto?.modeToggle).toBe("auto");
   });
 });
 
