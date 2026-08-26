@@ -98,6 +98,52 @@ describe("setpoints — every unit set by hand (01 §8 pt 4)", () => {
     });
   });
 
+  test("the dead zone below the technical minimum snaps to min or off (01 §5.1 pt 4)", () => {
+    const { onAction } = renderPanel(newGame(7, DISPATCH_SCENARIO));
+    const input = slider("P1");
+
+    // CCGT holds at least 30%: a 400 MW plant has no orders inside (0, 120).
+    fireEvent.change(input, { target: { value: "100" } });
+    expect(onAction).toHaveBeenCalledWith({
+      type: "setPlantSetpoint",
+      plantId: "plant-1",
+      mw: 120,
+    });
+
+    // The lower half of the gap means "off" — the plant already sits at zero,
+    // so the snap dispatches nothing at all.
+    onAction.mockClear();
+    fireEvent.change(input, { target: { value: "50" } });
+    expect(onAction).not.toHaveBeenCalled();
+  });
+
+  test("arrow down from the minimum jumps the dead zone and turns the unit off", () => {
+    const running = applyAction(newGame(7, DISPATCH_SCENARIO), {
+      type: "setPlantSetpoint",
+      plantId: "plant-1",
+      mw: 120,
+    });
+    const { onAction } = renderPanel(running);
+
+    fireEvent.keyDown(slider("P1"), { key: "ArrowDown" });
+    expect(onAction).toHaveBeenCalledWith({
+      type: "setPlantSetpoint",
+      plantId: "plant-1",
+      mw: 0,
+    });
+  });
+
+  test("arrow up from zero jumps the dead zone and lands on the minimum", () => {
+    const { onAction } = renderPanel(newGame(7, DISPATCH_SCENARIO));
+
+    fireEvent.keyDown(slider("P1"), { key: "ArrowUp" });
+    expect(onAction).toHaveBeenCalledWith({
+      type: "setPlantSetpoint",
+      plantId: "plant-1",
+      mw: 120,
+    });
+  });
+
   test("one bipolar slider dispatches the storage: zero in the middle (01 §5.3)", () => {
     const { onAction } = renderPanel(newGame(7, DISPATCH_SCENARIO));
     const input = slider("BESS POLANA");
