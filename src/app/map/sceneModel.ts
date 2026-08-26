@@ -101,6 +101,8 @@ export interface MapSceneObject {
   y: number;
   kind: MapObjectKind;
   ring: MapObjectRing;
+  /** A city off the grid (01 §3.4) — the view dims the whole group. */
+  muted?: boolean;
 }
 
 export interface MapSceneLabel {
@@ -109,6 +111,8 @@ export interface MapSceneLabel {
   y: number;
   text: string;
   tone: MapLabelTone;
+  /** Dimmed together with its muted object. */
+  muted?: boolean;
 }
 
 /** A piece of text the map writes next to a place on the board. */
@@ -492,10 +496,18 @@ export function buildMapScene(
     ring: MapObjectRing,
     text: string,
     tone: MapLabelTone = "default",
+    muted = false,
   ): void => {
     const { x, y } = hexCenterOf(hex);
-    objects.push({ id, x, y, kind, ring });
-    labels.push({ key: `${id}:label`, x, y: y + LABEL_DY, text, tone });
+    objects.push({ id, x, y, kind, ring, ...(muted ? { muted } : {}) });
+    labels.push({
+      key: `${id}:label`,
+      x,
+      y: y + LABEL_DY,
+      text,
+      tone,
+      ...(muted ? { muted } : {}),
+    });
   };
 
   for (const city of state.cities) {
@@ -508,6 +520,9 @@ export function buildMapScene(
       deficit ? "alert" : "city",
       objectLabel(city.name, null, row ? formatMw(row.demandMw) : null),
       deficit ? "danger" : "city",
+      // Off the grid until an explicit connection (01 §3.4) — drawn dimmed,
+      // so connected and unconnected cities read apart at a glance.
+      !city.connected,
     );
   }
 

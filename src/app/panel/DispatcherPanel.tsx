@@ -96,6 +96,7 @@ function SetpointRowView({ row, onAction }: RowProps) {
             tech={row.tech}
             value={row.valueMw}
             max={row.maxMw}
+            minOnMw={row.minMw}
             note={row.note}
             color={row.color}
             actualMw={row.actualMw}
@@ -114,6 +115,7 @@ function SetpointRowView({ row, onAction }: RowProps) {
             tech={row.tech}
             value={row.valueMw}
             max={row.maxMw}
+            minOnMw={row.minMw}
             note={row.note}
             color={row.color}
             actualMw={row.actualMw}

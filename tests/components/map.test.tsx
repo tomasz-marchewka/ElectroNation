@@ -117,6 +117,15 @@ describe("HexMapView", () => {
     expect(outline?.getAttribute("stroke")).toBe("var(--en-action)");
   });
 
+  test("a city off the grid draws dimmed — ring, pad, icon and label (01 §3.4)", () => {
+    const scene = sceneOf(newGame(1, MAP_V1));
+    const muted = scene.objects.filter((object) => object.muted);
+    // MAP_V1 starts with exactly one city connected (01 §3.4).
+    expect(muted.length).toBeGreaterThan(0);
+    const { container } = render(<HexMapView scene={scene} />);
+    expect(container.querySelectorAll('[opacity="0.45"]')).toHaveLength(4 * muted.length);
+  });
+
   test("the legend prints the engine's line capacities (01 §4.2)", () => {
     render(<HexMapView scene={sceneOf(newGame(1, MAP_V1))} />);
     expect(screen.getByText("NN 150")).toBeDefined();

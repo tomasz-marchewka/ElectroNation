@@ -60,6 +60,10 @@ const RING_STROKES: Record<MapObjectRing, string> = {
 
 const RING_WIDTHS: Record<MapObjectRing, number> = { object: 2, city: 3, alert: 3, planned: 2 };
 
+/** A muted object (a city off the grid, 01 §3.4): ring, pad, icon and label
+ * all fade by the same factor, so the whole group recedes together. */
+const MUTED_OPACITY = 0.45;
+
 /**
  * The selected hex is framed just inside its outline, so the frame lands next
  * to an object's ring instead of on top of it: 0,9 × 34 px leaves the widest
@@ -406,12 +410,19 @@ export function HexMapView({ scene, onHexClick, onHexHover }: HexMapViewProps) {
                 transform={`translate(${object.x} ${object.y})`}
                 stroke={`var(${RING_STROKES[object.ring]})`}
                 strokeWidth={RING_WIDTHS[object.ring]}
+                opacity={object.muted ? MUTED_OPACITY : undefined}
               />
             ))}
           </g>
           <g fill="var(--en-map-pad)" opacity="var(--en-map-pad-opacity)" pointerEvents="none">
             {scene.objects.map((object) => (
-              <circle key={object.id} cx={object.x} cy={object.y} r={padRadius(object)} />
+              <circle
+                key={object.id}
+                cx={object.x}
+                cy={object.y}
+                r={padRadius(object)}
+                opacity={object.muted ? MUTED_OPACITY : undefined}
+              />
             ))}
           </g>
           <g pointerEvents="none">
@@ -420,6 +431,7 @@ export function HexMapView({ scene, onHexClick, onHexHover }: HexMapViewProps) {
                 key={object.id}
                 transform={`translate(${object.x} ${object.y})`}
                 color={iconColor(object.kind)}
+                opacity={object.muted ? MUTED_OPACITY : undefined}
               >
                 {objectIcon(object.kind)}
               </g>
@@ -460,6 +472,7 @@ export function HexMapView({ scene, onHexClick, onHexHover }: HexMapViewProps) {
                 y={label.y}
                 fill={`var(${LABEL_FILLS[label.tone]})`}
                 fontWeight={labelWeight(label)}
+                opacity={label.muted ? MUTED_OPACITY : undefined}
               >
                 {label.text}
               </text>
