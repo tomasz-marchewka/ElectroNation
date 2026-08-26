@@ -11,6 +11,7 @@ import {
   farmProductionForecast,
   isBlockWarm,
   plantOutputMw,
+  quantize001,
   HOURS_PER_TURN,
   type FarmTech,
   type GameState,
@@ -50,6 +51,9 @@ export interface PlantSetpointRow {
   tech: string;
   valueMw: number;
   maxMw: number;
+  /** Technical minimum of the smallest block [MW] — the lowest non-zero output
+   * the AUTO controller can hold, so the slider's dead zone ends here. */
+  minMw: number;
   /** Where the blocks actually stand [MW] — diverges from the setpoint while
    * they start up or ramp (01 §5.1 in 0.27); the slider draws it as a tick. */
   actualMw: number;
@@ -75,6 +79,8 @@ export interface PlantBlockSetpointRow {
   valueMw: number;
   /** The block's rated power [MW]. */
   maxMw: number;
+  /** The block's technical minimum [MW] — the slider's dead zone ends here. */
+  minMw: number;
   /** The block's actual output [MW] — the amber tick. */
   actualMw: number;
   /** Variable cost plus the block's state, e.g. "250 zł/MWh · ROZRUCH · 2 TURY". */
@@ -196,6 +202,7 @@ function plantRows(state: GameState): (PlantSetpointRow | PlantBlockSetpointRow)
     )
     .flatMap((plant): (PlantSetpointRow | PlantBlockSetpointRow)[] => {
       const varCost = `${formatNumber(PLANT_TECHS[plant.tech].varCostPlnPerMwh)} zł/MWh`;
+      const minLoadShare = PLANT_DYNAMICS[plant.tech].minLoadShare;
       // The switch shows up only where it can do anything (01 §5.1, 0.28).
       const modeToggle = plant.automation ? plant.controlMode : undefined;
       if (plant.controlMode === "auto") {
@@ -207,6 +214,9 @@ function plantRows(state: GameState): (PlantSetpointRow | PlantBlockSetpointRow)
             tech: PLANT_TECH_INLINE_LABELS[plant.tech],
             valueMw: plant.setpointMw,
             maxMw: plant.capacityMw,
+            // The controller's smallest stable order: one block at its minimum
+            // (01 §5.1 pt 1 commits a block for any order above zero).
+            minMw: quantize001(minLoadShare * Math.min(...plant.blocks.map((block) => block.mw))),
             actualMw: plantOutputMw(plant),
             note: `${varCost}${plantDynamicsNote(plant)}`,
             color: PLANT_COLORS[plant.tech],
@@ -224,6 +234,7 @@ function plantRows(state: GameState): (PlantSetpointRow | PlantBlockSetpointRow)
         tech: PLANT_TECH_INLINE_LABELS[plant.tech],
         valueMw: block.setpointMw,
         maxMw: block.mw,
+        minMw: quantize001(minLoadShare * block.mw),
         actualMw: block.outputMw,
         note: `${varCost} · ${blockStateNote(plant, block)}`,
         color: PLANT_COLORS[plant.tech],

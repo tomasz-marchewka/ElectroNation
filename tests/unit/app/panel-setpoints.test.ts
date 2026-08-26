@@ -6,6 +6,7 @@ import { describe, expect, test } from "vitest";
 import {
   CONFIG,
   HOURS_PER_TURN,
+  PLANT_DYNAMICS,
   PLANT_TECHS,
   farmProductionForecast,
   newGame,
@@ -72,6 +73,34 @@ describe("plants — manual control is one slider per block (01 §5.1, 0.28)", (
     );
     const auto = setpointRows(automated).find((row) => row.kind === "plant");
     expect(auto?.modeToggle).toBe("auto");
+  });
+});
+
+describe("plants — technical minimum on the slider (01 §5.1 pt 4)", () => {
+  test("a block row carries its own minimum, the AUTO row the smallest block's", () => {
+    const manual = newGame(
+      7,
+      makeScenario({ plants: [{ ...plant("p-1", "ccgt"), automation: false, blocks: 2 }] }),
+    );
+    const blockRows = setpointRows(manual).filter((row) => row.kind === "plantBlock");
+    expect(blockRows.map((row) => row.minMw)).toEqual([
+      PLANT_DYNAMICS.ccgt.minLoadShare * 200,
+      PLANT_DYNAMICS.ccgt.minLoadShare * 200,
+    ]);
+
+    const automated = newGame(
+      7,
+      makeScenario({ plants: [{ ...plant("p-1", "coal"), blocks: 2 }] }),
+    );
+    const autoRow = setpointRows(automated).find((row) => row.kind === "plant");
+    // The controller's smallest stable order is one 200 MW block at its minimum.
+    expect(autoRow?.minMw).toBe(PLANT_DYNAMICS.coal.minLoadShare * 200);
+  });
+
+  test("OCGT has no minimum — its slider keeps the full range", () => {
+    const state = newGame(7, makeScenario({ plants: [plant("p-1", "ocgt")] }));
+    const row = setpointRows(state).find((r) => r.kind === "plant");
+    expect(row?.minMw).toBe(0);
   });
 });
 
