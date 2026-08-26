@@ -342,6 +342,23 @@ describe("scene of a fresh game (no report yet)", () => {
     expect(byId.get("city-krasnow")?.kind).toBe("town");
     expect(byId.get("city-jasienica")?.ring).toBe("city");
   });
+
+  test("01 §3.4: a city off the grid is muted — its object and its label", () => {
+    const detached = buildMapScene(
+      newGame(11, {
+        ...FIXTURE,
+        cities: FIXTURE.cities.map((city) =>
+          city.id === "city-krasnow" ? { ...city, connected: false } : city,
+        ),
+      }),
+      null,
+      null,
+    );
+    const byId = new Map(detached.objects.map((object) => [object.id, object]));
+    expect(byId.get("city-krasnow")?.muted).toBe(true);
+    expect(byId.get("city-jasienica")?.muted).toBeUndefined();
+    expect(detached.labels.find((label) => label.key === "city-krasnow:label")?.muted).toBe(true);
+  });
 });
 
 describe("scene of a resolved turn", () => {

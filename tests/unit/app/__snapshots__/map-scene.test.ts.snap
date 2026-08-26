@@ -5,6 +5,7 @@ exports[`02 §8.6: the played map > 01 §3.4: the starting endowment, biome by b
   "labels": [
     {
       "key": "city-nadmorze:label",
+      "muted": true,
       "text": "NADMORZE",
       "tone": "city",
       "x": 187,
@@ -12,6 +13,7 @@ exports[`02 §8.6: the played map > 01 §3.4: the starting endowment, biome by b
     },
     {
       "key": "city-solnica:label",
+      "muted": true,
       "text": "SOLNICA",
       "tone": "city",
       "x": 799,
@@ -19,6 +21,7 @@ exports[`02 §8.6: the played map > 01 §3.4: the starting endowment, biome by b
     },
     {
       "key": "city-turow:label",
+      "muted": true,
       "text": "TURÓW",
       "tone": "city",
       "x": 136,
@@ -26,6 +29,7 @@ exports[`02 §8.6: the played map > 01 §3.4: the starting endowment, biome by b
     },
     {
       "key": "city-brzegowo:label",
+      "muted": true,
       "text": "BRZEGOWO",
       "tone": "city",
       "x": 952,
@@ -33,6 +37,7 @@ exports[`02 §8.6: the played map > 01 §3.4: the starting endowment, biome by b
     },
     {
       "key": "city-kamionka:label",
+      "muted": true,
       "text": "KAMIONKA",
       "tone": "city",
       "x": 1003,
@@ -40,6 +45,7 @@ exports[`02 §8.6: the played map > 01 §3.4: the starting endowment, biome by b
     },
     {
       "key": "city-jasienica:label",
+      "muted": true,
       "text": "JASIENICA",
       "tone": "city",
       "x": 595,
@@ -54,6 +60,7 @@ exports[`02 §8.6: the played map > 01 §3.4: the starting endowment, biome by b
     },
     {
       "key": "city-wierzbnik:label",
+      "muted": true,
       "text": "WIERZBNIK",
       "tone": "city",
       "x": 952,
@@ -61,6 +68,7 @@ exports[`02 §8.6: the played map > 01 §3.4: the starting endowment, biome by b
     },
     {
       "key": "city-zalesie:label",
+      "muted": true,
       "text": "ZALESIE",
       "tone": "city",
       "x": 697,
@@ -68,6 +76,7 @@ exports[`02 §8.6: the played map > 01 §3.4: the starting endowment, biome by b
     },
     {
       "key": "city-bystrzyca:label",
+      "muted": true,
       "text": "BYSTRZYCA",
       "tone": "city",
       "x": 799,
@@ -116,6 +125,7 @@ exports[`02 §8.6: the played map > 01 §3.4: the starting endowment, biome by b
     {
       "id": "city-nadmorze",
       "kind": "city",
+      "muted": true,
       "ring": "city",
       "x": 187,
       "y": 177,
@@ -123,6 +133,7 @@ exports[`02 §8.6: the played map > 01 §3.4: the starting endowment, biome by b
     {
       "id": "city-solnica",
       "kind": "town",
+      "muted": true,
       "ring": "city",
       "x": 799,
       "y": 177,
@@ -130,6 +141,7 @@ exports[`02 §8.6: the played map > 01 §3.4: the starting endowment, biome by b
     {
       "id": "city-turow",
       "kind": "town",
+      "muted": true,
       "ring": "city",
       "x": 136,
       "y": 383.5,
@@ -137,6 +149,7 @@ exports[`02 §8.6: the played map > 01 §3.4: the starting endowment, biome by b
     {
       "id": "city-brzegowo",
       "kind": "town",
+      "muted": true,
       "ring": "city",
       "x": 952,
       "y": 265.5,
@@ -144,6 +157,7 @@ exports[`02 §8.6: the played map > 01 §3.4: the starting endowment, biome by b
     {
       "id": "city-kamionka",
       "kind": "city",
+      "muted": true,
       "ring": "city",
       "x": 1003,
       "y": 413,
@@ -151,6 +165,7 @@ exports[`02 §8.6: the played map > 01 §3.4: the starting endowment, biome by b
     {
       "id": "city-jasienica",
       "kind": "city",
+      "muted": true,
       "ring": "city",
       "x": 595,
       "y": 472,
@@ -165,6 +180,7 @@ exports[`02 §8.6: the played map > 01 §3.4: the starting endowment, biome by b
     {
       "id": "city-wierzbnik",
       "kind": "city",
+      "muted": true,
       "ring": "city",
       "x": 952,
       "y": 560.5,
@@ -172,6 +188,7 @@ exports[`02 §8.6: the played map > 01 §3.4: the starting endowment, biome by b
     {
       "id": "city-zalesie",
       "kind": "town",
+      "muted": true,
       "ring": "city",
       "x": 697,
       "y": 708,
@@ -179,6 +196,7 @@ exports[`02 §8.6: the played map > 01 §3.4: the starting endowment, biome by b
     {
       "id": "city-bystrzyca",
       "kind": "town",
+      "muted": true,
       "ring": "city",
       "x": 799,
       "y": 767,
