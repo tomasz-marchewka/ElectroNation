@@ -1,0 +1,49 @@
+<!-- @dsCard group="Components" viewport="700x400" name="Map — heksy, biomy, przepływy" subtitle="Pole biomów, korytarze NN/SN/WN, obiekty na widocznym terenie" -->
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<style>body{padding:0}svg{display:block;width:100%}</style>
+</head>
+<body>
+<svg viewBox="0 40 1060 560">
+  <g id="field"></g>
+</svg>
+<script type="module">
+import { buildWorld, LINES, OBJECTS, LABELS, OVERLOAD_LABEL } from "./sampleWorld.js";
+import { routeLines } from "./routing.js";
+const HEX = "M-34 0 L-17 -29.5 L17 -29.5 L34 0 L17 29.5 L-17 29.5 Z";
+const TEX = {
+  gory:'<path d="M-21 13 l8 -13 l8 13 z"/><path d="M3 13 l6 -9 l6 9 z"/>',
+  wyzyna:'<path d="M-15 12 q7 -7 14 0" fill="none" stroke-width="1.6"/><path d="M2 15 q6 -5 12 0" fill="none" stroke-width="1.6"/>',
+  las:'<path d="M-18 15 l4 -10 l4 10 z"/><path d="M-5 16 l4.5 -11 l4.5 11 z"/><path d="M9 15 l4 -10 l4 10 z"/>',
+  bagno:'<path d="M-16 9 h11 M0 9 h11 M-9 15 h11" fill="none" stroke-width="1.8" stroke-linecap="round"/>',
+  jezioro:'<path d="M-17 8 q6 -4 11 0 t11 0" fill="none" stroke-width="1.6"/><path d="M-14 16 q6 -4 11 0 t11 0" fill="none" stroke-width="1.6"/>',
+  morze:'<path d="M-17 8 q6 -4 11 0 t11 0" fill="none" stroke-width="1.6"/><path d="M-14 16 q6 -4 11 0 t11 0" fill="none" stroke-width="1.6"/>',
+  miasto:'<rect x="-16" y="6" width="5" height="9"/><rect x="-8" y="2" width="6" height="13"/><rect x="1" y="8" width="5" height="7"/><rect x="9" y="4" width="5" height="11"/>'
+};
+const W = {NN:2.5,SN:4,WN:6}, C = {ok:'--en-ok',warn:'--en-warn',over:'--en-danger',idle:'--en-idle'};
+const g = document.getElementById('field');
+let s = '';
+for (const h of buildWorld()) {
+  s += '<path d="'+HEX+'" transform="translate('+h.x+' '+h.y+')" fill="var(--en-biome-'+h.biome+'-fill)" stroke="var(--en-biome-'+h.biome+'-edge)"/>';
+  if (TEX[h.biome]) s += '<g transform="translate('+h.x+' '+h.y+')" fill="var(--en-biome-'+h.biome+'-tex)" stroke="var(--en-biome-'+h.biome+'-tex)" opacity="0.62">'+TEX[h.biome]+'</g>';
+}
+const routes = routeLines(LINES);
+routes.forEach(function (pts, i) {
+  const l = LINES[i];
+  s += '<polyline points="'+pts.map(function(p){return p.join(',');}).join(' ')+'" fill="none" stroke="var('+C[l.load]+')" stroke-width="'+W[l.type]+'"'+(l.load==='idle'?' stroke-dasharray="4 4"':'')+' stroke-linecap="round" stroke-linejoin="round"/>';
+});
+for (const o of OBJECTS) {
+  const ring = o.alert ? 'var(--en-danger)' : (o.kind==='city'||o.kind==='town' ? 'var(--en-city-ring)' : 'var(--en-obj-ring)');
+  s += '<path d="'+HEX+'" transform="translate('+o.x+' '+o.y+')" fill="none" stroke="'+ring+'" stroke-width="'+(o.kind==='city'||o.alert?3:2)+'"/>';
+  s += '<circle cx="'+o.x+'" cy="'+o.y+'" r="17" fill="var(--en-map-pad)" opacity="var(--en-map-pad-opacity)"/>';
+}
+for (const l of LABELS) s += '<text x="'+l.x+'" y="'+l.y+'" text-anchor="middle" font-family="var(--en-font-mono)" font-size="10.5" fill="var('+(l.tone==='city'?'--en-map-label-city':l.tone==='danger'?'--en-danger-text':'--en-map-label')+')" paint-order="stroke" stroke="var(--en-bg-map)" stroke-width="3.5">'+l.text+'</text>';
+s += '<text x="'+OVERLOAD_LABEL.x+'" y="'+OVERLOAD_LABEL.y+'" font-family="var(--en-font-mono)" font-size="11" font-weight="600" fill="var(--en-danger)" paint-order="stroke" stroke="var(--en-bg-map)" stroke-width="3.5">'+OVERLOAD_LABEL.text+'</text>';
+g.innerHTML = s;
+document.querySelector('svg').style.background = 'var(--en-bg-map)';
+</script>
+</body>
+</html>

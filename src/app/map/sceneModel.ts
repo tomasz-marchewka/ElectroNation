@@ -8,6 +8,7 @@
 // first resolution the map shows the world without any flow — lines are idle
 // and labels carry only what the state itself knows (setpoints, SOC, sizes).
 
+import { plantOrderMw } from "../dispatch";
 import {
   HOURS_PER_TURN,
   TURNS_PER_DAY,
@@ -535,7 +536,8 @@ export function buildMapScene(
       objectLabel(
         plant.name,
         PLANT_TECH_LABELS[plant.tech],
-        ratioLabel(plant.setpointMw, plant.capacityMw),
+        // The standing order, not the dormant plant-level field (01 §5.1).
+        ratioLabel(plantOrderMw(plant), plant.capacityMw),
       ),
     );
   }

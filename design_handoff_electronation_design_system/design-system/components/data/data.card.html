@@ -1,0 +1,41 @@
+<!-- @dsCard group="Components" viewport="700x330" name="Data — prognoza, bilans, raport" subtitle="Pasma prognozy, zapas mocy, kafle raportu tury" -->
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<style>body{padding:16px;display:flex;flex-direction:column;gap:16px}.cols{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}</style>
+</head>
+<body>
+<div class="cols">
+  <div class="en-stack">
+    <div class="en-statrow"><span class="en-statrow__label">POPYT</span><span class="en-statrow__track"><span class="en-statrow__band" style="left:88%;width:6%"></span></span><span class="en-statrow__value">1500 ±33</span></div>
+    <div class="en-statrow"><span class="en-statrow__label">WIATR</span><span class="en-statrow__track"><span class="en-statrow__band" style="left:58%;width:27%;background:var(--en-wind)"></span></span><span class="en-statrow__value is-info">320 ±60</span></div>
+    <div class="en-statrow"><span class="en-statrow__label">PV</span><span class="en-statrow__track"></span><span class="en-statrow__value is-muted">0 · NOC</span></div>
+  </div>
+  <div class="en-summary">
+    <div class="en-summary__row"><span>ZAPOTRZEBOWANIE</span><b>1500</b></div>
+    <div class="en-summary__row"><span>STRATY PRZESYŁU</span><b>~45</b></div>
+    <div class="en-summary__row"><span>PLAN POKRYCIA</span><b>1570</b></div>
+    <div class="en-summary__total is-warn"><span>ZAPAS</span><span>+25 MW (1,6%)</span></div>
+    <div class="en-summary__note is-warn">⚠ dolne pasmo wiatru = −60 MW → ryzyko niedoboru</div>
+  </div>
+</div>
+<div class="en-report">
+  <div class="en-report__label">PO ZATWIERDZENIU<br><b>ROZSTRZYGNIĘCIE + RAPORT</b></div>
+  <div class="en-report__tiles">
+    <div class="en-tile"><div class="en-tile__label">WIATR WSZEDŁ</div><div class="en-tile__value is-info">280 MW</div><div class="en-tile__note">dolne pasmo (prog. 320)</div></div>
+    <div class="en-tile"><div class="en-tile__label">DOSTARCZONO</div><div class="en-tile__value">1485 / 1500</div><div class="en-tile__note">straty 43 MW</div></div>
+    <div class="en-tile"><div class="en-tile__label is-danger">NIEDOBÓR</div><div class="en-tile__value is-danger">15 MW · KRASNÓW</div><div class="en-tile__note">45 MWh niedostarczone</div></div>
+    <div class="en-tile"><div class="en-tile__label">KARA</div><div class="en-tile__value is-danger">−2,0 mln</div><div class="en-tile__note">4 000 zł/MWh</div></div>
+    <div class="en-tile en-tile--ok"><div class="en-tile__label">WYNIK TURY</div><div class="en-tile__value is-ok">+17,6 mln zł</div></div>
+  </div>
+</div>
+<div style="display:flex;gap:18px">
+  <span class="en-dot" style="background:var(--en-ok)"></span>
+  <span class="en-dot" style="background:var(--en-warn)"></span>
+  <span class="en-dot" style="background:var(--en-danger)"></span>
+  <span class="en-dot" style="background:var(--en-idle)"></span>
+</div>
+</body>
+</html>

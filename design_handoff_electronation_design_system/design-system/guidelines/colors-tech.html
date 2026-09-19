@@ -1,0 +1,22 @@
+<!-- @dsCard group="Colors" viewport="700x140" name="Technologie wytwarzania" subtitle="Warstwy wykresu doby, wypełnienia suwaków i ikony obiektów" -->
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+body{padding:14px 16px;font-family:var(--en-font-mono);font-size:var(--en-fs-caption);color:var(--en-text-3)}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.sw{display:flex;flex-direction:column;gap:4px;min-width:96px}
+.sw i{display:block;height:34px;border:1px solid var(--en-border)}
+.sw b{color:var(--en-text);font-weight:400;font-size:var(--en-fs-caption)}
+.sw s{text-decoration:none;color:var(--en-text-4);font-size:var(--en-fs-micro)}
+.hexsw{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:86px}
+</style>
+</head>
+<body>
+<div class="row">
+<div class="sw"><i style="background:var(--en-coal)"></i><b>węgiel</b><s>--en-coal · ikona --en-coal-ico</s></div><div class="sw"><i style="background:var(--en-gas)"></i><b>gaz</b><s>--en-gas · ikona --en-gas-ico</s></div><div class="sw"><i style="background:var(--en-wind)"></i><b>wiatr</b><s>--en-wind</s></div><div class="sw"><i style="background:var(--en-pv)"></i><b>PV</b><s>--en-pv</s></div><div class="sw"><i style="background:var(--en-storage)"></i><b>magazyn / import</b><s>--en-storage</s></div>
+</div>
+<div style="margin-top:10px">Kolejność warstw od dołu = merit order: węgiel → gaz → wiatr → magazyn/import.</div>
+</body></html>

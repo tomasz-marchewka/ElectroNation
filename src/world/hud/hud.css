@@ -1,0 +1,1079 @@
+/* ═══ ElectroNation — HUD over the 3D world (docs/08 §7) ═══
+   The same shell as the SVG screen (app-shell.css) laid OVER a full-viewport
+   canvas: the map region becomes the fixed background, every other surface
+   floats above it on a high-opacity token background (≥ 0,88) with a hairline
+   edge. Pointer events fall through the empty parts of the frame to the canvas.
+   Blur is allowed only on surfaces bordering the world (docs/08 §7) — it is
+   the one repeal of the handoff's "no blur", and it stays there: the top bar,
+   the panel, the ribbon and the world strips get it; the report strip, which
+   never touches the scene, does not.
+
+   Layers, bottom to top: canvas → world labels (.en-wlabels, inside .en-world)
+   → world strips (.en-worldhud, .en-worldlegend) → the shell (top bar, panel,
+   ribbon, report). The label layer measures the strips and the shell and never
+   places a text under them (WorldLabels.tsx). */
+
+.en-app--world {
+  position: relative;
+  background: transparent;
+}
+
+/* The world: the canvas fills the viewport under everything else. It is a
+   DOM child of the (pointer-transparent) workspace, so it re-enables pointer
+   events for itself — the empty parts of the frame let clicks fall through. */
+.en-app--world .en-region--map {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: #000;
+  flex: none;
+  pointer-events: auto;
+}
+
+.en-world {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.en-world__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: crosshair;
+  outline: none;
+}
+
+/* Everything else floats over the world. The map region is a fixed child of
+   the body's stacking context, so the top bar and the report strip — its
+   siblings, painted in DOM order — need one step more to stand above the
+   canvas; without it the canvas covers the top bar and eats its clicks. */
+.en-app--world .en-topbar,
+.en-app--world .en-body,
+.en-app--world .en-report {
+  position: relative;
+  z-index: 1;
+}
+
+.en-app--world .en-topbar,
+.en-app--world .en-report {
+  z-index: 2;
+}
+
+/* A weather override (capture): the top bar's regime is the forecast of the
+   game, the strip shows the previewed one — the bar's text steps back and
+   carries the same hatched PODGLĄD tag as the banner, so one regime reads. */
+.en-app--world:has(.en-weather__banner) .en-topbar__ctx em {
+  color: var(--en-text-4);
+}
+
+.en-app--world:has(.en-weather__banner) .en-topbar__ctx em::after {
+  content: "PODGLĄD";
+  margin-left: var(--en-space-3);
+  padding: 1px var(--en-space-2);
+  border: 1px solid var(--en-info);
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--en-info) 16%, transparent) 0 4px,
+    transparent 4px 10px
+  );
+  color: var(--en-info);
+  font-size: var(--en-fs-micro);
+  letter-spacing: var(--en-ls-label);
+}
+
+.en-app--world .en-body,
+.en-app--world .en-body > .en-main,
+.en-app--world .en-workspace {
+  pointer-events: none;
+  background: transparent;
+}
+
+.en-app--world .en-topbar,
+.en-app--world .en-panel,
+.en-app--world .en-reportdock,
+.en-app--world .en-timeline,
+.en-app--world .en-chartlegend,
+.en-app--world .en-report,
+.en-app--world .en-weather,
+.en-app--world .en-diagnostics,
+.en-app--world .en-worldlegend {
+  pointer-events: auto;
+}
+
+/* ── shell surfaces over the world ───────────────────────
+   High-opacity token backgrounds, a hairline edge toward the scene, blur only
+   on the world-facing side. The values are the tokens' own; only the alpha
+   is new, and it never drops below 0,88. */
+.en-app--world .en-topbar {
+  background: color-mix(in srgb, var(--en-bg-header) 92%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: var(--en-border-w) solid var(--en-border);
+}
+
+.en-app--world .en-panel {
+  max-height: 100%;
+  background: color-mix(in srgb, var(--en-bg-panel) 93%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-left: var(--en-border-w) solid var(--en-border);
+}
+
+.en-app--world .en-panel .en-section--sunk {
+  background: color-mix(in srgb, var(--en-bg-panel-sunk) 94%, transparent);
+}
+
+.en-app--world .en-reportdock {
+  background: color-mix(in srgb, var(--en-bg-panel) 94%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.en-app--world .en-timeline {
+  background: color-mix(in srgb, var(--en-bg-header) 92%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-top: var(--en-border-w) solid var(--en-border);
+}
+
+.en-app--world .en-region--chart {
+  background: color-mix(in srgb, var(--en-bg-chart) 90%, transparent);
+}
+
+.en-app--world .en-chartlegend,
+.en-app--world .en-themeswitch {
+  background: color-mix(in srgb, var(--en-bg-app) 92%, transparent);
+}
+
+.en-app--world .en-chartlegend {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* The report strip stands under the ribbon and the panel, never on the scene. */
+.en-app--world .en-report {
+  background: color-mix(in srgb, var(--en-bg-report) 96%, transparent);
+}
+
+.en-app--world .en-tile--ok {
+  background: color-mix(in srgb, var(--en-bg-tint-ok) 94%, transparent);
+}
+
+/* ── world-anchored labels ───────────────────────────────
+   Projected each frame by WorldLabels.tsx. Every text stands on a scrim of the
+   map background with a hairline edge and a halo of the same colour around the
+   glyphs: readable on snow at noon and on black at 03:00, in both themes (the
+   scrim follows the theme, so a light theme prints light pills on a dark
+   night — a pill, never a naked text on the world). Boxes are written at whole
+   pixels, so the mono glyphs sit on the pixel grid. Size tiers follow the
+   distance to the camera (WorldLabels.tsx TIER_FONT_PX — keep in sync); the
+   technology suffix folds away at strategic zoom (.is-compact); alerts get a
+   tinted pill and a leader to their object. */
+.en-wlabels {
+  --en-wlabel-fs: 11.5px;
+  --en-wlabel-bg: color-mix(in srgb, var(--en-bg-map) 94%, transparent);
+  --en-wlabel-edge: color-mix(in srgb, var(--en-border-strong) 55%, transparent);
+  /* The leader's own colour: the chip's edge, solid — opacity is set on the tick. */
+  --en-wlabel-lead: var(--en-border-strong);
+  --en-wlabel-halo: var(--en-bg-map);
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  font-family: var(--en-font-mono);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  z-index: 1;
+}
+
+.en-wlabel {
+  position: absolute;
+  left: 0;
+  top: 0;
+  box-sizing: border-box;
+  padding: 0.2em 0.55em 0.22em;
+  white-space: nowrap;
+  font-size: var(--en-wlabel-fs);
+  font-weight: var(--en-fw-medium);
+  letter-spacing: 0.2px;
+  color: var(--en-map-label);
+  background: var(--en-wlabel-bg);
+  border: 1px solid var(--en-wlabel-edge);
+  text-shadow: 0 0 2px var(--en-wlabel-halo);
+  will-change: transform, opacity;
+  contain: layout style;
+}
+
+/* Being measured: laid out, invisible, off the hit path. Hidden: gone. */
+.en-wlabel.is-measuring {
+  visibility: hidden;
+}
+
+.en-wlabel.is-hidden {
+  display: none;
+}
+
+/* Size tiers by depth: strategic (the map's own label size) → closeup. */
+.en-wlabel.is-d0 {
+  --en-wlabel-fs: 10.5px;
+}
+
+.en-wlabel.is-d1 {
+  --en-wlabel-fs: 11.5px;
+}
+
+.en-wlabel.is-d2 {
+  --en-wlabel-fs: 13px;
+}
+
+.en-wlabel.is-d3 {
+  --en-wlabel-fs: 14px;
+}
+
+.en-wlabel__tech,
+.en-wlabel__val {
+  font-weight: var(--en-fw-regular);
+}
+
+.en-wlabel__tech {
+  color: var(--en-text-3);
+}
+
+.en-wlabel__val {
+  color: var(--en-text-2);
+}
+
+.en-wlabels.is-compact .en-wlabel__tech {
+  display: none;
+}
+
+/* Cities: heavier than objects, the design's own city label colour. */
+.en-wlabel.is-city {
+  --en-wlabel-lead: var(--en-city-ring);
+  font-weight: var(--en-fw-bold);
+  letter-spacing: 0.4px;
+  color: var(--en-map-label-city);
+  border-color: color-mix(in srgb, var(--en-city-ring) 45%, transparent);
+}
+
+.en-wlabel.is-city .en-wlabel__val {
+  font-weight: var(--en-fw-medium);
+  color: var(--en-map-label-city);
+}
+
+/* Off the grid: dimmed with its object, still readable (opacity is set per frame). */
+.en-wlabel.is-muted,
+.en-wlabel.is-muted .en-wlabel__val {
+  color: var(--en-text-3);
+  font-weight: var(--en-fw-medium);
+}
+
+.en-wlabel.is-muted {
+  border-color: color-mix(in srgb, var(--en-border) 60%, transparent);
+}
+
+.en-wlabel.is-warn,
+.en-wlabel.is-warn .en-wlabel__val {
+  color: var(--en-warn-text);
+}
+
+/* Danger tone on a name (a starved city's own label): red text, red hairline. */
+.en-wlabel.is-danger,
+.en-wlabel.is-danger .en-wlabel__val {
+  color: var(--en-danger-text);
+}
+
+.en-wlabel.is-danger {
+  --en-wlabel-lead: var(--en-danger);
+  border-color: color-mix(in srgb, var(--en-danger) 70%, transparent);
+}
+
+/* Alerts — overload, shortfall, route: a tinted pill, bold, never culled. */
+.en-wlabel.is-alert {
+  font-weight: var(--en-fw-bold);
+  letter-spacing: 0.5px;
+  padding: 0.26em 0.65em 0.28em;
+  --en-wlabel-bg: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--en-danger) 28%, var(--en-bg-map)) 96%,
+    transparent
+  );
+  --en-wlabel-lead: var(--en-danger);
+  color: var(--en-danger-text);
+  border-color: var(--en-danger);
+  border-left-width: 3px;
+  text-shadow: 0 0 2px var(--en-wlabel-halo);
+}
+
+.en-wlabel.is-alert .en-wlabel__val {
+  color: inherit;
+  font-weight: inherit;
+}
+
+.en-wlabel.is-alert.is-action {
+  --en-wlabel-bg: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--en-action) 28%, var(--en-bg-map)) 96%,
+    transparent
+  );
+  --en-wlabel-lead: var(--en-action);
+  color: var(--en-action);
+  border-color: var(--en-action);
+}
+
+/* A label led to its object: a one-pixel tick from the box to the anchor,
+   ending in a dot on the object. Geometry is written per frame. */
+.en-wlabel__lead {
+  position: absolute;
+  display: none;
+  height: 1.5px;
+  width: 0;
+  background: var(--en-wlabel-lead);
+  opacity: 0.6;
+  box-shadow: 0 0 0 1px var(--en-wlabel-halo);
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
+/* The anchor dot: three pixels on the object, haloed like the tick. */
+.en-wlabel__lead::after {
+  content: "";
+  position: absolute;
+  right: -1.5px;
+  top: -0.75px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--en-wlabel-lead);
+  box-shadow: 0 0 0 1px var(--en-wlabel-halo);
+}
+
+.en-wlabel.is-alert .en-wlabel__lead {
+  opacity: 0.85;
+}
+
+.en-wlabel.is-lead .en-wlabel__lead {
+  display: block;
+}
+
+/* ── kind glyph ──────────────────────────────────────────
+   Six pixels before the words, drawn in CSS (the allowed glyph set has no
+   square or diamond): a hexagon for a city, a bar for a plant, a diamond for
+   a farm, a hollow bar for a storage, a dot for a junction, a dashed square
+   for a site, a half-bar for a border. The eye groups before it reads. */
+.en-wlabel__kind {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 0.45em;
+  vertical-align: 0.05em;
+  background: currentColor;
+  opacity: 0.85;
+}
+
+.en-wlabel__kind.is-city {
+  width: 7px;
+  height: 7px;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+}
+
+.en-wlabel__kind.is-plant {
+  width: 5px;
+  height: 7px;
+}
+
+.en-wlabel__kind.is-farm {
+  transform: rotate(45deg) scale(0.85);
+}
+
+.en-wlabel__kind.is-storage {
+  width: 5px;
+  height: 7px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px currentColor;
+}
+
+.en-wlabel__kind.is-junction {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+.en-wlabel__kind.is-border {
+  width: 7px;
+  height: 3px;
+  vertical-align: 0.15em;
+}
+
+.en-wlabel__kind.is-site {
+  background: transparent;
+  border: 1px dashed currentColor;
+  box-sizing: border-box;
+}
+
+/* Micro form (far tier, secondary labels): the glyph and the values, no name. */
+.en-wlabel.is-micro .en-wlabel__name,
+.en-wlabel.is-micro .en-wlabel__tech,
+.en-wlabel.is-micro .en-wlabel__val.is-first .en-wlabel__sep {
+  display: none;
+}
+
+.en-wlabel.is-micro {
+  padding-left: 0.45em;
+  padding-right: 0.45em;
+}
+
+.en-wlabel.is-micro .en-wlabel__kind {
+  margin-right: 0.35em;
+}
+
+/* Edge cue: the anchor lies outside the viewport — the label sits at the edge,
+   dimmed, and points the way (the one arrow glyph, turned by CSS). */
+.en-wlabel__dir {
+  display: none;
+  font-style: normal;
+  margin-right: 0.35em;
+  opacity: 0.8;
+}
+
+.en-wlabel[class*="is-edge-"] {
+  opacity: 0.7 !important;
+}
+
+.en-wlabel[class*="is-edge-"] .en-wlabel__dir {
+  display: inline-block;
+}
+
+.en-wlabel.is-edge-up .en-wlabel__dir {
+  transform: rotate(-90deg);
+}
+
+.en-wlabel.is-edge-down .en-wlabel__dir {
+  transform: rotate(90deg);
+}
+
+.en-wlabel.is-edge-left .en-wlabel__dir {
+  transform: rotate(180deg);
+}
+
+/* Selection: the label of the selected hex glows in the action colour. */
+.en-wlabel.is-selected,
+.en-wlabel.is-selected .en-wlabel__val {
+  color: var(--en-action);
+}
+
+.en-wlabel.is-selected {
+  --en-wlabel-lead: var(--en-action);
+  border-color: var(--en-action);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--en-action) 45%, transparent),
+    0 0 12px color-mix(in srgb, var(--en-action) 55%, transparent);
+}
+
+.en-wlabel.is-selected .en-wlabel__tech {
+  color: color-mix(in srgb, var(--en-action) 70%, var(--en-text-3));
+}
+
+/* Hover: lifted one step, no colour of its own. */
+.en-wlabel.is-hover:not(.is-selected):not(.is-alert),
+.en-wlabel.is-hover:not(.is-selected):not(.is-alert) .en-wlabel__val {
+  color: var(--en-text);
+}
+
+.en-wlabel.is-hover:not(.is-selected) {
+  border-color: var(--en-border-strong);
+}
+
+/* ── world strips ────────────────────────────────────────
+   Top-left: the weather strip and the diagnostics line, one column, at most
+   a quarter of the width. Top-right, against the panel: the legend. Both
+   stand in the band of sky the strategic camera leaves above the board, on
+   the same surface as the shell, and are measured by the label layer as
+   soft occluders. */
+.en-worldhud {
+  position: absolute;
+  left: var(--en-space-6);
+  top: calc(var(--en-header-h) + var(--en-space-6));
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: var(--en-space-3);
+  width: max-content;
+  max-width: min(520px, 34vw);
+  pointer-events: none;
+}
+
+.en-weather {
+  background: color-mix(in srgb, var(--en-bg-header) 92%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: var(--en-border-w) solid var(--en-border);
+  font-family: var(--en-font-mono);
+  font-size: var(--en-fs-caption);
+  color: var(--en-text-2);
+  pointer-events: auto;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* The head is the strip's one control: a press opens the readout. */
+.en-weather__head {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--en-space-5);
+  padding: var(--en-space-2) var(--en-space-5);
+  margin: 0;
+  border: 0;
+  border-bottom: var(--en-border-w) solid var(--en-border-subtle);
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.en-weather__head:focus-visible {
+  outline: 1px solid var(--en-action);
+  outline-offset: -1px;
+}
+
+.en-weather__turn {
+  font-weight: var(--en-fw-medium);
+  color: var(--en-text-3);
+  letter-spacing: 0.5px;
+}
+
+.en-weather__toggle {
+  font-size: var(--en-fs-micro);
+  letter-spacing: var(--en-ls-label);
+  color: var(--en-text-4);
+  white-space: nowrap;
+}
+
+.en-weather__head:hover .en-weather__toggle {
+  color: var(--en-text-2);
+}
+
+/* The slim band: the numbers inline, label then value, one row. */
+.en-weather__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--en-space-2) var(--en-space-5);
+  padding: var(--en-space-2) var(--en-space-5) var(--en-space-3);
+}
+
+.en-weather__cell {
+  white-space: nowrap;
+}
+
+.en-weather__cell .en-weather__value {
+  font-size: var(--en-fs-caption);
+}
+
+.en-weather__phase {
+  font-size: var(--en-fs-label);
+  font-weight: var(--en-fw-bold);
+  letter-spacing: var(--en-ls-label);
+  color: var(--en-text);
+  white-space: nowrap;
+}
+
+.en-weather__hour {
+  font-weight: var(--en-fw-medium);
+  color: var(--en-text-2);
+  letter-spacing: 0.5px;
+}
+
+.en-weather__regime {
+  font-size: var(--en-fs-label);
+  letter-spacing: 1px;
+  color: var(--en-info);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.en-weather__regime.is-pending {
+  color: var(--en-text-3);
+}
+
+/* The sun has a sentence, not a number: its own line under the head. */
+.en-weather__sun {
+  display: flex;
+  align-items: baseline;
+  gap: var(--en-space-4);
+  padding: var(--en-space-2) var(--en-space-5) var(--en-space-3);
+  border-bottom: var(--en-border-w) solid var(--en-border-subtle);
+  color: var(--en-text-2);
+}
+
+.en-weather__sunvalue {
+  font-variant-numeric: tabular-nums;
+  color: var(--en-text);
+}
+
+/* The numbers: three columns of label-over-value cells, two rows. */
+.en-weather__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--en-space-3) var(--en-space-5);
+  padding: var(--en-space-3) var(--en-space-5) var(--en-space-4);
+}
+
+.en-weather__item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.en-weather__label {
+  font-size: var(--en-fs-micro);
+  letter-spacing: 1px;
+  color: var(--en-text-4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.en-weather__value {
+  font-size: var(--en-fs-sm);
+  font-weight: var(--en-fw-medium);
+  font-variant-numeric: tabular-nums;
+  color: var(--en-text);
+  white-space: nowrap;
+}
+
+.en-weather__value.is-warn {
+  color: var(--en-warn-text);
+}
+
+.en-weather__value.is-danger {
+  color: var(--en-danger-text);
+}
+
+.en-weather__value.is-info,
+.en-weather__value.is-ok {
+  color: var(--en-text);
+}
+
+/* The diagnosis: why the renewables are dark, why the rotors stand. */
+.en-weather__note {
+  padding: var(--en-space-2) var(--en-space-5);
+  border-top: var(--en-border-w) solid var(--en-border-subtle);
+  color: var(--en-warn-text);
+  line-height: var(--en-lh-normal);
+}
+
+/* The capture banner: hatched like the plan on the ribbon — not the game's truth. */
+.en-weather__banner {
+  margin: var(--en-space-2) var(--en-space-5) var(--en-space-3);
+  padding: 3px var(--en-space-4);
+  border: 1px solid var(--en-info);
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--en-info) 16%, transparent) 0 4px,
+    transparent 4px 10px
+  );
+  color: var(--en-info);
+  font-size: var(--en-fs-caption);
+  font-weight: var(--en-fw-medium);
+  letter-spacing: var(--en-ls-label);
+}
+
+.en-weather__note + .en-weather__banner {
+  margin-top: var(--en-space-3);
+}
+
+/* ── diagnostics line ────────────────────────────────────
+   One entry per note under the weather strip, printed whole. A note names its
+   module or its number; a line starting with ⚠ names a failure, and the
+   strip's accent edge turns amber with it. Never a modal. */
+.en-diagnostics {
+  font-family: var(--en-font-mono);
+  font-size: var(--en-fs-caption);
+  line-height: var(--en-lh-normal);
+  color: var(--en-text-3);
+  background: color-mix(in srgb, var(--en-bg-app) 92%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: var(--en-border-w) solid var(--en-border);
+  border-left-width: var(--en-border-w-accent);
+  border-left-color: var(--en-text-4);
+  padding: var(--en-space-2) var(--en-space-4);
+  align-self: flex-start;
+  pointer-events: auto;
+}
+
+.en-diagnostics.has-warn {
+  border-left-color: var(--en-warn);
+}
+
+.en-diagnostics__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--en-space-2);
+  font-size: var(--en-fs-micro);
+  letter-spacing: var(--en-ls-label);
+  color: var(--en-text-4);
+}
+
+.en-diagnostics__title {
+  display: inline;
+}
+
+.en-diagnostics__toggle {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  letter-spacing: inherit;
+  color: var(--en-text-3);
+  cursor: pointer;
+}
+
+.en-diagnostics__toggle:hover {
+  color: var(--en-text);
+}
+
+.en-diagnostics__toggle:focus-visible {
+  outline: 1px solid var(--en-action);
+  outline-offset: 2px;
+}
+
+.en-diagnostics__head + .en-diagnostics__line,
+.en-diagnostics__head + #en-diagnostics-notes {
+  margin-top: var(--en-space-2);
+}
+
+.en-diagnostics__line {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.en-diagnostics__line + .en-diagnostics__line {
+  margin-top: var(--en-space-1);
+}
+
+.en-diagnostics__line.is-warn {
+  color: var(--en-warn-text);
+}
+
+/* ── world legend ────────────────────────────────────────
+   Top-right of the world, against the panel: what the light means. Folds to
+   its title once read (WorldLegend.tsx, remembered in the world settings). */
+.en-worldlegend {
+  position: absolute;
+  right: calc(var(--en-panel-w) + var(--en-space-6));
+  top: calc(var(--en-header-h) + var(--en-space-6));
+  z-index: 2;
+  max-width: min(500px, 34vw);
+  padding: var(--en-space-3) var(--en-space-5) var(--en-space-4);
+  background: color-mix(in srgb, var(--en-bg-app) 92%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: var(--en-border-w) solid var(--en-border);
+  font-family: var(--en-font-mono);
+  font-size: var(--en-fs-micro);
+  letter-spacing: 0.5px;
+  color: var(--en-text-2);
+  pointer-events: auto;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.en-worldlegend.is-collapsed {
+  padding: var(--en-space-2) var(--en-space-4);
+  font-size: var(--en-fs-caption);
+  border-color: var(--en-border-strong);
+}
+
+.en-worldlegend.is-collapsed .en-worldlegend__title {
+  font-size: var(--en-fs-caption);
+  font-weight: var(--en-fw-bold);
+  letter-spacing: var(--en-ls-label);
+  color: var(--en-text);
+}
+
+/* Over the world the map region is out of flow, so the report dock takes the
+   left edge of the workspace: the world strips step right of it (the weather
+   is a standing forecast, the report a layer of reading — both stay in view)
+   and the legend, top-right against the panel, does not move. */
+.en-workspace.has-report .en-worldhud {
+  left: calc(var(--en-report-w) + var(--en-space-6));
+}
+
+.en-worldlegend__head {
+  display: flex;
+  align-items: center;
+  gap: var(--en-space-5);
+}
+
+.en-worldlegend:not(.is-collapsed) .en-worldlegend__head {
+  padding-bottom: var(--en-space-2);
+  margin-bottom: var(--en-space-2);
+  border-bottom: var(--en-border-w) solid var(--en-border-subtle);
+}
+
+.en-worldlegend__title {
+  font-size: var(--en-fs-label);
+  letter-spacing: var(--en-ls-label);
+  color: var(--en-label-accent, var(--en-text-3));
+  white-space: nowrap;
+}
+
+.en-worldlegend__hint {
+  margin-left: auto;
+  color: var(--en-text-4);
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.en-worldlegend__toggle {
+  margin-left: auto;
+  flex: none;
+}
+
+.en-worldlegend__hint + .en-worldlegend__toggle {
+  margin-left: var(--en-space-4);
+}
+
+.en-worldlegend__grid {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: var(--en-space-6);
+  row-gap: var(--en-space-2);
+}
+
+.en-worldlegend__row {
+  display: contents;
+}
+
+.en-worldlegend__key {
+  color: var(--en-text-4);
+  letter-spacing: 1.5px;
+  line-height: 1.6;
+}
+
+.en-worldlegend__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px var(--en-space-5);
+  line-height: 1.6;
+}
+
+.en-worldlegend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--en-space-2);
+  white-space: nowrap;
+}
+
+/* Conductor bars: the glow tones of docs/08 §3. */
+.en-worldlegend__bar {
+  display: inline-block;
+  width: 14px;
+  height: 2px;
+}
+
+.en-worldlegend__bar.is-idle {
+  background: var(--en-idle);
+}
+
+.en-worldlegend__bar.is-ok {
+  background: var(--en-text-2);
+  box-shadow: 0 0 3px color-mix(in srgb, var(--en-text) 70%, transparent);
+}
+
+.en-worldlegend__bar.is-warn {
+  background: var(--en-warn);
+  box-shadow: 0 0 4px var(--en-warn);
+}
+
+.en-worldlegend__bar.is-over {
+  background: var(--en-danger);
+  box-shadow: 0 0 5px var(--en-danger);
+}
+
+/* Ground rings: the bottleneck, the starved city, the curtailed farm. */
+.en-worldlegend__ring {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 2px solid var(--en-danger);
+}
+
+.en-worldlegend__ring.is-warn {
+  border-color: var(--en-warn);
+}
+
+/* Lights: windows and glows. */
+.en-worldlegend__light {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--en-border-strong);
+  background: transparent;
+}
+
+.en-worldlegend__light.is-full {
+  background: var(--en-pv);
+  border-color: var(--en-pv);
+  box-shadow: 0 0 4px var(--en-pv);
+}
+
+.en-worldlegend__light.is-warm {
+  background: var(--en-gas-ico);
+  border-color: var(--en-gas-ico);
+  box-shadow: 0 0 4px var(--en-gas-ico);
+}
+
+.en-worldlegend__light.is-startup {
+  background: var(--en-coal-ico);
+  border-color: var(--en-coal-ico);
+  box-shadow: 0 0 3px var(--en-coal-ico);
+}
+
+.en-worldlegend__light.is-off {
+  background: var(--en-bg-map);
+  border-color: var(--en-text-4);
+}
+
+/* Rotors: a hub seen from the front — a stopped blade, a spinning disc, blades edge-on. */
+.en-worldlegend__rotor {
+  position: relative;
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid var(--en-text-3);
+}
+
+.en-worldlegend__rotor::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  background: var(--en-text-2);
+  transform: translateX(-50%);
+}
+
+.en-worldlegend__rotor.is-spin {
+  border-style: dashed;
+  border-color: var(--en-wind);
+}
+
+.en-worldlegend__rotor.is-spin::after {
+  background: var(--en-wind);
+  transform: translateX(-50%) rotate(35deg);
+}
+
+.en-worldlegend__rotor.is-feathered::after {
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  transform: translateY(-50%);
+}
+
+/* ── settings strip ──────────────────────────────────────
+   Joins the theme switch in the legend strip. */
+.en-worldsettings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--en-space-6);
+  font-family: var(--en-font-mono);
+  font-size: var(--en-fs-micro);
+  color: var(--en-text-4);
+}
+
+.en-worldsettings__group {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--en-space-3);
+}
+
+.en-worldsettings__label {
+  letter-spacing: 1px;
+}
+
+/* What the renderer actually runs at: the settled tier and the frame rate. */
+.en-worldsettings__readout {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
+  color: var(--en-text-4);
+  white-space: nowrap;
+}
+
+.en-worldsettings__readout b {
+  font-weight: var(--en-fw-medium);
+  color: var(--en-text-2);
+}
+
+/* The strip is driven by mouse, and it must stay reachable by keyboard: the
+   browser's own focus ring is kept, lifted off the segment's edge. */
+.en-worldsettings .en-seg:focus-visible,
+.en-worldlegend__toggle:focus-visible {
+  outline: 2px solid var(--en-info);
+  outline-offset: 1px;
+}
+
+/* ── showcase caption ────────────────────────────────────
+   In showcase mode the HUD is gone; only this strip says what is on screen:
+   module · hour and weather of the frame · camera. */
+.en-showcase {
+  position: fixed;
+  left: var(--en-space-6);
+  top: var(--en-space-6);
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--en-space-3) var(--en-space-8);
+  padding: var(--en-space-3) var(--en-space-6);
+  background: color-mix(in srgb, var(--en-bg-app) 92%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: var(--en-border-w) solid var(--en-border);
+  font-family: var(--en-font-mono);
+  font-size: var(--en-fs-label);
+  letter-spacing: var(--en-ls-label);
+  color: var(--en-text-2);
+  pointer-events: none;
+}
+
+.en-showcase__module {
+  font-weight: var(--en-fw-bold);
+  color: var(--en-text);
+}
+
+.en-showcase__frame {
+  color: var(--en-info);
+}
+
+.en-showcase__camera {
+  color: var(--en-text-3);
+}
+
+/* A fallback note when the world cannot start. */
+.en-world__fallback {
+  position: absolute;
+  left: var(--en-space-6);
+  top: var(--en-space-6);
+  z-index: 2;
+  font-family: var(--en-font-mono);
+  font-size: var(--en-fs-caption);
+  color: var(--en-warn-text);
+}

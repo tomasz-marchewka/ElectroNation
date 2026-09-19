@@ -1,6 +1,13 @@
 // The dispatcher screen (01 §8, handoff README "Layout"): top bar → map +
 // docked 400 px panel → time ribbon → full-width report strip.
 //
+// Since the 3D world (docs/08) the map region is one of two renderers: the
+// Three.js world behind a floating HUD, or the SVG map of the flat screen —
+// picked by `?renderer=`, then the build's VITE_EN_RENDERER, then the player's
+// setting, and only ever 3D where WebGL2 exists. Both renderers sit in the
+// same frame with the same panels, so a session survives the switch and the
+// component tests (jsdom, no WebGL2) exercise the SVG path unchanged.
+//
 // The detailed report joins the map row as a second dock: next to the map on a
 // wide screen, in its place on a narrow one (app-shell.css). The ribbon and the
 // dispatcher panel never move, so the screen keeps being one continuous view
@@ -13,8 +20,24 @@
 //
 // UI strings are Polish (player-facing); identifiers and comments stay English.
 
-import { useEffect, useMemo } from "react";
-import { hexKey } from "../engine";
+import { useEffect, useMemo, useState } from "react";
+import { REGIME_IDS, hexKey, type HexCoord, type RegimeId } from "../engine";
+import {
+  DEFAULT_SHOWCASE,
+  buildWorldScene,
+  isShowcaseScenario,
+  showcaseState,
+  weatherStripModel,
+} from "../world/bridge";
+import { parseCaptureParams } from "../world/capture/params";
+import { Diagnostics } from "../world/hud/Diagnostics";
+import { SettingsStrip } from "../world/hud/SettingsStrip";
+import { ShowcaseCaption } from "../world/hud/ShowcaseCaption";
+import { WeatherStrip } from "../world/hud/WeatherStrip";
+import { WorldLegend } from "../world/hud/WorldLegend";
+import { useWorldSettings } from "../world/hud/settingsStore";
+import { showcaseSpec } from "../world/showcase/registry";
+import { WorldView, webglAvailable } from "../world/WorldView";
 import { HexPanel } from "./components/HexPanel";
 import { ReportStrip } from "./components/ReportStrip";
 import { RoutingPanel } from "./components/RoutingPanel";
@@ -33,6 +56,7 @@ import { planRoute } from "./routing/session";
 import { TimelineView } from "./timeline/TimelineView";
 import { buildTimeline } from "./timeline/timeline";
 import { useGameStore } from "./store/gameStore";
+import { useThemeStore } from "./store/themeStore";
 import {
   budgetKpi,
   dayResultKpi,
@@ -40,6 +64,17 @@ import {
   regimeForecastLabel,
   topBarContext,
 } from "./store/selectors";
+
+const SVG_FALLBACK_NOTE = "⚠ brak WebGL2 — mapa w trybie SVG";
+
+function envRenderer(): "svg" | "3d" | null {
+  const value = import.meta.env.VITE_EN_RENDERER;
+  return value === "svg" || value === "3d" ? value : null;
+}
+
+function regimeOverride(value: string | null): RegimeId | null {
+  return value && (REGIME_IDS as readonly string[]).includes(value) ? (value as RegimeId) : null;
+}
 
 export function App() {
   const game = useGameStore((store) => store.game);
@@ -71,6 +106,48 @@ export function App() {
   const selectTurn = useGameStore((store) => store.selectTurn);
   const scrollTimeline = useGameStore((store) => store.scrollTimeline);
   const showNow = useGameStore((store) => store.showNow);
+  const replaceGame = useGameStore((store) => store.replaceGame);
+  const settingsRenderer = useWorldSettings((store) => store.renderer);
+
+  // Capture-mode parameters are read once: a URL names one world.
+  const params = useMemo(
+    () => parseCaptureParams(typeof window === "undefined" ? "" : window.location.search),
+    [],
+  );
+  const [webgl] = useState(() => webglAvailable());
+  const showcase = showcaseSpec(params.showcase);
+  const wants3d = (params.renderer ?? envRenderer() ?? settingsRenderer) === "3d";
+  const use3d = wants3d && webgl;
+  const hudVisible = params.hud && showcase === null;
+  const [worldStatus, setWorldStatus] = useState<{ diagnostics: string[]; tier: string }>({
+    diagnostics: [],
+    tier: "medium",
+  });
+
+  // A capture may pin the theme, so a critic can screenshot both (docs/08 §7).
+  useEffect(() => {
+    if (params.theme) useThemeStore.getState().setTheme(params.theme);
+  }, [params.theme]);
+
+  // A capture URL that names a scenario, a day or a turn replaces the session
+  // with that curated state and stops the autosave from being written over.
+  useEffect(() => {
+    if (params.scenario === null && params.day === null && params.turn === null && !showcase)
+      return;
+    const scenario =
+      showcase?.scenario ??
+      (params.scenario !== null && isShowcaseScenario(params.scenario) ? params.scenario : "start");
+    replaceGame(
+      showcaseState({
+        scenario,
+        seed: params.seed ?? DEFAULT_SHOWCASE.seed,
+        dayIndex: params.day ?? showcase?.day ?? 0,
+        turnIndex: params.turn === null ? 0 : params.turn + 1,
+      }),
+    );
+    // Once, at boot: the parameters never change within a page.
+  }, [params, replaceGame, showcase]);
+
   // The map paints the last resolved turn and ONLY it (01 §8 pt 1): reading an
   // older turn on the ribbon never rewinds the world, because the world of a
   // month ago had other lines and other objects standing in it.
@@ -93,9 +170,23 @@ export function App() {
   }, [game, routing]);
 
   const scene = useMemo(
-    () => buildMapScene(game, report, selectedHex, { route: preview, bottleneck }),
-    [game, report, selectedHex, preview, bottleneck],
+    () => (use3d ? null : buildMapScene(game, report, selectedHex, { route: preview, bottleneck })),
+    [use3d, game, report, selectedHex, preview, bottleneck],
   );
+  const weatherOverride = regimeOverride(params.regime);
+  const world = useMemo(
+    () =>
+      use3d
+        ? buildWorldScene(
+            game,
+            report,
+            { selected: selectedHex, route: preview, bottleneck },
+            { weatherOverride, showcase: params.showcase },
+          )
+        : null,
+    [use3d, game, report, selectedHex, preview, bottleneck, weatherOverride, params.showcase],
+  );
+  const weather = useMemo(() => (world ? weatherStripModel(world) : null), [world]);
   const timeline = useMemo(
     () => buildTimeline(game, { from: timelineFrom, selected: selectedTurn }),
     [game, timelineFrom, selectedTurn],
@@ -121,8 +212,67 @@ export function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [cancelRouting, closeReport, selectHex, showNow]);
 
+  const onHexClick = routing ? clickRouting : selectHex;
+  const onHexHover = routing ? hoverRouting : undefined;
+  // What the player is told: renderer failures and the fallback. The bridge's
+  // own derivation notes (scene.notes) are a matter for docs/STATUS.json and
+  // the capture log, not a standing line on the dispatcher's screen.
+  const diagnostics = useMemo(
+    () => [...(wants3d && !webgl ? [SVG_FALLBACK_NOTE] : []), ...worldStatus.diagnostics],
+    [wants3d, webgl, worldStatus.diagnostics],
+  );
+
+  const mapRegion = (
+    <div className="en-region--map" data-region="map">
+      {use3d && world ? (
+        <>
+          <WorldView
+            scene={world}
+            selectedHex={selectedHex}
+            onHexClick={onHexClick}
+            onHexHover={onHexHover}
+            onResolve={resolve}
+            params={params}
+            moduleIds={params.modules ?? showcase?.modules}
+            showcaseFrames={showcase?.frames}
+            exposeApi={params.capture || import.meta.env.DEV}
+            onStatus={(status) =>
+              setWorldStatus({ diagnostics: status.diagnostics, tier: status.tier })
+            }
+          />
+          {hudVisible && weather && (
+            <>
+              <div className="en-worldhud">
+                <WeatherStrip model={weather} time={world.time} />
+                <Diagnostics lines={diagnostics} />
+              </div>
+              <WorldLegend />
+            </>
+          )}
+        </>
+      ) : (
+        scene && <HexMapView scene={scene} onHexClick={onHexClick} onHexHover={onHexHover} />
+      )}
+    </div>
+  );
+
+  if (showcase !== null && world) {
+    return (
+      <div className="en-app en-app--world en-app--showcase">
+        {mapRegion}
+        <ShowcaseCaption module={showcase.module} title={weather?.title} camera={params.camera} />
+      </div>
+    );
+  }
+
+  // `?hud=0`: the bare world — a judging frame of the game state with no panel,
+  // ribbon or strip over it (ARCHITECTURE §15). The game is not playable here.
+  if (!params.hud && use3d && world) {
+    return <div className="en-app en-app--world en-app--bare">{mapRegion}</div>;
+  }
+
   return (
-    <div className="en-app">
+    <div className={use3d ? "en-app en-app--world" : "en-app"}>
       <TopBar
         context={topBarContext(game)}
         regime={regimeForecastLabel(game)}
@@ -141,13 +291,7 @@ export function App() {
       <div className="en-body">
         <div className="en-main">
           <div className={reportOpen ? "en-workspace has-report" : "en-workspace"}>
-            <div className="en-region--map" data-region="map">
-              <HexMapView
-                scene={scene}
-                onHexClick={routing ? clickRouting : selectHex}
-                onHexHover={routing ? hoverRouting : undefined}
-              />
-            </div>
+            {mapRegion}
             {reportOpen && (
               <ReportView
                 model={periodReport}
@@ -167,6 +311,7 @@ export function App() {
           >
             <SessionBar />
             <ThemeSwitch />
+            {webgl && <SettingsStrip activeTier={worldStatus.tier} />}
           </TimelineView>
         </div>
 
@@ -185,7 +330,7 @@ export function App() {
             key={hexKey(selectedHex)}
             game={game}
             report={report}
-            hex={selectedHex}
+            hex={selectedHex as HexCoord}
             onAction={dispatch}
             onRoute={startRouting}
             onBottleneck={showBottleneck}

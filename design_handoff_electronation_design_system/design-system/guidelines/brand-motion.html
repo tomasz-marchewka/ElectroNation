@@ -1,0 +1,23 @@
+<!-- @dsCard group="Brand" viewport="700x150" name="Bez animacji" subtitle="Interfejs jest statyczny: stan czyta się z koloru i liczby, nie z ruchu" -->
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>body{padding:14px 16px;font-family:var(--en-font-mono);font-size:var(--en-fs-caption);color:var(--en-text-3)}</style>
+</head>
+<body>
+<svg viewBox="0 0 660 96" style="width:100%;max-width:660px">
+<g font-family="var(--en-font-mono)" font-size="10" fill="var(--en-text-3)">
+<path d="M20 26 L400 26" stroke="var(--en-ok)" stroke-width="4" stroke-linecap="round"/>
+<text x="420" y="30">linia pod obciążeniem — kolor, bez ruchu</text>
+<path d="M-34 0 L-17 -29.5 L17 -29.5 L34 0 L17 29.5 L-17 29.5 Z" transform="translate(54 68) scale(0.55)" fill="none" stroke="var(--en-danger)" stroke-width="4"/>
+<text x="100" y="72">miasto w niedoborze — czerwony pierścień, bez migania</text>
+</g>
+</svg>
+<div style="margin-top:6px;color:var(--en-text-4);max-width:620px;font-family:var(--en-font-sans);line-height:1.6">
+Zostają tylko natychmiastowe przejścia stanów kontrolek: <b style="color:var(--en-text-2);font-weight:400">--en-dur-ui 120 ms</b>,
+<b style="color:var(--en-text-2);font-weight:400">--en-ease-ui</b>. Animowany przepływ energii i puls miasta wrócą razem z decyzją
+o widowiskowej fazie rozstrzygnięcia (01 §2.3).
+</div>
+</body></html>

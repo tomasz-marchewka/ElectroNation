@@ -1,0 +1,28 @@
+<!-- @dsCard group="Brand" viewport="700x150" name="Kodowanie linii" subtitle="Grubość = typ napięcia, kolor = obciążenie. Dwa kodowania, nigdy zamienione" -->
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+body{padding:14px 16px;font-family:var(--en-font-mono);font-size:var(--en-fs-caption);color:var(--en-text-3)}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.sw{display:flex;flex-direction:column;gap:4px;min-width:96px}
+.sw i{display:block;height:34px;border:1px solid var(--en-border)}
+.sw b{color:var(--en-text);font-weight:400;font-size:var(--en-fs-caption)}
+.sw s{text-decoration:none;color:var(--en-text-4);font-size:var(--en-fs-micro)}
+.hexsw{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:86px}
+</style>
+</head>
+<body>
+<svg viewBox="0 0 660 96" style="width:100%;max-width:660px">
+<g stroke-linecap="round" font-family="var(--en-font-mono)" font-size="10" fill="var(--en-text-3)">
+<path d="M10 18 L150 18" stroke="var(--en-idle)" stroke-width="2.5"/><text x="160" y="22">NN · 150 MW · straty 4%/100 km · 3 h/heks</text>
+<path d="M10 48 L150 48" stroke="var(--en-idle)" stroke-width="4"/><text x="160" y="52">SN · 500 MW · 2%/100 km · 6 h/heks</text>
+<path d="M10 78 L150 78" stroke="var(--en-idle)" stroke-width="6"/><text x="160" y="82">WN · 1500 MW · 1%/100 km · 12 h/heks</text>
+<path d="M470 18 L590 18" stroke="var(--en-ok)" stroke-width="4"/><text x="600" y="22">≤75%</text>
+<path d="M470 48 L590 48" stroke="var(--en-warn)" stroke-width="4"/><text x="600" y="52">&gt;75%</text>
+<path d="M470 78 L590 78" stroke="var(--en-danger)" stroke-width="4"/><text x="600" y="82">limit</text>
+</g>
+</svg>
+</body></html>

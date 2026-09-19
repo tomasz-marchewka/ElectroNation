@@ -1,0 +1,22 @@
+/* ═══ ElectroNation — reset i podstawa ═══ */
+
+body {
+  margin: 0;
+  background: var(--en-bg-app);
+  color: var(--en-text);
+  font-family: var(--en-font-sans);
+  font-size: var(--en-fs-base);
+  line-height: var(--en-lh-normal);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--en-info); text-decoration: none; }
+a:hover { color: var(--en-text); }
+
+.en-mono { font-family: var(--en-font-mono); }
+.en-num { font-family: var(--en-font-mono); font-variant-numeric: tabular-nums; }
+
+/* korpus aplikacji: mapa + panel dokowany po prawej */
+.en-app { display: flex; flex-direction: column; background: var(--en-bg-app); font-family: var(--en-font-sans); }
+.en-body { display: flex; }
+.en-body > .en-main { flex: 1; min-width: 0; }

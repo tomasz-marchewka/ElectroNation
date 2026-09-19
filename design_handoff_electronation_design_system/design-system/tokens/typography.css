@@ -1,0 +1,32 @@
+/* ═══ ElectroNation — typografia ═══
+   Mono = wszystko, co jest liczbą, etykietą, akcją albo nazwą obiektu (dyscyplina SCADA).
+   Sans = tekst UI dłuższy niż etykieta (opisy, tooltipy, prozą). */
+
+:root {
+  --en-font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --en-font-sans: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+
+  /* skala z mocków — drobna i gęsta, ale nigdy poniżej 9 px */
+  --en-fs-micro: 9px;      /* etykiety kafli raportu, ceny pod suwakiem */
+  --en-fs-caption: 9.5px;  /* legendy, noty, przyciski drugorzędne */
+  --en-fs-label: 10px;     /* NAGŁÓWKI SEKCJI (letter-spacing 1.5px) */
+  --en-fs-tiny: 10.5px;    /* etykiety na mapie */
+  --en-fs-sm: 11px;        /* wiersze bilansu, meta tury */
+  --en-fs-base: 11.5px;    /* wiersze danych, nazwy jednostek */
+  --en-fs-md: 12px;        /* pasek górny */
+  --en-fs-lg: 13px;        /* liczby w raporcie, przycisk główny */
+  --en-fs-xl: 14px;        /* wynik tury */
+  --en-fs-display: 19px;   /* nazwa bieżącej tury */
+
+  --en-fw-regular: 400;
+  --en-fw-medium: 500;
+  --en-fw-bold: 600;
+
+  --en-lh-tight: 1.15;
+  --en-lh-normal: 1.4;
+  --en-lh-prose: 1.6;
+
+  --en-ls-label: 1.5px;   /* nagłówki sekcji */
+  --en-ls-wordmark: 2px;  /* ELECTRONATION w pasku górnym */
+  --en-ls-action: 1px;    /* przycisk główny */
+}

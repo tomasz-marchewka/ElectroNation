@@ -1,0 +1,338 @@
+{
+  "updated": "2026-09-18",
+  "branch": "feat/three-d",
+  "wave": "1c + 2a (concurrent)",
+  "environment": {
+    "gpu": "Apple M3 Pro (18 GPU cores), measurements are NOT mid-range laptop numbers",
+    "display": "2560 x 1440 external",
+    "three": "0.184.0 (newest reachable offline; npm registry unreachable from this environment)",
+    "headless": "Chromium + SwiftShader for captures; --headed for GPU perf",
+    "perfAssumption": "GPU time budget on the dev machine = 16.7 ms / 2.5 (Apple M3 Pro assumed ~2.5x a mid-range laptop GPU); fps is measured from rAF intervals (capped by the display refresh), GPU time from EXT_disjoint_timer_query_webgl2; headless SwiftShader numbers are never a gate.",
+    "devServer": "port 5173 is held by another project's Vite server (dev/test-deepseek, PID 72751 — never touched); ElectroNation runs on 5174 (launch config game-alt); scripts/capture.mjs detects a foreign server by the page title and falls back to 5174/5183/5193 on its own"
+  },
+  "gates": {
+    "measuredAt": "2026-09-18",
+    "check": "green — 49 files, 635 tests, build ok",
+    "goldens": "10/10, engine and goldens byte-identical to main",
+    "e2e": "19/19",
+    "gameFrameHeadless": "0 console/page errors, 10/10 modules ready (3 stubs), budget ok",
+    "gpuHeadedEveningMs": 6.94,
+    "gpuHeadedNoonMs": 6.07,
+    "gpuBudgetMs": 6.7,
+    "drawCalls": 69,
+    "triangles": 643403,
+    "gpuMbEstimate": 14.4,
+    "firstInteractiveHeadedMs": [
+      5538,
+      6720
+    ],
+    "firstInteractiveBudgetMs": 4000,
+    "bundleGzipKb": {
+      "index": 202,
+      "three": 177,
+      "css": 8
+    },
+    "criticsPassed": 0,
+    "evidence": [
+      "captures/integrator/handoff-evening-hud.json",
+      "captures/integrator/handoff-evening-headed.json",
+      "captures/integrator/handoff-noon-headed.json",
+      "captures/integrator/check-2026-09-18.log",
+      "captures/integrator/e2e-2026-09-18.log"
+    ]
+  },
+  "modules": {
+    "bridge": {
+      "owner": "integrator",
+      "state": "ready",
+      "rounds": [],
+      "lastScreenshots": []
+    },
+    "core": {
+      "owner": "integrator",
+      "state": "ready",
+      "rounds": [],
+      "lastScreenshots": []
+    },
+    "capture": {
+      "owner": "integrator",
+      "state": "ready",
+      "rounds": [],
+      "lastScreenshots": []
+    },
+    "terrain": {
+      "owner": "builder",
+      "state": "steps 1–2 done; finishing step never completed",
+      "rounds": [
+        {
+          "round": "s1",
+          "selfArt": 5,
+          "selfLegibility": 7
+        },
+        {
+          "round": "s2",
+          "selfArt": 5,
+          "selfLegibility": 7
+        }
+      ],
+      "lastScreenshots": [
+        "captures/terrain/s2/",
+        "captures/integrator/det-bare-1.png"
+      ]
+    },
+    "sky": {
+      "owner": "builder",
+      "state": "steps 1–2 done; finishing step interrupted (captures/sky/s3, no report)",
+      "rounds": [
+        {
+          "round": "s1",
+          "selfArt": 6,
+          "selfLegibility": 8
+        },
+        {
+          "round": "s2",
+          "selfArt": 6,
+          "selfLegibility": 8
+        }
+      ],
+      "lastScreenshots": [
+        "captures/sky/s2/",
+        "captures/integrator/w1-sky-evening-frost.png"
+      ]
+    },
+    "hud": {
+      "owner": "builder",
+      "state": "steps 1–2 done; critics r1 failed (6.5/6.5); fix round 2 interrupted (captures/hud/fix2, no report)",
+      "rounds": [
+        {
+          "round": 1,
+          "art": 6.5,
+          "legibility": 6.5,
+          "passed": false,
+          "blocker": "off-screen overload alert dropped at closeup",
+          "majors": [
+            "3 of 29 labels dropped not led",
+            "label layer reads as a flat overlay",
+            "weather strip + diagnostics take the NW corner",
+            "world keeps ~28 % of a 1600x900 viewport under the ribbon and strips"
+          ]
+        }
+      ],
+      "lastScreenshots": [
+        "captures/integrator/det-hud-1.png"
+      ]
+    },
+    "grid": {
+      "owner": "builder",
+      "state": "step 1 done (self 6.5/8); step 2 INTERRUPTED mid-way on the session limit (lane-crossing fix done, halo/width tuning unjudged — see PROGRESS.md)",
+      "rounds": [
+        {
+          "round": "s1",
+          "selfArt": 6.5,
+          "selfLegibility": 8,
+          "measured": {
+            "gpuMsLayer": 0.27,
+            "drawCallsLayer": 6,
+            "trianglesLayer": 28000
+          }
+        }
+      ],
+      "lastScreenshots": [
+        "captures/grid/s1/c-showcase-overload-evening.png",
+        "captures/grid/s1/c-game-evening.png"
+      ]
+    },
+    "plants": {
+      "owner": "builder",
+      "state": "step 1 done (self 6.5/7), step 2 pending",
+      "rounds": [
+        {
+          "round": "s1",
+          "selfArt": 6.5,
+          "selfLegibility": 7,
+          "measured": {
+            "gpuMsLayer": 0.3,
+            "drawCallsLayer": 36,
+            "trianglesLayer": 25000
+          }
+        }
+      ],
+      "lastScreenshots": [
+        "captures/plants/s1/g-detail-coal-evening.png",
+        "captures/plants/s1/c-nuclear-noon.png",
+        "captures/integrator/modules-with-plants.png"
+      ]
+    },
+    "res": {
+      "owner": "builder",
+      "state": "step 1 done (self 6/7.5), step 2 pending",
+      "rounds": [
+        {
+          "round": "s1",
+          "selfArt": 6,
+          "selfLegibility": 7.5,
+          "measured": {
+            "drawCallsLayer": 9,
+            "trianglesLayer": 73000,
+            "gpuMsLayerCloseup": 1.8
+          }
+        }
+      ],
+      "lastScreenshots": [
+        "captures/res/s1/"
+      ]
+    },
+    "storage": {
+      "owner": "builder",
+      "state": "stub",
+      "rounds": [],
+      "lastScreenshots": []
+    },
+    "nodes": {
+      "owner": "builder",
+      "state": "stub",
+      "rounds": [],
+      "lastScreenshots": []
+    },
+    "cities": {
+      "owner": "builder",
+      "state": "step 1 done (self 6.5/8); step 2 INTERRUPTED mid-way (new lightmap.ts wired but unverified — see PROGRESS.md)",
+      "rounds": [
+        {
+          "round": "s1",
+          "selfArt": 6.5,
+          "selfLegibility": 8,
+          "measured": {
+            "gpuMsLayer": 0.5,
+            "drawCallsLayer": 10,
+            "trianglesLayer": 65000
+          }
+        }
+      ],
+      "lastScreenshots": [
+        "captures/cities/s1/g-jasienica-detail-night.png",
+        "captures/cities/s1/g-metro-night.png",
+        "captures/cities/s1/g-blackout-evening.png"
+      ]
+    },
+    "interaction": {
+      "owner": "builder",
+      "state": "baseline",
+      "rounds": [],
+      "lastScreenshots": []
+    },
+    "effects": {
+      "owner": "builder",
+      "state": "stub",
+      "rounds": [],
+      "lastScreenshots": []
+    },
+    "perf": {
+      "owner": "builder",
+      "state": "baseline",
+      "rounds": [],
+      "lastScreenshots": []
+    },
+    "audio": {
+      "owner": "builder",
+      "state": "not started",
+      "rounds": [],
+      "lastScreenshots": []
+    }
+  },
+  "openIssues": [
+    {
+      "id": "perf-gpu-terrain-sky",
+      "module": "terrain/sky/perf",
+      "severity": "major",
+      "found": "2026-09-03 headed capture, strategic view, high tier, 1600x900 dpr 1, Apple M3 Pro",
+      "what": "GPU 9.0 ms/frame with only terrain + sky + board (24 draw calls, 210 k tris) — projected ~44 fps on a mid-range laptop GPU; budget is 6.7 ms on the dev machine. First interactive 2.8 s warm / 6.5 s cold.",
+      "next": "perf pass: profile the terrain splat shader (texture samples per pixel), water, cloud layers and the post chain (bloom + SMAA at high); add tier-dependent quality knobs; cold-start texture generation off the main thread or smaller.",
+      "evidence": [
+        "captures/integrator/w1-perf-headed-evening.json"
+      ]
+    },
+    {
+      "id": "bloom-hue",
+      "module": "core/PostFx",
+      "severity": "minor",
+      "what": "UnrealBloomPass thresholds on luminance, so a red alarm blooms only at R≈4.7 where ACES turns it salmon; the grid draws its own additive halo instead.",
+      "next": "perf/effects pass: selective bloom on LAYERS.bloom or a max(r,g,b) threshold in the high-pass; then drop the grid halo."
+    },
+    {
+      "id": "first-interactive",
+      "module": "perf/core",
+      "severity": "major",
+      "what": "First interactive 5.5–6.7 s headed on the dev server against a 4 s budget (procedural texture generation and shader compilation at boot); production build not measured.",
+      "next": "perf pass (wave 3): smaller or lazily generated textures, measure on the production bundle."
+    },
+    {
+      "id": "strategic-art-bar",
+      "module": "terrain/cities/plants/sky",
+      "severity": "major",
+      "what": "Integrator's honest read of the strategic frames on 2026-09-18: art ≈ 4–5/10 — tiled noise terrain, hex-shaped forest and lake patches with no biome blending, objects are specks, weak night lighting, daytime white speckle from the sky layer. Closeups are clearly better.",
+      "next": "terrain/sky finishing steps and the step-2 polish of every module, then the critics."
+    }
+  ],
+  "blockedEngineRequests": [
+    {
+      "id": "segment-flow-direction",
+      "state": "blocked",
+      "request": "TurnSegmentReport.usedMw is unsigned; a signed value or a direction bit would make the flow direction exact.",
+      "workaround": "bridge/flowDirection.ts infers direction from hop distance to producing nodes over loaded segments; segments between equidistant nodes stay unknown (0)."
+    }
+  ],
+  "log": [
+    {
+      "at": "2026-09-02",
+      "note": "Foundation: ARCHITECTURE.md, docs/08, bridge + scene contract with tests, render/core, capture harness, HUD shell, SVG fallback, Playwright split."
+    },
+    {
+      "at": "2026-09-02",
+      "note": "Wave 1 launched: terrain, sky, hud builders with art/dispatcher critics, up to 4 rounds each."
+    },
+    {
+      "at": "2026-09-03",
+      "note": "Harness now measures rAF frame intervals and GPU time (timer queries) with a documented mid-range projection; favicon 404 removed from console errors."
+    },
+    {
+      "at": "2026-09-05",
+      "note": "Session limit interrupted wave 1b twice; wave 1c (terrain/sky finish, hud fix) and wave 2a (grid, plants, res, cities) launched concurrently. Integrator applied: ?hud=0 bare world, bridge notes off the HUD, board outline faded over water."
+    },
+    {
+      "at": "2026-09-06",
+      "note": "Wave 1c and 2a died on the session limit with no completed step; relaunched as the world-steps runner (batches of two)."
+    },
+    {
+      "at": "2026-09-07",
+      "note": "Step runner batch 1: grid s1 done; cities s1 and everything after died on the limit. Added camera preset detail, grid showcase frames construction/upgrade/tower-detail; resuming from cache."
+    },
+    {
+      "at": "2026-09-11",
+      "note": "Cities s1 and plants s1 done (self 6.5/8 and 6.5/7); res s1 died on the limit. Integrator applied their requests: HEIGHT_KM.landmark, showcase day = judging day 1 (ShowcaseSpec.day), plants frames ccgt-evening + coal-detail-evening, cities frame metro-detail-night, ?modules= / --modules for layer-cost measurement, textures pass their Rng to pixel/height callbacks, plant labels print the standing order (sum of block orders under manual control — app/dispatch.ts, SVG map and world alike). Harness hardened against a foreign server on 5173 (falls back to 5174)."
+    },
+    {
+      "at": "2026-09-18",
+      "note": "Runner stopped on the session limit again: res s1 done (self 6/7.5); grid s2 and cities s2 died mid-step. Handoff written (docs/HANDOFF-3D.md); tree left green (check 635 tests, e2e 19/19); two cities files reformatted with Prettier only. Wave 2b and wave 3 scripts are prepared but not launched."
+    }
+  ],
+  "determinism": {
+    "verified": "2026-09-05",
+    "method": "two captures of the same URL, md5 equal, with and without HUD (captures/integrator/det-*.png)"
+  },
+  "orchestration": {
+    "note": "Session usage limits kill agents mid-step when 7 run in parallel; the step runner now runs at most two agents per batch with ~40 min steps and PROGRESS.md written at the start and after every sub-task.",
+    "script": "~/.claude/projects/-Users-tomaszmarchewka-dev-ElectroNation/fa3123d6-0208-4504-918c-dd0c71b4c8a0/workflows/scripts/world-steps.js",
+    "runId": "wf_b92afc8c-020",
+    "resume": "Workflow({scriptPath, resumeFromRunId: 'wf_b92afc8c-020'}) — completed steps replay from cache, failed ones re-run",
+    "next": "wave 2b: Workflow({scriptPath: '~/.claude/projects/-Users-tomaszmarchewka-dev-ElectroNation/fa3123d6-0208-4504-918c-dd0c71b4c8a0/workflows/scripts/world-steps-2b.js'}) — storage, nodes (junctions, borders, construction sites), interaction; launch only after world-steps.js finishes (two agents at a time)"
+  },
+  "effectsHooks": [
+    "grid: ctx.root.userData.gridPolylines (Map<segmentKey, Vector3[]>, world space, sag included) and gridSegments (load, ratio, usedMw, capacityMw, direction); Object3D grid:construction-head:<lineId> / grid:upgrade-head:<lineId>",
+    "cities: Object3D cities:base:<cityId> at the city centre — userData { cityId, connected, ensMw, lit (eased each frame), blackout, radiusKm }; the red ground ring for a short city is effects' work",
+    "plants: Object3D plants:base:<plantId> — userData { radiusKm, padKm, yaw, outputMw, usedMw, dumpMw }; plants:block:<plantId>:<index> per block (cranes for expansions, dump/curtailment marker from dumpMw)",
+    "res: Object3D res:base:<farmId> at the farm centre (curtailment rings, disabled markers)"
+  ],
+  "handoff": "docs/HANDOFF-3D.md — what is done, what remains, what was not achieved; read it first",
+  "pendingChangeRequests": "docs/HANDOFF-3D.md §6 (res showcase turn, disabled farm in the midgame script, overlay sheen over other modules, board outline over sea, lane numbering at forks, per-frame showcase day, --yaw/--pitch, --theme/--select/--report in the harness, report dock width)"
+}

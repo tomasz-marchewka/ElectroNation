@@ -1,0 +1,22 @@
+<!-- @dsCard group="Colors" viewport="700x140" name="Stany systemu" subtitle="Trzy stopnie obciążenia i alarmu — te same na liniach, kropkach i liczbach" -->
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+body{padding:14px 16px;font-family:var(--en-font-mono);font-size:var(--en-fs-caption);color:var(--en-text-3)}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.sw{display:flex;flex-direction:column;gap:4px;min-width:96px}
+.sw i{display:block;height:34px;border:1px solid var(--en-border)}
+.sw b{color:var(--en-text);font-weight:400;font-size:var(--en-fs-caption)}
+.sw s{text-decoration:none;color:var(--en-text-4);font-size:var(--en-fs-micro)}
+.hexsw{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:86px}
+</style>
+</head>
+<body>
+<div class="row">
+<div class="sw"><i style="background:var(--en-ok)"></i><b>ok / ≤75%</b><s>--en-ok</s></div><div class="sw"><i style="background:var(--en-warn)"></i><b>uwaga / >75%</b><s>--en-warn</s></div><div class="sw"><i style="background:var(--en-danger)"></i><b>limit / niedobór</b><s>--en-danger</s></div><div class="sw"><i style="background:var(--en-info)"></i><b>pogoda, OZE</b><s>--en-info</s></div><div class="sw"><i style="background:var(--en-idle)"></i><b>bez przepływu</b><s>--en-idle</s></div>
+</div>
+<div style="margin-top:10px">ZAPAS <span class="is-ok">+214 MW ✓</span> &nbsp; <span class="is-warn">+25 MW ⚠</span> &nbsp; <span class="is-danger">−60 MW ✕</span></div>
+</body></html>

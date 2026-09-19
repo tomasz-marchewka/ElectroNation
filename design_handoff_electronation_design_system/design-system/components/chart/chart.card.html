@@ -1,0 +1,35 @@
+<!-- @dsCard group="Components" viewport="700x200" name="Chart — wykres doby" subtitle="Prawda za nami, pasmo prognozy przed nami, kreska TERAZ" -->
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<style>body{padding:0}</style>
+</head>
+<body>
+<svg viewBox="0 0 1060 130" style="display:block;width:100%;background:var(--en-bg-chart)">
+<defs><linearGradient id="gen" x1="0" y1="1" x2="0" y2="0">
+<stop offset="0" stop-color="var(--en-coal)"/><stop offset="0.55" stop-color="var(--en-coal)"/>
+<stop offset="0.55" stop-color="var(--en-gas)"/><stop offset="0.72" stop-color="var(--en-gas)"/>
+<stop offset="0.72" stop-color="var(--en-wind)"/><stop offset="0.92" stop-color="var(--en-wind)"/>
+<stop offset="0.92" stop-color="var(--en-storage)"/><stop offset="1" stop-color="var(--en-storage)"/>
+</linearGradient></defs>
+<g stroke="var(--en-border-subtle)"><path d="M132.5 0 V130"/><path d="M265 0 V130"/><path d="M397.5 0 V130"/><path d="M530 0 V130"/><path d="M662.5 0 V130"/><path d="M795 0 V130"/><path d="M927.5 0 V130"/></g>
+<rect x="795" y="0" width="132.5" height="130" fill="var(--en-action)" opacity="0.07"/>
+<polygon points="0,70 44,74 88,76 132,76 177,74 221,68 265,57 309,47 353,43 397,44 442,44 486,45 530,46 574,47 618,46 663,43 707,33 751,21 795,15 795,130 0,130" fill="url(#gen)" opacity="0.65"/>
+<polyline points="0,70 44,74 88,76 132,76 177,74 221,68 265,57 309,47 353,43 397,44 442,44 486,45 530,46 574,47 618,46 663,43 707,33 751,21 795,15" fill="none" stroke="var(--en-text)" stroke-width="2"/>
+<polygon points="795,15 839,12 883,18 928,28 972,40 1016,47 1060,53 1060,72 1016,64 972,55 928,41 883,30 839,21" fill="var(--en-wind)" opacity="0.14"/>
+<polyline points="795,15 839,16 883,23 928,34 972,47 1016,55 1060,62" fill="none" stroke="var(--en-wind)" stroke-width="1.5" stroke-dasharray="5 4"/>
+<path d="M795 0 V130" stroke="var(--en-action)" stroke-width="1.5" stroke-dasharray="3 3"/>
+<text x="801" y="12" fill="var(--en-action)" font-size="10" font-family="var(--en-font-mono)">TERAZ</text>
+<text x="8" y="14" fill="var(--en-text-4)" font-size="10" font-family="var(--en-font-mono)">DOBA · POPYT vs POKRYCIE [MW]</text>
+</svg>
+<div class="en-chartlegend">
+<span><span class="en-swatch" style="background:var(--en-coal)"></span> WĘGIEL</span>
+<span><span class="en-swatch" style="background:var(--en-gas)"></span> GAZ</span>
+<span><span class="en-swatch" style="background:var(--en-wind)"></span> WIATR</span>
+<span><span class="en-swatch" style="background:var(--en-storage)"></span> IMPORT/MAGAZYN</span>
+<span style="margin-left:auto">— PRAWDA · ┄ PROGNOZA (PASMO)</span>
+</div>
+</body>
+</html>
