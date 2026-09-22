@@ -239,6 +239,11 @@ export class WorldRenderer {
     this.rig.flyTo(this.rig.preset(preset, at), animate && this.shared.motion.transitions);
   }
 
+  /** Capture override: orientation on top of a preset (`?yaw=&pitch=`). */
+  orient(yawDeg: number | null, pitchDeg: number | null): void {
+    this.rig.orient(yawDeg, pitchDeg);
+  }
+
   flyTo(state: RigState, animate = true): void {
     this.rig.flyTo(state, animate && this.shared.motion.transitions);
   }

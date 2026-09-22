@@ -403,7 +403,9 @@ export function layoutLabels(
 
     // An object under the shell keeps its label to itself: a name floating
     // next to the panel would read as belonging to whatever stands beside it.
-    if (hard.some((occluder) => contains(occluder, label.x, label.y))) {
+    // A `led` label — an object the dispatcher needs — is the exception: its
+    // leader carries the name back to the object under the shell.
+    if (!label.led && hard.some((occluder) => contains(occluder, label.x, label.y))) {
       out.push(hidden(label.key));
       continue;
     }

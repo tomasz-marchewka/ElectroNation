@@ -11,7 +11,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import type { LabelKind, WorldLabel, WorldScene } from "../bridge/worldScene";
-import { HEX_RADIUS_KM } from "../render/core/units";
+import { HEX_RADIUS_KM, hexToWorld } from "../render/core/units";
 import type { WorldRenderer } from "../render/core/WorldRenderer";
 import { layoutLabels, type LabelInput, type Rect } from "./labelLayout";
 import { labelIdle, labelKindOf, labelParts } from "./labelParts";
@@ -26,6 +26,11 @@ const TIER_DEPTH_KM = [380, 160, 70] as const;
  * once at tier 1 and scaled from there.
  */
 const TIER_FONT_PX = [10.5, 11.5, 13, 14] as const;
+/**
+ * Opacity of each tier: the farther the object, the quieter its chip, so the
+ * near labels stay the ones that read first. Alerts never fade.
+ */
+const TIER_OPACITY = [0.88, 0.95, 1, 1] as const;
 const BASE_TIER = 1;
 /** Beyond this camera distance the technology suffix folds away — names and numbers stay. */
 const COMPACT_DISTANCE_KM = 320;
@@ -66,6 +71,10 @@ const SOFT_OCCLUDER_SELECTORS = [".en-weather", ".en-diagnostics", ".en-worldleg
 const OCCLUDER_REFRESH_FRAMES = 30;
 /** Share of the projected hex radius a "below" label steps down from the centre. */
 const FOOTPRINT_SHARE = 0.62;
+/** Keep-out from the viewport border when an unprojectable anchor is placed [px]. */
+const MARGIN_EDGE = 24;
+/** How far past that border the synthetic anchor sits, so the chip clamps to it [px]. */
+const EDGE_OVERSHOOT_PX = 48;
 
 interface LabelNode {
   el: HTMLSpanElement;
@@ -283,6 +292,51 @@ export function WorldLabels({ renderer, scene }: WorldLabelsProps) {
       const compact = rig.distanceKm > COMPACT_DISTANCE_KM;
       const pitchSin = Math.sin(rig.pitchDeg * DEG);
       const halfFovTan = Math.tan((camera.fov / 2) * DEG);
+      // Camera basis for anchors the projection cannot place: an alert whose
+      // object stands behind the camera still gets an edge chip, placed on the
+      // side the object lies and pointing that way (never dropped).
+      const basis = camera.matrixWorld.elements;
+      const camX = basis[12]!;
+      const camY = basis[13]!;
+      const camZ = basis[14]!;
+      const rightX = basis[0]!;
+      const rightY = basis[1]!;
+      const rightZ = basis[2]!;
+      const upX = basis[4]!;
+      const upY = basis[5]!;
+      const upZ = basis[6]!;
+      /**
+       * Screen direction of a ground anchor the projection rejected: where the
+       * camera would have to turn to bring the object into view. The anchor is
+       * then pushed just past the viewport edge, so the layout clamps the chip
+       * to that border and the leader reads as pointing off-screen.
+       */
+      const offscreenAnchor = (
+        hex: WorldLabel["hex"],
+        liftKm: number,
+      ): { x: number; y: number } | null => {
+        const ground = hexToWorld(hex);
+        const vx = ground.x - camX;
+        const vy = liftKm - camY;
+        const vz = ground.z - camZ;
+        const sx = vx * rightX + vy * rightY + vz * rightZ;
+        const sy = -(vx * upX + vy * upY + vz * upZ);
+        const length = Math.hypot(sx, sy);
+        if (length < 1e-6) return null;
+        const ux = sx / length;
+        const uy = sy / length;
+        const halfW = Math.max(1, width / 2 - MARGIN_EDGE);
+        const halfH = Math.max(1, height / 2 - MARGIN_EDGE);
+        const t = Math.min(
+          ux === 0 ? Infinity : halfW / Math.abs(ux),
+          uy === 0 ? Infinity : halfH / Math.abs(uy),
+        );
+        if (!Number.isFinite(t)) return null;
+        return {
+          x: width / 2 + ux * (t + EDGE_OVERSHOOT_PX),
+          y: height / 2 + uy * (t + EDGE_OVERSHOOT_PX),
+        };
+      };
       const inputs: LabelInput[] = [];
       const meta = new Map<
         string,
@@ -315,31 +369,46 @@ export function WorldLabels({ renderer, scene }: WorldLabelsProps) {
         // An anchor the player cannot see — outside the viewport or under the
         // shell: the label is led to the edge and points the way (docs/08 §7 —
         // an alert is never culled). The direction is set once the box is placed.
+        let anchorX = projected.x;
+        let anchorY = projected.y;
+        let anchorVisible = projected.visible;
+        if (!projected.visible && ALERT_KINDS.has(label.kind)) {
+          const anchor = offscreenAnchor(
+            label.hex,
+            label.placement === "above" ? LIFT_KM[label.kind] : 0,
+          );
+          if (anchor) {
+            anchorX = anchor.x;
+            anchorY = anchor.y;
+            anchorVisible = true;
+          }
+        }
         const anchorHidden =
-          projected.visible &&
-          (projected.x < 0 ||
-            projected.x > width ||
-            projected.y < 0 ||
-            projected.y > height ||
-            hard.some(
-              (rect) =>
-                projected.x >= rect.x0 &&
-                projected.x <= rect.x1 &&
-                projected.y >= rect.y0 &&
-                projected.y <= rect.y1,
-            ));
+          anchorVisible &&
+          (anchorX < 0 ||
+            anchorX > width ||
+            anchorY < 0 ||
+            anchorY > height ||
+            (projected.visible &&
+              hard.some(
+                (rect) =>
+                  anchorX >= rect.x0 &&
+                  anchorX <= rect.x1 &&
+                  anchorY >= rect.y0 &&
+                  anchorY <= rect.y1,
+              )));
         const pxPerKm = height / 2 / (halfFovTan * Math.max(1, projected.depth));
         inputs.push({
           key: label.key,
-          x: projected.x,
-          y: projected.y,
+          x: anchorX,
+          y: anchorY,
           footprintPx: HEX_RADIUS_KM * pxPerKm * pitchSin * FOOTPRINT_SHARE,
           width: w,
           height: h,
           priority: label.priority,
           placement: label.placement,
           alert: ALERT_KINDS.has(label.kind),
-          visible: projected.visible,
+          visible: anchorVisible,
           led: node.led,
         });
         meta.set(label.key, {
@@ -350,8 +419,8 @@ export function WorldLabels({ renderer, scene }: WorldLabelsProps) {
           h,
           micro,
           anchorHidden,
-          anchorX: projected.x,
-          anchorY: projected.y,
+          anchorX,
+          anchorY,
         });
       }
       const layoutStarted = import.meta.env.DEV ? performance.now() : 0;
@@ -397,7 +466,11 @@ export function WorldLabels({ renderer, scene }: WorldLabelsProps) {
         }
         const opacity = alert
           ? "1"
-          : ((label.muted ? MUTED_OPACITY : 1) * fadeOf(info.depth)).toFixed(2);
+          : (
+              (label.muted ? MUTED_OPACITY : 1) *
+              TIER_OPACITY[info.tier]! *
+              fadeOf(info.depth)
+            ).toFixed(2);
         const className = [
           "en-wlabel",
           `is-${label.tone}`,

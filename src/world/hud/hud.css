@@ -64,24 +64,15 @@
   z-index: 2;
 }
 
-/* A weather override (capture): the top bar's regime is the forecast of the
-   game, the strip shows the previewed one — the bar's text steps back and
-   carries the same hatched PODGLĄD tag as the banner, so one regime reads. */
-.en-app--world:has(.en-weather__banner) .en-topbar__ctx em {
-  color: var(--en-text-4);
-}
-
+/* A weather override (capture): the top bar carries the DAY'S forecast while
+   the strip shows the previewed truth, so the bar's value names itself — the
+   PODGLĄD tag lives with the strip's banner, never on the contradicting value. */
 .en-app--world:has(.en-weather__banner) .en-topbar__ctx em::after {
-  content: "PODGLĄD";
+  content: "PROGNOZA REŻIMU";
   margin-left: var(--en-space-3);
   padding: 1px var(--en-space-2);
-  border: 1px solid var(--en-info);
-  background: repeating-linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--en-info) 16%, transparent) 0 4px,
-    transparent 4px 10px
-  );
-  color: var(--en-info);
+  border: 1px solid var(--en-border-strong);
+  color: var(--en-text-3);
   font-size: var(--en-fs-micro);
   letter-spacing: var(--en-ls-label);
 }
@@ -145,6 +136,39 @@
   background: color-mix(in srgb, var(--en-bg-chart) 90%, transparent);
 }
 
+/* ── composition at the strategic preset ─────────────────
+   At the strategic camera the country sits high in the frame and the ribbon's
+   coverage chart claims a 140+ px band of a 900 px screen — the world kept
+   ~42 % of the viewport. On a laptop height the chart band folds away (the day
+   captions and the turn cells stay: they are the ribbon's controls) and the
+   world gets that height back, so the safe frame the camera fits the country
+   into grows past half the viewport. Tall screens keep the chart. */
+@media (max-height: 1050px) {
+  .en-app--world:has(.en-wlabels.is-compact) .en-region--chart {
+    display: none;
+  }
+}
+
+/* ── the panel on short viewports ────────────────────────
+   The handoff pins the commit button and scrolls the setpoint list, but on a
+   900 px screen that window was 292 px of 707 and the units below the fold
+   (TG KAMIONKA, the plant feeding the blacked-out city) stayed out of reach
+   of a first read. The panel becomes ONE scroll column: the setpoint list
+   takes its full content height and the balance + commit stay pinned at the
+   foot while the list scrolls under them. */
+@media (max-height: 1050px) {
+  .en-app--world .en-panel > .en-section--grow {
+    flex: none;
+    overflow: visible;
+  }
+
+  .en-app--world .en-panel > .en-section--sunk {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+  }
+}
+
 .en-app--world .en-chartlegend,
 .en-app--world .en-themeswitch {
   background: color-mix(in srgb, var(--en-bg-app) 92%, transparent);
@@ -205,6 +229,9 @@
   background: var(--en-wlabel-bg);
   border: 1px solid var(--en-wlabel-edge);
   text-shadow: 0 0 2px var(--en-wlabel-halo);
+  /* The chip belongs to the world, not to a pasted-over SVG: a soft shadow
+     lifts it off the terrain and the hairline edge keeps it crisp. */
+  box-shadow: 0 1px 3px color-mix(in srgb, #000 42%, transparent);
   will-change: transform, opacity;
   contain: layout style;
 }
@@ -306,7 +333,8 @@
   --en-wlabel-lead: var(--en-danger);
   color: var(--en-danger-text);
   border-color: var(--en-danger);
-  border-left-width: 3px;
+  border-left-width: 2px;
+  box-shadow: 0 1px 4px color-mix(in srgb, #000 50%, transparent);
   text-shadow: 0 0 2px var(--en-wlabel-halo);
 }
 
@@ -416,10 +444,11 @@
   box-sizing: border-box;
 }
 
-/* Micro form (far tier, secondary labels): the glyph and the values, no name. */
-.en-wlabel.is-micro .en-wlabel__name,
+/* Micro form (far tier, secondary labels): the glyph, the head word and the
+   first value. Only the technology suffix and the secondary numbers fold —
+   `BUDOWA · 4 DOBY` keeps its head word, `FW WYDMY · ~0` keeps its name. */
 .en-wlabel.is-micro .en-wlabel__tech,
-.en-wlabel.is-micro .en-wlabel__val.is-first .en-wlabel__sep {
+.en-wlabel.is-micro .en-wlabel__val:not(.is-first) {
   display: none;
 }
 
@@ -789,17 +818,23 @@
   user-select: none;
 }
 
+/* The folded chip: the caption size and the text-3 tone — a quiet key, but a
+   readable one (it is the only way back to the full legend). */
 .en-worldlegend.is-collapsed {
   padding: var(--en-space-2) var(--en-space-4);
   font-size: var(--en-fs-caption);
   border-color: var(--en-border-strong);
 }
 
-.en-worldlegend.is-collapsed .en-worldlegend__title {
+.en-worldlegend.is-collapsed .en-worldlegend__title,
+.en-worldlegend.is-collapsed .en-worldlegend__toggle {
   font-size: var(--en-fs-caption);
+  color: var(--en-text-3);
+}
+
+.en-worldlegend.is-collapsed .en-worldlegend__title {
   font-weight: var(--en-fw-bold);
   letter-spacing: var(--en-ls-label);
-  color: var(--en-text);
 }
 
 /* Over the world the map region is out of flow, so the report dock takes the

@@ -115,21 +115,27 @@ attribute float aSize;
 attribute vec3 aColor;
 uniform float uPixelRatio;
 varying vec3 vColor;
+varying float vSize;
 void main() {
   vColor = aColor;
   vec4 clip = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   clip.z = clip.w * 0.99998;
   gl_Position = clip;
   gl_PointSize = aSize * uPixelRatio;
+  vSize = gl_PointSize;
 }
 `;
 
 const STAR_FRAGMENT = /* glsl */ `
 uniform float uVisibility;
 varying vec3 vColor;
+varying float vSize;
 void main() {
   float d = length(gl_PointCoord - 0.5) * 2.0;
-  float a = smoothstep(1.0, 0.3, d) * uVisibility;
+  // A star smaller than a pixel is dust: fade it out instead of drawing a
+  // single bright texel into the twilight sky.
+  float resolvable = smoothstep(0.8, 1.5, vSize);
+  float a = smoothstep(1.0, 0.3, d) * uVisibility * resolvable;
   gl_FragColor = vec4(vColor * a, a);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>

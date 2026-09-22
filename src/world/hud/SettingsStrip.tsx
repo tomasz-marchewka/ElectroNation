@@ -30,6 +30,12 @@ const QUALITY_ORDER: readonly QualityChoice[] = ["auto", "high", "medium", "low"
 const RENDERER_LABELS: Record<RendererChoice, string> = { "3d": "3D", svg: "SVG" };
 const RENDERER_ORDER: readonly RendererChoice[] = ["3d", "svg"];
 
+// Audio is muted by default; this control's click is also the user gesture the
+// AudioContext needs before it may start (audio brief).
+const AUDIO_LABELS = { off: "WYŁ.", on: "WŁ." } as const;
+const AUDIO_ORDER = ["off", "on"] as const;
+type AudioChoice = (typeof AUDIO_ORDER)[number];
+
 /** How often the readout samples the renderer [ms] — a number, not a flicker. */
 const READOUT_INTERVAL_MS = 1000;
 
@@ -121,6 +127,8 @@ export function SettingsStrip({ activeTier }: SettingsStripProps) {
   const setMotion = useWorldSettings((store) => store.setMotion);
   const setQuality = useWorldSettings((store) => store.setQuality);
   const setRenderer = useWorldSettings((store) => store.setRenderer);
+  const audioEnabled = useWorldSettings((store) => store.audio.enabled);
+  const setAudioEnabled = useWorldSettings((store) => store.setAudioEnabled);
   const readout = useReadout();
 
   const tier = readout?.tier ?? activeTier;
@@ -164,6 +172,13 @@ export function SettingsStrip({ activeTier }: SettingsStripProps) {
         labels={RENDERER_LABELS}
         value={renderer}
         onChange={setRenderer}
+      />
+      <Segmented
+        label="DŹWIĘK"
+        order={AUDIO_ORDER}
+        labels={AUDIO_LABELS}
+        value={audioEnabled ? "on" : "off"}
+        onChange={(choice: AudioChoice) => setAudioEnabled(choice === "on")}
       />
     </div>
   );

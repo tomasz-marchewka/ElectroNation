@@ -35,14 +35,24 @@ export function cityLabel(name: string, demandMw: number | null): string {
   return objectLabel(name, null, demandMw === null ? null : formatMw(demandMw));
 }
 
-/** `EW ŁĘGI WĘGIEL · 1 250/1 500` — the standing order (app/dispatch.ts) over capacity. */
+/**
+ * `EW ŁĘGI WĘGIEL · 1 250/1 500` — the standing order (app/dispatch.ts) over
+ * capacity. With `dumpMw > 0` the surplus the grid refused is spelled out
+ * (`· 750 MW nadwyżki`), because the order alone hides it.
+ */
 export function plantLabel(
   name: string,
   tech: PlantTech,
   orderMw: number,
   capacityMw: number,
+  dumpMw = 0,
 ): string {
-  return objectLabel(name, PLANT_TECH_LABELS[tech], ratioLabel(orderMw, capacityMw));
+  return objectLabel(
+    name,
+    PLANT_TECH_LABELS[tech],
+    ratioLabel(orderMw, capacityMw),
+    dumpMw >= 1 ? `${formatMw(dumpMw)} nadwyżki` : null,
+  );
 }
 
 /** `~` marks a weather-driven number (handoff `FW GRZBIET · ~320`). */

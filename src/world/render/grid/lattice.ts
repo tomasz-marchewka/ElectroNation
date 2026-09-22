@@ -20,6 +20,12 @@ export const STEEL_TINT = new THREE.Color(1, 1, 1);
 export const GLASS_TINT = new THREE.Color().setRGB(0.16, 0.3, 0.24, THREE.SRGBColorSpace);
 /** Weathered concrete of a tower foundation, darker than the steel above it. */
 export const CONCRETE_TINT = new THREE.Color().setRGB(0.3, 0.29, 0.27, THREE.SRGBColorSpace);
+/** The poles of an upgrade ghost — dim cool, the cage around the hatch bands. */
+export const GHOST_TINT = new THREE.Color().setRGB(0.26, 0.42, 0.55, THREE.SRGBColorSpace);
+/** The hatch bands of an upgrade ghost — bright cool, drives its own emission. */
+export const GHOST_HATCH_TINT = new THREE.Color().setRGB(0.62, 0.9, 1, THREE.SRGBColorSpace);
+/** Hazard paint of the construction head's scaffolding and gin pole. */
+export const MARKING_TINT = new THREE.Color().setRGB(0.95, 0.6, 0.12, THREE.SRGBColorSpace);
 
 const UP = new THREE.Vector3(0, 1, 0);
 const direction = new THREE.Vector3();
@@ -135,11 +141,11 @@ export class Truss {
   }
 
   /** A closed loop of members through the points, in order. */
-  ring(points: readonly Point[], size: number): this {
+  ring(points: readonly Point[], size: number, color: THREE.Color = STEEL_TINT): this {
     for (let i = 0; i < points.length; i++) {
       const a = points[i];
       const b = points[(i + 1) % points.length];
-      if (a && b) this.bar(a, b, size);
+      if (a && b) this.bar(a, b, size, color);
     }
     return this;
   }

@@ -31,8 +31,17 @@ import {
 
 /** docs/08 §4: the one cinematic moment. */
 const TRANSITION_SECONDS = 1.5;
-const STAR_COUNT: Record<QualityTier, number> = { high: 3200, medium: 2000, low: 1000 };
-const ENV_MAP_SIZE: Record<QualityTier, number> = { high: 256, medium: 128, low: 64 };
+/** A near camera reads a haze with this reach [km]; below it the fog never gets denser. */
+const FOG_NEAR_REFERENCE_KM = 120;
+/** Past this view distance the camera is strategic: the fog wash stops growing. */
+const STRATEGIC_VIEW_KM = 320;
+/**
+ * Cap of the fog reached at the view's far edge at strategic distance. The far
+ * edge of the board sits at ~1,35× the camera distance, so a wash of 0,24
+ * there leaves the far board ≥ 70 % of its albedo contrast (terrain's request);
+ * closeup and golden keep the regime's full haze.
+ */
+const STRATEGIC_WASH_CAP = 0.24;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -49,10 +58,10 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
  * strategic distance, because the density follows the view (docs/08 §3).
  */
 function fogDensityFor(state: SkyState, distanceKm: number): number {
-  const wash =
-    clamp(state.look.wash * (0.5 + 0.8 * state.fog) + 0.1 * state.haze, 0.04, 0.85) *
-    (1 - 0.25 * smoothstep(150, 450, distanceKm));
-  const reference = Math.max(20, distanceKm * 1.2);
+  const want = clamp(state.look.wash * (0.5 + 0.8 * state.fog) + 0.1 * state.haze, 0.04, 0.85);
+  const strategic = smoothstep(160, STRATEGIC_VIEW_KM, distanceKm);
+  const wash = Math.min(want, want + (STRATEGIC_WASH_CAP - want) * strategic);
+  const reference = Math.max(FOG_NEAR_REFERENCE_KM, distanceKm * 1.2);
   return Math.sqrt(-Math.log(1 - wash)) / reference;
 }
 
@@ -96,9 +105,9 @@ export function createSkyModule(): WorldModule {
     configuredTier = ctx.quality;
     const profile = QUALITY_PROFILES[ctx.quality];
     rig?.configure(profile);
-    dome?.configure(STAR_COUNT[ctx.quality]);
-    clouds?.configure(ctx.quality === "high" ? 2 : 1, ctx.quality !== "low");
-    rain?.configure(ctx.quality === "low" ? 0 : profile.detail);
+    dome?.configure(profile.stars);
+    clouds?.configure(profile.cloudLayers === 2 ? 2 : 1, ctx.quality !== "low");
+    rain?.configure(profile.particles);
     finalizePending = true;
   };
 
@@ -129,7 +138,14 @@ export function createSkyModule(): WorldModule {
     provider.daylight = shown.daylight;
     provider.fogColor.copy(lighting.fogColor);
     if (provider.cloudShadow) provider.cloudShadow.strength = lighting.cloudShadowStrength;
-    rain?.setWeather(shown.precipitationKind, shown.precipitation, shown.windMs, shown.windFromDeg);
+    rain?.setWeather(
+      shown.precipitationKind,
+      shown.precipitation,
+      shown.tempC,
+      shown.regime,
+      shown.windMs,
+      shown.windFromDeg,
+    );
     ctx.scene.environmentIntensity = 0.6 * (0.5 + 0.5 * shown.daylight);
     lightingDirty = false;
   };
@@ -140,7 +156,7 @@ export function createSkyModule(): WorldModule {
     if (!dome || !clouds || !ctxRef) return;
     clouds.apply(shown, lighting, provider.fogDensity, ctx.view.distanceKm);
     clouds.renderShadow(ctx.renderer);
-    const envMap = dome.generateEnvironment(ctx.renderer, ENV_MAP_SIZE[ctx.quality]);
+    const envMap = dome.generateEnvironment(ctx.renderer, QUALITY_PROFILES[ctx.quality].envMapSize);
     provider.envMap = envMap;
     ctx.scene.environment = envMap;
   };
@@ -151,7 +167,7 @@ export function createSkyModule(): WorldModule {
     init(ctx) {
       ctxRef = ctx;
       rig = new LightRig(ctx.root);
-      dome = new SkyDome(ctx.rng("sky:stars"), STAR_COUNT.high);
+      dome = new SkyDome(ctx.rng("sky:stars"), QUALITY_PROFILES[ctx.quality].stars);
       ctx.root.add(dome.mesh);
       clouds = new CloudLayers();
       ctx.root.add(clouds.group);
@@ -226,7 +242,14 @@ export function createSkyModule(): WorldModule {
       rig.follow(ctx.view, lighting.sunLightDir, shown.moonDir);
       const pixelRatio = ctx.renderer.getPixelRatio();
       dome.frame(ctx.view.camera, pixelRatio);
-      rain.frame(ctx.motion.ambient, ctx.clock.time, ctx.view, lighting.fogColor, pixelRatio);
+      rain.frame(
+        ctx.motion.ambient,
+        ctx.clock.time,
+        shown.daylight,
+        ctx.view,
+        lighting.fogColor,
+        pixelRatio,
+      );
       stage?.apply(provider);
     },
 

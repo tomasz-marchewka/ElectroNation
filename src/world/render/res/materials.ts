@@ -160,10 +160,41 @@ function chainLink(): THREE.DataTexture {
       const a = Math.abs(((u * 4 + v * 4) % 1) - 0.5);
       const b = Math.abs(((u * 4 - v * 4 + 4) % 1) - 0.5);
       const wire = Math.min(a, b) < 0.09 ? 1 : 0;
-      const k = 0.35 + 0.35 * wire;
+      const k = 0.5 + 0.35 * wire;
       return [k, k, k];
     },
   });
+}
+
+/**
+ * Alpha mask of the chain-link: opaque on the wire, a whisper in the mesh
+ * opening, so the fence reads as a wire fence up close and its mip average
+ * (≈ 0,4 alpha) still draws a line at the detail camera.
+ */
+function chainLinkAlpha(): THREE.DataTexture {
+  const size = 32;
+  const data = new Uint8Array(size * size * 4);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const u = x / size;
+      const v = y / size;
+      const a = Math.abs(((u * 4 + v * 4) % 1) - 0.5);
+      const b = Math.abs(((u * 4 - v * 4 + 4) % 1) - 0.5);
+      const wire = Math.min(a, b) < 0.09;
+      const alpha = Math.round((wire ? 0.95 : 0.1) * 255);
+      const i = (y * size + x) * 4;
+      data[i] = 255;
+      data[i + 1] = alpha;
+      data[i + 2] = 255;
+      data[i + 3] = 255;
+    }
+  }
+  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.colorSpace = THREE.NoColorSpace;
+  texture.needsUpdate = true;
+  return texture;
 }
 
 // --- material set ---------------------------------------------------------------
@@ -175,10 +206,18 @@ export interface ResMaterials {
   blade: THREE.MeshStandardMaterial;
   foundation: THREE.MeshStandardMaterial;
   glass: THREE.MeshPhysicalMaterial;
+  /** The array of a switched-off farm: desaturated panels, no glass sheen. */
+  offPanel: THREE.MeshStandardMaterial;
   pad: THREE.MeshStandardMaterial;
   /** 0..1 snow cover on the PV ground — the module sets it from the terrain's snowline. */
   padSnow: { value: number };
   fence: THREE.MeshStandardMaterial;
+  /** Pale perimeter track around a PV farm — the strategic-view frame. */
+  framePv: THREE.MeshStandardMaterial;
+  /** Gravel service track around an onshore wind farm. */
+  frameWind: THREE.MeshStandardMaterial;
+  /** Muted grey stencil under a disabled farm (band + boss). */
+  offMarker: THREE.MeshStandardMaterial;
   dispose(): void;
 }
 
@@ -264,15 +303,53 @@ roughnessFactor = mix( roughnessFactor, 0.7, uSnow );`,
 
   const fence = new THREE.MeshStandardMaterial({
     map: chainLink(),
-    color: new THREE.Color(0.55, 0.56, 0.58),
-    roughness: 0.6,
-    metalness: 0.5,
+    alphaMap: chainLinkAlpha(),
+    color: new THREE.Color(0.72, 0.73, 0.75),
+    roughness: 0.55,
+    metalness: 0.45,
     transparent: true,
-    opacity: 0.6,
+    opacity: 0.9,
     side: THREE.DoubleSide,
     depthWrite: false,
   });
   fence.name = "res-fence";
+
+  const offPanel = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(0.33, 0.34, 0.35),
+    roughness: 0.78,
+    metalness: 0.06,
+  });
+  offPanel.name = "res-pv-off-panel";
+
+  const framePv = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(0.66, 0.66, 0.64),
+    roughness: 0.82,
+    metalness: 0.15,
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -3,
+  });
+  framePv.name = "res-frame-pv";
+
+  const frameWind = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(0.54, 0.51, 0.44),
+    roughness: 0.9,
+    metalness: 0.05,
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -3,
+  });
+  frameWind.name = "res-frame-wind";
+
+  const offMarker = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(0.52, 0.53, 0.54),
+    roughness: 0.86,
+    metalness: 0.05,
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -4,
+  });
+  offMarker.name = "res-off-marker";
 
   return {
     tower,
@@ -280,11 +357,27 @@ roughnessFactor = mix( roughnessFactor, 0.7, uSnow );`,
     blade,
     foundation,
     glass,
+    offPanel,
     pad,
     padSnow,
     fence,
+    framePv,
+    frameWind,
+    offMarker,
     dispose() {
-      for (const material of [tower, steel, blade, foundation, glass, pad, fence]) {
+      for (const material of [
+        tower,
+        steel,
+        blade,
+        foundation,
+        glass,
+        offPanel,
+        pad,
+        fence,
+        framePv,
+        frameWind,
+        offMarker,
+      ]) {
         material.dispose();
       }
     },

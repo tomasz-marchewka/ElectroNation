@@ -12,12 +12,19 @@ export type LegendChoice = "open" | "closed";
 
 export const SETTINGS_STORAGE_KEY = "electronation.world";
 
+/** Muted by default, and never created without a user gesture (audio brief). */
+export interface WorldAudioSettings {
+  enabled: boolean;
+  volume: number;
+}
+
 export interface WorldSettings {
   motion: MotionMode;
   quality: QualityChoice;
   renderer: RendererChoice;
   /** The light-encoding key over the world: unfolded until the player folds it. */
   legend: LegendChoice;
+  audio: WorldAudioSettings;
 }
 
 interface Stored {
@@ -25,6 +32,7 @@ interface Stored {
   quality?: unknown;
   renderer?: unknown;
   legend?: unknown;
+  audio?: unknown;
 }
 
 function parseMotion(value: unknown, fallback: MotionMode): MotionMode {
@@ -45,6 +53,20 @@ function parseLegend(value: unknown): LegendChoice {
   return value === "closed" ? "closed" : "open";
 }
 
+const DEFAULT_AUDIO: WorldAudioSettings = { enabled: false, volume: 0.6 };
+
+function parseAudio(value: unknown): WorldAudioSettings {
+  if (typeof value !== "object" || value === null) return { ...DEFAULT_AUDIO };
+  const candidate = value as { enabled?: unknown; volume?: unknown };
+  return {
+    enabled: candidate.enabled === true,
+    volume:
+      typeof candidate.volume === "number" && Number.isFinite(candidate.volume)
+        ? Math.min(1, Math.max(0, candidate.volume))
+        : DEFAULT_AUDIO.volume,
+  };
+}
+
 /** Reduced motion is the default when the OS asks for it (docs/08 §4). */
 function osPrefersReducedMotion(): boolean {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
@@ -63,6 +85,7 @@ export function defaultSettings(): WorldSettings {
     // Folded: unfolded it is a strip across the north coast in the strategic
     // frame; the title stays top-right and one press opens the key.
     legend: "closed",
+    audio: { ...DEFAULT_AUDIO },
   };
 }
 
@@ -78,6 +101,7 @@ function readStored(): WorldSettings {
       quality: parseQualityChoice(stored.quality),
       renderer: parseRenderer(stored.renderer),
       legend: parseLegend(stored.legend),
+      audio: parseAudio(stored.audio),
     };
   } catch {
     return defaults;
@@ -98,6 +122,8 @@ export interface WorldSettingsStore extends WorldSettings {
   setQuality: (quality: QualityChoice) => void;
   setRenderer: (renderer: RendererChoice) => void;
   setLegend: (legend: LegendChoice) => void;
+  setAudioEnabled: (enabled: boolean) => void;
+  setAudioVolume: (volume: number) => void;
 }
 
 function settingsOf(store: WorldSettings): WorldSettings {
@@ -106,6 +132,7 @@ function settingsOf(store: WorldSettings): WorldSettings {
     quality: store.quality,
     renderer: store.renderer,
     legend: store.legend,
+    audio: store.audio,
   };
 }
 
@@ -125,6 +152,15 @@ export const useWorldSettings = create<WorldSettingsStore>()((set, get) => ({
   },
   setLegend: (legend) => {
     set({ legend });
+    persist(settingsOf(get()));
+  },
+  setAudioEnabled: (enabled) => {
+    set({ audio: { ...get().audio, enabled } });
+    persist(settingsOf(get()));
+  },
+  setAudioVolume: (volume) => {
+    const clamped = Math.min(1, Math.max(0, volume));
+    set({ audio: { ...get().audio, volume: clamped } });
     persist(settingsOf(get()));
   },
 }));

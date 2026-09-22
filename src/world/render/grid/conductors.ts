@@ -20,12 +20,20 @@ import * as THREE from "three";
 import type { LineLoad } from "../../bridge/worldScene";
 import { CONDUCTOR_SAG } from "../core/exaggeration";
 
-/** Per-instance load flag: 0 no halo, 1 halo, 2 halo + breath. */
-export const LOAD_FLAG = { none: 0, halo: 1, breath: 2 } as const;
+/** Per-instance load flag: 0 ok, 1 halo, 2 halo + breath, 3 idle (static twin). */
+export const LOAD_FLAG = { none: 0, halo: 1, breath: 2, idle: 3 } as const;
+
+/**
+ * The idle twin: a wire that carries nothing still catches the eye as dim
+ * cool steel — at night it is the only thing an idle line has, by day it
+ * keeps the line off black-on-terrain (a hollow line must be answerable from
+ * the strategic view, docs/08 §3).
+ */
+export const IDLE_EMISSIVE: readonly [number, number, number] = [0.1, 0.13, 0.19];
 
 /** Emissive radiance per load class (r, g, b) and the flag above. */
 export const LOAD_EMISSIVE: Record<LineLoad, readonly [number, number, number, number]> = {
-  idle: [0, 0, 0, LOAD_FLAG.none],
+  idle: [IDLE_EMISSIVE[0], IDLE_EMISSIVE[1], IDLE_EMISSIVE[2], LOAD_FLAG.idle],
   ok: [0.5, 0.46, 0.4, LOAD_FLAG.none],
   warn: [1.25, 0.31, 0.01, LOAD_FLAG.halo],
   over: [1.55, 0.04, 0.02, LOAD_FLAG.breath],
@@ -43,6 +51,20 @@ export interface ConductorUniforms {
   uMinRadius: { value: number };
   /** Halo brightness relative to the core radiance (glow pass only). */
   uGlowGain: { value: number };
+  /**
+   * How much of the load radiance survives in full daylight, per class
+   * (x idle / ok, y warn, z over). At night all three are 1: the wire is its
+   * own light source, the way it reads in night photography. At noon the
+   * healthy wire fades back to sun-lit metal (a daylit 0,5 radiance would be
+   * a white neon ribbon), while amber and red stay strong — they are alarms.
+   */
+  uDayScale: { value: THREE.Vector3 };
+  /**
+   * How much of the idle twin survives in full daylight (1 at night, dimmer at
+   * noon): the idle wire must not vanish by day either, but it must stay well
+   * below a loaded one.
+   */
+  uIdleDay: { value: number };
 }
 
 /**
@@ -128,9 +150,10 @@ transformed = enCentre + vec3( 0.0, normal.y * enRadius / enScaleY, normal.z * e
  * (`enLoad`: rgb radiance + flag), a screen-space radius and a per-instance
  * width factor (`enWidth` — the far tubes carry the line type in it).
  *
- * The far variant is a stranded ACSR bundle seen from tens of kilometres:
- * matte grey rather than a mirror, so an idle line reads as a sun-lit wire on
- * the ground and never as a black stroke.
+ * The far variant is a stranded ACSR bundle seen from tens of kilometres: a
+ * broad, mostly diffuse grey (low metalness) so an idle line reads as a
+ * sun-lit wire lying on the ground, never as a black stroke; only its
+ * emissive lights up under load.
  */
 export function conductorMaterial(
   uniforms: ConductorUniforms,
@@ -139,13 +162,15 @@ export function conductorMaterial(
   const far = cacheKey === "far";
   const material = new THREE.MeshStandardMaterial({
     color: new THREE.Color().setRGB(
-      far ? 0.52 : 0.62,
-      far ? 0.53 : 0.63,
-      far ? 0.55 : 0.65,
+      far ? 0.78 : 0.62,
+      far ? 0.78 : 0.63,
+      far ? 0.78 : 0.65,
       THREE.SRGBColorSpace,
     ),
-    metalness: far ? 0.55 : 0.85,
-    roughness: far ? 0.55 : 0.42,
+    // Dielectric enough to catch the sun: at full metalness and no strong
+    // environment a daylit stranded conductor reads black on terrain.
+    metalness: far ? 0.35 : 0.55,
+    roughness: far ? 0.5 : 0.42,
     side: THREE.DoubleSide,
   });
   material.name = `grid-conductor-${cacheKey}`;
@@ -157,12 +182,25 @@ export function conductorMaterial(
     shader.fragmentShader = shader.fragmentShader
       .replace(
         "#include <common>",
-        "#include <common>\nuniform float uBreath;\nvarying vec4 vEnLoad;",
+        `#include <common>
+uniform float uBreath;
+uniform vec3 uDayScale;
+uniform float uIdleDay;
+varying vec4 vEnLoad;
+vec3 enDayScaled() {
+  float scale = vEnLoad.a > 2.5
+    ? uIdleDay
+    : ( vEnLoad.a < 0.5 ? uDayScale.x : ( vEnLoad.a < 1.5 ? uDayScale.y : uDayScale.z ) );
+  return vEnLoad.rgb * scale;
+}
+float enBreath() {
+  return vEnLoad.a > 1.5 && vEnLoad.a < 2.5 ? uBreath : 1.0;
+}`,
       )
       .replace(
         "#include <emissivemap_fragment>",
         `#include <emissivemap_fragment>
-totalEmissiveRadiance += vEnLoad.rgb * ( vEnLoad.a > 1.5 ? uBreath : 1.0 );`,
+totalEmissiveRadiance += enDayScaled() * enBreath();`,
       );
   };
   material.customProgramCacheKey = () => `en-grid-conductor-${cacheKey}`;
@@ -196,13 +234,18 @@ export function conductorGlowMaterial(
     shader.fragmentShader = shader.fragmentShader
       .replace(
         "#include <common>",
-        "#include <common>\nuniform float uBreath;\nuniform float uGlowGain;\nvarying vec4 vEnLoad;",
+        `#include <common>
+uniform float uBreath;
+uniform float uGlowGain;
+uniform vec3 uDayScale;
+varying vec4 vEnLoad;`,
       )
       .replace(
         "#include <color_fragment>",
         `#include <color_fragment>
-if ( vEnLoad.a < 0.5 ) discard;
-diffuseColor.rgb = vEnLoad.rgb * uGlowGain * ( vEnLoad.a > 1.5 ? uBreath : 1.0 );`,
+if ( vEnLoad.a < 0.5 || vEnLoad.a > 2.5 ) discard;
+float enGlowDay = vEnLoad.a < 1.5 ? uDayScale.y : uDayScale.z;
+diffuseColor.rgb = vEnLoad.rgb * uGlowGain * enGlowDay * ( vEnLoad.a > 1.5 ? uBreath : 1.0 );`,
       );
   };
   material.customProgramCacheKey = () => `en-grid-conductor-glow-${cacheKey}`;

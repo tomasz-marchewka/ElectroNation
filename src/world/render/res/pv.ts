@@ -23,7 +23,11 @@ const CELLS_U = 12;
 const CELLS_V = 4;
 
 const GALVANISED: readonly [number, number, number] = [0.6, 0.61, 0.62];
-const RAL7035: readonly [number, number, number] = [0.8, 0.8, 0.78];
+/**
+ * Concrete-beige, not the RAL 7035 white the first build used: a sunlit white
+ * container at the detail camera read as a paper box, not a machine.
+ */
+const CONCRETE_BEIGE: readonly [number, number, number] = [0.66, 0.63, 0.56];
 const TRANSFORMER: readonly [number, number, number] = [0.32, 0.38, 0.36];
 const DARK: readonly [number, number, number] = [0.2, 0.21, 0.22];
 const GRAVEL: readonly [number, number, number] = [0.55, 0.53, 0.48];
@@ -69,21 +73,31 @@ export function pvFrameGeometry(): THREE.BufferGeometry {
 /** An inverter station: gravel pad, container, transformer, vents. Origin on the ground. */
 export function inverterGeometry(): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
-  const pad = new THREE.BoxGeometry(0.72, 0.02, 0.5);
+  const pad = new THREE.BoxGeometry(0.52, 0.02, 0.38);
   pad.translate(0, 0.01, 0);
   parts.push(paint(pad, GRAVEL));
-  const container = new THREE.BoxGeometry(0.42, HEIGHT_KM.container, 0.24);
-  container.translate(-0.1, HEIGHT_KM.container / 2 + 0.02, 0);
-  parts.push(paint(container, RAL7035));
-  const vent = new THREE.BoxGeometry(0.12, 0.06, 0.02);
-  vent.translate(-0.1, HEIGHT_KM.container * 0.7, 0.125);
+  const container = new THREE.BoxGeometry(0.3, HEIGHT_KM.container * 0.85, 0.19);
+  container.translate(-0.1, (HEIGHT_KM.container * 0.85) / 2 + 0.02, 0);
+  parts.push(paint(container, CONCRETE_BEIGE));
+  const vent = new THREE.BoxGeometry(0.1, 0.05, 0.016);
+  vent.translate(-0.1, HEIGHT_KM.container * 0.6, 0.098);
   parts.push(paint(vent, DARK));
-  const transformer = new THREE.BoxGeometry(0.16, 0.18, 0.16);
-  transformer.translate(0.22, 0.11, 0);
+  const transformer = new THREE.BoxGeometry(0.13, 0.15, 0.13);
+  transformer.translate(0.17, 0.095, 0);
   parts.push(paint(transformer, TRANSFORMER));
-  const radiator = new THREE.BoxGeometry(0.03, 0.14, 0.14);
-  radiator.translate(0.32, 0.1, 0);
+  const radiator = new THREE.BoxGeometry(0.026, 0.12, 0.11);
+  radiator.translate(0.25, 0.085, 0);
   parts.push(paint(radiator, DARK));
+  // The line-landing portal: without it the block had no scale cue at the
+  // detail camera and read larger than it is.
+  for (const z of [-0.11, 0.11]) {
+    const post = new THREE.CylinderGeometry(0.008, 0.009, HEIGHT_KM.portal, 5, 1);
+    post.translate(0.17, HEIGHT_KM.portal / 2, z);
+    parts.push(paint(post, GALVANISED));
+  }
+  const beam = new THREE.BoxGeometry(0.03, 0.016, 0.26);
+  beam.translate(0.17, HEIGHT_KM.portal - 0.008, 0);
+  parts.push(paint(beam, GALVANISED));
   return merged(parts);
 }
 

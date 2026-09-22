@@ -495,6 +495,11 @@ export function deriveLighting(state: SkyState, out: Lighting): Lighting {
       ? 0
       : SUN_RADIANCE * MOON_RADIANCE_RATIO * state.moonLight * night;
 
+  // Overcast: a flat grey sheet. Computed before the sun because both the
+  // direct light and the ambient read it: under a solid cover the sun softens
+  // and the sky share grows, so machines stop showing hard black/white faces.
+  out.overcastMix = Math.max(smoothstep(0.4, 0.95, state.cloudCover), 0.9 * state.fog);
+
   // Sun: colour from transmittance, intensity from the altitude, dimmed by cloud and fog.
   const lightAlt = Math.max(alt, 2);
   const azimuth = Math.atan2(state.sunDir.x, -state.sunDir.z);
@@ -516,12 +521,15 @@ export function deriveLighting(state: SkyState, out: Lighting): Lighting {
   );
   out.sunDiscColor.setRGB(sunT.x, sunT.y, sunT.z);
   const cover = state.cloudCover;
-  const cloudDim = 1 - 0.85 * Math.pow(cover, 1.6);
+  const cloudDim = 1 - 0.9 * Math.pow(cover, 1.5);
   const fogDim = 1 - 0.75 * state.fog;
   // Direct sun ends at the horizon (a short tail for refraction and the soft terminator of the relief).
   const sunUp = smoothstep(-1.5, 4, alt);
   out.sunUp = sunUp;
-  out.sunIntensity = 3.8 * Math.pow(peak, 0.7) * sunUp * cloudDim * fogDim;
+  // Under a heavy overcast the directional term softens further: the light is
+  // the sheet, not a lamp, so faces stay readable instead of split black/white.
+  const overcastSoft = 1 - 0.35 * out.overcastMix;
+  out.sunIntensity = 3.8 * Math.pow(peak, 0.7) * sunUp * cloudDim * fogDim * overcastSoft;
   out.shadowIntensity = Math.min(
     1,
     Math.max(
@@ -579,7 +587,6 @@ export function deriveLighting(state: SkyState, out: Lighting): Lighting {
 
   // Overcast: a flat grey, slightly cool, keeping a hint of the hour's tint,
   // scaled by how bright the day is and darkened by the regime's cloud mass.
-  out.overcastMix = Math.max(smoothstep(0.4, 0.95, cover), 0.9 * state.fog);
   const zenithLum = luminance({ x: out.zenithColor.r, y: out.zenithColor.g, z: out.zenithColor.b });
   const overcastLum = Math.max(zenithLum, skyClearLum) * 1.7 * (1 - 0.65 * look.dark);
   const tintLum = Math.max(skyClearLum, 1e-6);
@@ -616,7 +623,7 @@ export function deriveLighting(state: SkyState, out: Lighting): Lighting {
     out.skyColor.g * albedoG + out.sunColor.g * bounce * albedoG,
     out.skyColor.b * albedoB + out.sunColor.b * bounce * albedoB,
   );
-  out.ambientIntensity = 1.25 * (1 + 0.3 * out.overcastMix);
+  out.ambientIntensity = 1.25 * (1 + 0.45 * out.overcastMix);
 
   // Fog is the horizon air: greyer under overcast, milky under the fog high, dark at night.
   const horizonR = tmp.x + (out.overcastColor.r * 0.95 - tmp.x) * out.overcastMix;
@@ -631,7 +638,14 @@ export function deriveLighting(state: SkyState, out: Lighting): Lighting {
   );
   out.distantGround.setRGB(out.fogColor.r * 0.84, out.fogColor.g * 0.84, out.fogColor.b * 0.82);
 
+  // Stars only once the sun is really down: `daylight` alone leaves them on
+  // through a bright low sun, where their white dots read as speckle over the
+  // ground and the sky (terrain's report).
+  const starAltitude = smoothstep(2, -8, alt);
   out.starVisibility =
-    Math.pow(night, 1.5) * (1 - smoothstep(0.25, 0.85, cover)) * (1 - 0.9 * state.fog);
+    Math.pow(night, 1.5) *
+    starAltitude *
+    (1 - smoothstep(0.25, 0.85, cover)) *
+    (1 - 0.9 * state.fog);
   return out;
 }

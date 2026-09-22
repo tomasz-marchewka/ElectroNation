@@ -37,6 +37,14 @@ export interface TerrainUniforms {
   uWetness: { value: number };
   /** 1 = per-layer normal maps on, 0 = skipped (distance / tier). */
   uNormalDetail: { value: number };
+  /** 1 = the anti-tiling second copies and the second relief tap (near only). */
+  uAltDetail: { value: number };
+  /** Highest layer index sampled; above it the mean colour of the layer is used. */
+  uTrim: { value: number };
+  /** 0 = high sun, 1 = a sun below ~2°: cap the glancing specular. */
+  uLowSun: { value: number };
+  /** Linear mean albedo (rgb) and mean roughness (a) of every layer. */
+  uLayerMean: { value: THREE.Vector4[] };
   uSeabedTint: { value: THREE.Color };
 }
 
@@ -64,6 +72,10 @@ uniform float uSnowline;
 uniform float uSnowCover;
 uniform float uWetness;
 uniform float uNormalDetail;
+uniform float uAltDetail;
+uniform float uTrim;
+uniform float uLowSun;
+uniform vec4 uLayerMean[8];
 uniform vec3 uSeabedTint;
 varying vec4 vEnWeightsA;
 varying vec4 vEnWeightsB;
@@ -90,11 +102,16 @@ vec2 enAlt( vec2 p ) {
 	return enAltDir( p ) + vec2( 3.1, 7.7 );
 }
 // One layer into the running albedo and tangent normal, gated by its weight.
+// Layers above the tier's ceiling are not sampled at all: their mean colour
+// and roughness carry the biome's hue, which is what the lower tiers need.
 void enLayer( inout vec4 surface, inout vec3 tangent, float w, float layer, float tile, vec2 p, vec2 dx, vec2 dy ) {
-	if ( w > EN_TAP_MIN ) {
-		surface += enTap( layer, tile, p, dx, dy ) * w;
-		if ( uNormalDetail > 0.0 ) tangent += enTapN( layer, tile, p, dx, dy ) * w;
+	if ( w <= EN_TAP_MIN ) return;
+	if ( layer > uTrim ) {
+		surface += uLayerMean[ int( layer ) ] * w;
+		return;
 	}
+	surface += enTap( layer, tile, p, dx, dy ) * w;
+	if ( uNormalDetail > 0.0 ) tangent += enTapN( layer, tile, p, dx, dy ) * w;
 }
 `;
 
@@ -105,9 +122,10 @@ vec2 enDx = dFdx( enP );
 vec2 enDy = dFdy( enP );
 vec3 enGeoN = normalize( vEnWorldNormal );
 vec3 enMacro = texture2D( uMacro, enP / 140.0 ).rgb;
-// Country-scale tone drift for the albedo: the fine macro noise above would
-// blotch a snowfield at 1–3 km, exactly the scale of a label.
-vec3 enMacroFar = texture2D( uMacro, enP / 640.0 + vec2( 0.13, 0.29 ) ).rgb;
+// Country-scale tone drift for the albedo (R) and the wander of the snowline
+// (G) are both ~500 km reads: one tap serves both, one fetch less per pixel.
+// The fine macro drift above would blotch a snowfield at 1–3 km — label scale.
+vec3 enMacroWide = texture2D( uMacro, enP / 580.0 + vec2( 0.13, 0.29 ) ).rgb;
 // Fine patch noise (1–2 km) for the lowland snow cover and the dithered snowline.
 vec3 enMacroFine = texture2D( uMacro, enP / 24.0 + vec2( 0.71, 0.23 ) ).rgb;
 
@@ -124,7 +142,7 @@ vec3 enDetailN = enGeoN;
 if ( enRange > EN_TAP_MIN ) {
 	float enRPick = smoothstep( 0.42, 0.58, enMacro.b );
 	vec3 enR = texture2D( uRelief, enP / ${RELIEF_TILE_KM.toFixed(1)} ).xyz * 2.0 - 1.0;
-	if ( enRPick > 0.001 ) {
+	if ( enRPick > 0.001 && uAltDetail > 0.5 ) {
 		vec3 enR2 = texture2D( uRelief, enAlt( enP ) / ${RELIEF_TILE_KM.toFixed(1)} ).xyz * 2.0 - 1.0;
 		enR = mix( enR, enR2, enRPick );
 	}
@@ -150,8 +168,7 @@ wA.z += enSoft * enRockSlope;
 // independent of the relief, so a half-snowed plain is a dithered field and
 // not a set of contour lines drawn by the height noise. Steep flanks (from
 // ~35°) shed it, so a snowed range keeps dark rock faces between the white.
-float enEdgeNoise = texture2D( uMacro, enP / 520.0 + vec2( 0.37, 0.61 ) ).g;
-float enSnowEdge = uSnowline + ( enEdgeNoise - 0.5 ) * 0.8 + ( enMacroFine.r - 0.5 ) * 0.5;
+float enSnowEdge = uSnowline + ( enMacroWide.g - 0.5 ) * 0.8 + ( enMacroFine.r - 0.5 ) * 0.5;
 float enAltSnow = smoothstep( enSnowEdge - 0.5, enSnowEdge + 0.5, vEnWorldPos.y );
 float enCoverNoise = 0.65 * enMacroFine.g + 0.35 * enMacro.g;
 float enCoverSnow = smoothstep( 1.0 - uSnowCover - 0.14, 1.0 - uSnowCover + 0.14, enCoverNoise ) * step( 0.001, uSnowCover );
@@ -167,8 +184,9 @@ enSnow *= 1.0 - 0.85 * wA.z * enCrest;
 vec4 enSurface = vec4( 0.0 );
 vec3 enTangentN = vec3( 0.0 );
 // Grass in two anti-tiling copies; the pick is 0 or 1 nearly everywhere, so
-// only the ~30 km transition bands pay for both.
-float enPick = smoothstep( 0.42, 0.58, enMacro.b );
+// only the ~30 km transition bands pay for both. Far out the second copy is
+// worth less than its fetch: uAltDetail folds it away entirely.
+float enPick = smoothstep( 0.42, 0.58, enMacro.b ) * uAltDetail;
 enLayer( enSurface, enTangentN, wA.x * ( 1.0 - enPick ), 0.0, uTiles0.x, enP, enDx, enDy );
 enLayer( enSurface, enTangentN, wA.x * enPick, 0.0, uTiles0.x, enAlt( enP ), enAltDir( enDx ), enAltDir( enDy ) );
 enLayer( enSurface, enTangentN, wA.y, 1.0, uTiles0.y, enP, enDx, enDy );
@@ -178,26 +196,38 @@ enLayer( enSurface, enTangentN, wB.x, 4.0, uTiles1.x, enP, enDx, enDy );
 enLayer( enSurface, enTangentN, wB.y, 5.0, uTiles1.y, enP, enDx, enDy );
 // Beach and seabed share the sand tile; the seabed is the same sand, tinted.
 if ( wB.z + wB.w > EN_TAP_MIN ) {
-	vec4 enSand = enTap( 6.0, uTiles1.z, enP, enDx, enDy );
-	enSurface += enSand * wB.z + enSand * vec4( uSeabedTint, 1.0 ) * wB.w;
-	if ( uNormalDetail > 0.0 ) enTangentN += enTapN( 6.0, uTiles1.z, enP, enDx, enDy ) * ( wB.z + wB.w );
+	if ( uTrim > 5.5 ) {
+		vec4 enSand = enTap( 6.0, uTiles1.z, enP, enDx, enDy );
+		enSurface += enSand * wB.z + enSand * vec4( uSeabedTint, 1.0 ) * wB.w;
+		if ( uNormalDetail > 0.0 ) enTangentN += enTapN( 6.0, uTiles1.z, enP, enDx, enDy ) * ( wB.z + wB.w );
+	} else {
+		enSurface += uLayerMean[ 6 ] * wB.z + uLayerMean[ 6 ] * vec4( uSeabedTint, 1.0 ) * wB.w;
+	}
 }
 if ( enSnow > EN_TAP_MIN ) {
-	enSurface = mix( enSurface, enTap( 7.0, uTiles1.w, enP, enDx, enDy ), enSnow );
-	if ( uNormalDetail > 0.0 ) enTangentN = mix( enTangentN, enTapN( 7.0, uTiles1.w, enP, enDx, enDy ), enSnow );
+	vec4 enSnowTile = uTrim > 6.5
+		? enTap( 7.0, uTiles1.w, enP, enDx, enDy )
+		: uLayerMean[ 7 ];
+	enSurface = mix( enSurface, enSnowTile, enSnow );
+	if ( uNormalDetail > 0.0 && uTrim > 6.5 ) enTangentN = mix( enTangentN, enTapN( 7.0, uTiles1.w, enP, enDx, enDy ), enSnow );
 }
 enTangentN = normalize( enTangentN * uNormalDetail + vec3( 0.0, 0.0, 1.0 - uNormalDetail + 1e-3 ) );
 
 // Country-wide variation against tiling, then the weather.
-vec3 enAlbedo = enSurface.rgb * ( 0.86 + 0.28 * enMacroFar.r );
-enAlbedo = mix( enAlbedo, enAlbedo * vec3( 1.08, 1.0, 0.9 ), ( enMacroFar.b - 0.5 ) * 0.6 * ( 1.0 - enSnow ) );
+vec3 enAlbedo = enSurface.rgb * ( 0.86 + 0.28 * enMacroWide.r );
+enAlbedo = mix( enAlbedo, enAlbedo * vec3( 1.08, 1.0, 0.9 ), ( enMacroWide.b - 0.5 ) * 0.6 * ( 1.0 - enSnow ) );
 enAlbedo *= 1.0 - 0.3 * uWetness * ( 1.0 - enSnow );
 diffuseColor.rgb *= enAlbedo;
 float enRoughness = enSurface.a * ( 1.0 - 0.35 * uWetness * ( 1.0 - enSnow ) );
 `;
 
 const ROUGHNESS = /* glsl */ `
-float roughnessFactor = enRoughness;
+// A grazing view of the land under a low sun is where a rough surface turns
+// into a mirror: raise the roughness toward 1 with the angle, weighted by how
+// low the sun is (uLowSun), so the sweep becomes warm relief light instead of
+// a wet sheet. Noon keeps the crisp specular on snow and water.
+float enGrazing = 1.0 - clamp( dot( normalize( vViewPosition ), normalize( vNormal ) ), 0.0, 1.0 );
+float roughnessFactor = mix( enRoughness, 1.0, uLowSun * smoothstep( 0.45, 0.9, enGrazing ) );
 `;
 
 /** Replaces normal_fragment_maps: perturbs the relief normal with the blended layer normal. */
@@ -228,7 +258,12 @@ const CLOUD_SHADOW = /* glsl */ `
 		enCloud = mix( 1.0, texture2D( uCloudMap, enCloudUv ).r, uCloudParams.w );
 	}
 	reflectedLight.directDiffuse *= enCloud;
-	reflectedLight.directSpecular *= enCloud * mix( 0.35, 1.0, enSnow );
+	// A low sun is capped hard: direct specular at grazing incidence is what
+	// whitened the land at sunrise/sunset (sky change request 3). Snow keeps a
+	// little more sparkle; everything else drops to a fifth.
+	reflectedLight.directSpecular *= enCloud
+		* mix( 0.35, 1.0, enSnow )
+		* mix( 1.0, mix( 0.12, 0.3, enSnow ), uLowSun );
 }
 `;
 
@@ -263,6 +298,10 @@ export function createTerrainMaterial(textures: TerrainTextureSet): {
     uSnowCover: { value: 0 },
     uWetness: { value: 0 },
     uNormalDetail: { value: 1 },
+    uAltDetail: { value: 1 },
+    uTrim: { value: 7.5 },
+    uLowSun: { value: 0 },
+    uLayerMean: { value: textures.layerMean.map((mean) => mean.clone()) },
     uSeabedTint: { value: new THREE.Color().setRGB(0.55, 0.6, 0.55, THREE.SRGBColorSpace) },
   };
   const material = new THREE.MeshStandardMaterial({

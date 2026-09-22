@@ -192,12 +192,15 @@ varying float vEnUpKm;
 varying float vEnUnitY;
 ${HASH_GLSL}
 // Gravel, terracotta, membrane, bitumen, green — aerial photography of Polish
-// cities: flat roofs are dark, halls pale, the suburbs rust-red.
+// cities: flat roofs are dark, halls pale, the suburbs rust-red. From the
+// strategic view the dark roofs are what makes a metro a patch of built mass
+// instead of pale speckle over the fields; the terracotta rim stays saturated
+// so the suburbs read as a warm edge.
 vec3 enRoofTone( float kind ) {
-  if ( kind < 0.5 ) return vec3( 0.34, 0.335, 0.32 );
-  if ( kind < 1.5 ) return vec3( 0.56, 0.23, 0.12 );
-  if ( kind < 2.5 ) return vec3( 0.58, 0.58, 0.56 );
-  if ( kind < 3.5 ) return vec3( 0.14, 0.135, 0.13 );
+  if ( kind < 0.5 ) return vec3( 0.25, 0.245, 0.235 );
+  if ( kind < 1.5 ) return vec3( 0.58, 0.21, 0.10 );
+  if ( kind < 2.5 ) return vec3( 0.44, 0.44, 0.42 );
+  if ( kind < 3.5 ) return vec3( 0.115, 0.11, 0.105 );
   return vec3( 0.30, 0.33, 0.16 );
 }
 float enWindowMask( vec2 f, float style, vec2 aa ) {
@@ -217,9 +220,9 @@ vec2 enFrac = fract( vEnWin );
 vec2 enFw = fwidth( vEnWin );
 vec2 enAa = enFw * 0.75;
 // Once a window cell spans under a few pixels the analytic mask is noise; the
-// facade fades to its average (same energy, no sparkle) — at 42 km a cell is ~2 px.
+// facade fades to its average (same energy, no sparkle) — at 42 km a cell is ~1 px.
 float enCellPx = 1.0 / max( max( enFw.x, enFw.y ), 1e-4 );
-float enFar = 1.0 - smoothstep( 1.5, 4.0, enCellPx );
+float enFar = 1.0 - smoothstep( 1.2, 2.8, enCellPx );
 // Baked occlusion: the street canyon darkens the lower floors and the
 // courtyard floor — the cheapest thing that stops a block reading as paper.
 float enAo = mix( 0.58, 1.0, smoothstep( 0.0, 0.5, vEnUnitY ) );
@@ -272,7 +275,10 @@ if ( vEnRegion < 0.5 && uNight > 0.001 ) {
   float warm = enRand( cell, seed + 5u );
   vec3 tint = warm < 0.72 ? vec3( 1.0, 0.76, 0.46 ) : vec3( 0.72, 0.84, 1.0 );
   float near = enWindowMask( enFrac, enStyle, enAa ) * on * brightness;
-  float far = enArea * keep * 0.7;
+  // From map distance the light quilt (lightmap.ts) carries the city; a facade
+  // average at one pixel per block would otherwise read as sparkle over it.
+  float farDamp = 1.0 - 0.85 * smoothstep( 150.0, 420.0, vEnDist );
+  float far = enArea * keep * 0.7 * farDamp;
   float e = mix( near, far, enFar ) * uNight * ( 0.3 + 0.7 * lit );
   totalEmissiveRadiance = uEmissive * e * mix( tint, vec3( 1.0, 0.8, 0.55 ), enFar * 0.5 );
   // Street light climbing the lower floors: the sodium spill that makes a lit

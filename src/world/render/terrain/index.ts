@@ -19,13 +19,41 @@ import { createTerrainMaterial, type TerrainUniforms } from "./terrainMaterial";
 import { disposeTerrainTextures, terrainTextures, type TerrainTextureSet } from "./terrainTextures";
 import { createWater, type Water } from "./water";
 
-/** Vertex spacing of the field per quality tier [km]. */
-const CELL_KM: Record<QualityTier, number> = { high: 2, medium: 3, low: 3 };
 /** Width of the skirt continuing the relief past the board [km]. */
 const SKIRT_KM = 60;
 /** Wind speed [m/s] at which the water surface is at its roughest. */
 const WIND_FULL_MS = 15;
 const DEG = Math.PI / 180;
+
+/**
+ * Per-tier ground detail (ARCHITECTURE.md §13 — the tiers must be real), read
+ * from the one knobs table in `core/Quality.ts`: the camera distance [km]
+ * under which the per-layer normal maps and the anti-tiling second copies
+ * still pay for themselves, the highest layer index sampled (above it the
+ * layer's mean colour is folded in), and the ground texture anisotropy.
+ */
+interface GroundDetail {
+  normal: number;
+  alt: number;
+  trim: number;
+  aniso: number;
+}
+
+function detailFor(tier: QualityTier): GroundDetail {
+  const profile = QUALITY_PROFILES[tier];
+  return {
+    normal: profile.terrainNormalKm,
+    alt: profile.terrainAltKm,
+    trim: profile.terrainSamples,
+    aniso: profile.anisotropy,
+  };
+}
+/** Water: full wave/foam detail below this distance [km], gone above it. */
+const WATER_NEAR_KM = 60;
+const WATER_FAR_KM = 200;
+/** Open-water wind [m/s] where the sea starts to break into white horses and is full at 20. */
+const STORM_FROM_MS = 12;
+const STORM_FULL_MS = 20;
 
 /** One letter per terrain kind — the board's picture, for the rebuild key. */
 const TERRAIN_LETTER: Record<WorldScene["board"]["hexes"][number]["terrain"], string> = {
@@ -58,6 +86,8 @@ export function createTerrainModule(): WorldModule {
   let forest: Forest | null = null;
   /** The water's clock, held still while state-carrying motion is off. */
   let waterTime = 0;
+  /** The tier + anisotropy band the textures last paid for. */
+  let anisoBand = "";
 
   const provider: TerrainProvider = {
     heightAt: (x, z) => (field ? field.heightAt(x, z) : 0),
@@ -93,7 +123,7 @@ export function createTerrainModule(): WorldModule {
     if (!textures) textures = terrainTextures();
     const profile = QUALITY_PROFILES[ctx.quality];
     field = buildHeightField(scene.board, ctx.rng("terrain:relief"), {
-      cellKm: CELL_KM[ctx.quality],
+      cellKm: profile.terrainCellKm,
       skirtKm: SKIRT_KM,
     });
 
@@ -108,6 +138,7 @@ export function createTerrainModule(): WorldModule {
     const built = createTerrainMaterial(textures);
     groundMaterial = built.material;
     uniforms = built.uniforms;
+    uniforms.uTrim.value = detailFor(ctx.quality).trim;
     ground = new THREE.Mesh(geometry, groundMaterial);
     ground.name = "terrain-ground";
     ground.receiveShadow = true;
@@ -140,6 +171,9 @@ export function createTerrainModule(): WorldModule {
     if (uniforms) {
       uniforms.uSnowline.value = snowline;
       uniforms.uWetness.value = wetness(weather.precipitation, weather.fog);
+      // Below ~8° the sun's glancing specular on the land is capped (the
+      // roughness ramp and the specular ceiling read this).
+      uniforms.uLowSun.value = 1 - THREE.MathUtils.smoothstep(scene.sun.altitudeDeg, 2, 8);
     }
     if (water) {
       // The wind blows FROM windFromDeg (clockwise from north); the water drifts the other way.
@@ -151,6 +185,11 @@ export function createTerrainModule(): WorldModule {
         0,
       );
       water.uniforms.uIce.value = iceAmount(weather.tempC, weather.snowCover);
+      water.uniforms.uStorm.value = clamp(
+        (weather.windMs.open - STORM_FROM_MS) / (STORM_FULL_MS - STORM_FROM_MS),
+        0,
+        1,
+      );
     }
   };
 
@@ -174,7 +213,36 @@ export function createTerrainModule(): WorldModule {
     },
 
     frame(_dt, ctx) {
+      // Distance is the other quality knob: at the strategic view the per-layer
+      // normals and the anti-tiling copies are sub-pixel, so the tier's near
+      // distances switch them off and the ground textures drop anisotropy.
+      const detail = detailFor(ctx.quality);
+      const near = detail.normal > 0 && ctx.view.distanceKm < detail.normal;
+      const alternate = detail.alt > 0 && ctx.view.distanceKm < detail.alt;
+      const anisoBandNow = `${ctx.quality}|${near ? detail.aniso : 1}`;
+      if (textures && anisoBandNow !== anisoBand) {
+        anisoBand = anisoBandNow;
+        const aniso = near ? detail.aniso : 1;
+        for (const map of [
+          textures.albedo,
+          textures.normal,
+          textures.waves,
+          textures.relief,
+          textures.macro,
+        ]) {
+          if (map.anisotropy !== aniso) {
+            map.anisotropy = aniso;
+            map.needsUpdate = true;
+          }
+        }
+      }
+      if (uniforms) {
+        uniforms.uNormalDetail.value = near ? 1 : 0;
+        uniforms.uAltDetail.value = alternate ? 1 : 0;
+      }
       if (water) {
+        water.uniforms.uFar.value =
+          1 - THREE.MathUtils.smoothstep(ctx.view.distanceKm, WATER_NEAR_KM, WATER_FAR_KM);
         if (ctx.motion.stateful) waterTime = ctx.clock.time;
         water.uniforms.uTime.value = waterTime;
         water.uniforms.uSkyColor.value.copy(ctx.environment.skyColor);
@@ -195,7 +263,10 @@ export function createTerrainModule(): WorldModule {
           uniforms.uCloudParams.value.set(1, 0, 0, 0);
         }
       }
-      forest?.setDistance(ctx.view.distanceKm);
+      // The lower tiers keep trees visible for a shorter reach (a tree is a
+      // handful of pixels there), so their share of instances stays real.
+      const profile = QUALITY_PROFILES[ctx.quality];
+      forest?.setDistance(ctx.view.distanceKm / Math.max(0.3, profile.detail));
     },
 
     dispose() {

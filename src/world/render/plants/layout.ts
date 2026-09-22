@@ -19,7 +19,7 @@ import { PLANT_SITE_KM } from "../core/exaggeration";
 import type { Rng } from "../core/prng";
 import { SIZE, type Archetype } from "./geometry";
 
-export type PlumeKind = "smoke" | "vapour" | "wisp";
+export type PlumeKind = "smoke" | "vapour" | "wisp" | "heat";
 
 export interface PartInstance {
   archetype: Archetype;
@@ -51,6 +51,8 @@ export interface LightInstance {
   size: number;
   /** 0..1 — blink phase (aviation) or brightness variation (floods). */
   phase: number;
+  /** 1 for a cool white pool (dome and tower bases), 0 for the warm yard lamps. */
+  cool?: number;
 }
 
 export interface BlockAnchor {
@@ -66,6 +68,8 @@ export interface PlantLayout {
   yaw: number;
   /** Ellipse semi-axes of the pad [km], in the site frame. */
   pad: { rx: number; rz: number };
+  /** Site-halo diameter [km] — the warm dome of the strategic night read. */
+  haloSize: number;
   parts: PartInstance[];
   plumes: PlumeSource[];
   aviation: LightInstance[];
@@ -107,6 +111,8 @@ interface Plan {
   parts: LocalPart[];
   plumes: (LocalPoint & { kind: PlumeKind; block: number; radius: number })[];
   aviation: LocalPoint[];
+  /** Extra ground pools the plan wants beyond the perimeter ring (coal yard, dome feet). */
+  floods: (LocalPoint & { size: number; cool?: number })[];
   blocks: (LocalPoint & { index: number })[];
   /** Extent of the plan in the local frame [km]. */
   minX: number;
@@ -131,6 +137,7 @@ class PlanBuilder implements Plan {
   parts: LocalPart[] = [];
   plumes: Plan["plumes"] = [];
   aviation: LocalPoint[] = [];
+  floods: Plan["floods"] = [];
   blocks: Plan["blocks"] = [];
   minX = 0;
   maxX = 0;
@@ -209,6 +216,9 @@ function nuclearPlan(plant: WorldPlant): Plan {
     });
     plan.part("aux", x + 0.62 * w, 1.42, { sx: 0.7, sy: 0.9, sz: 0.7, block: i, w: SIZE.aux.w });
     plan.blocks.push({ index: i, x, y: 0, z: 0.55 });
+    // A cool pool at each containment's foot: the domes stay the mass of the
+    // site at night instead of the perimeter floodlights alone.
+    plan.floods.push({ x, y: 0, z: 1.15, size: 0.42, cool: 1 });
   });
   // Two natural-draught cooling towers behind the hall.
   const towerZ = -2.7;
@@ -217,6 +227,7 @@ function nuclearPlan(plant: WorldPlant): Plan {
     plan.part("tower", x, towerZ, { w: SIZE.towerBase * 2 });
     plan.plumes.push({ x, y: SIZE.towerHeight, z: towerZ, kind: "vapour", block: -1, radius: 0.7 });
     plan.aviation.push({ x, y: SIZE.towerHeight + 0.03, z: towerZ });
+    plan.floods.push({ x, y: 0, z: towerZ + 0.95, size: 0.5, cool: 1 });
   }
   const east = xs[n - 1]! + pitch / 2 + 0.9;
   switchyard(plan, east, -0.55, 2, 2);
@@ -244,7 +255,10 @@ function coalPlan(plant: WorldPlant): Plan {
       z: stackZ,
       kind: "smoke",
       block: i,
-      radius: SIZE.stackTallRadius * 0.5,
+      // Wider than the stack mouth: a soot plume spreads as it leaves the lip,
+      // and the puffs must overlap into one column from the first metres. The
+      // column is the coal plant's map signal by day, so it carries width.
+      radius: SIZE.stackTallRadius * 2.4,
     });
     plan.aviation.push({ x: stackX, y: SIZE.stackTallHeight + 0.03, z: stackZ });
     plan.aviation.push({
@@ -270,25 +284,41 @@ function coalPlan(plant: WorldPlant): Plan {
     plan.plumes.push({ x, y: SIZE.towerHeight, z, kind: "vapour", block: -1, radius: 0.7 });
     plan.aviation.push({ x, y: SIZE.towerHeight + 0.03, z });
   }
-  // The coal yard behind the stacks: long stockpiles and an inclined gallery up to the bunkers.
+  // The coal yard stands on the WEST flank, beside the row and in front of the
+  // stacks, so the game's south camera reads the piles, their floodlighting and
+  // the gallery climbing to the bunkers. Behind the reheaters (the first pass)
+  // the yard was invisible from every preset. Piles run along z — the long axis
+  // faces the camera instead of turning edge-on to it.
   const piles = Math.min(3, 1 + Math.ceil(n / 2));
   const pileScale = clamp((n * pitch + 0.4) / SIZE.stockpile.l, 0.8, 1.7);
-  const yardZ = -2.55;
+  const pileLength = SIZE.stockpile.l * pileScale; // along z, after the yaw
+  const yardX = xs[0]! - pitch / 2 - 1.95;
+  const yardZ = 0.5;
   for (let j = 0; j < piles; j++) {
-    plan.part("stockpile", 0, yardZ - j * 0.85, {
-      sx: pileScale,
+    const x = yardX - j * 0.85;
+    plan.part("stockpile", x, yardZ, {
+      yaw: Math.PI / 2,
+      sz: pileScale,
+      // The extent bound cannot see the yaw: give it the long axis on both sides.
       w: SIZE.stockpile.l,
-      d: SIZE.stockpile.w,
+      d: pileLength,
     });
+    // The yard works in shifts: floodlights over the piles (the piles' own
+    // sheen is emitted in materials.ts) and lamps on the gallery below.
+    plan.floods.push(
+      { x, y: 0, z: yardZ - pileLength / 2 + 0.4, size: 0.3 },
+      { x, y: 0, z: yardZ + pileLength / 2 - 0.4, size: 0.3 },
+      { x: x - 0.55, y: 0, z: yardZ, size: 0.26 },
+    );
   }
-  const from = { x: xs[0]!, y: 0.12, z: yardZ + 0.1 };
+  plan.floods.push({ x: xs[0]!, y: 0, z: -1.0, size: 0.24 });
+  const from = { x: yardX + 0.2, y: 0.28, z: yardZ - 0.3 };
   const to = { x: xs[0]!, y: SIZE.boiler.h * 0.85, z: -0.35 };
-  const dz = to.z - from.z;
-  const dy = to.y - from.y;
-  const length = Math.hypot(dz, dy);
-  const quaternion = new THREE.Quaternion().setFromAxisAngle(
-    new THREE.Vector3(1, 0, 0),
-    -Math.atan2(dy, dz),
+  const run = new THREE.Vector3(to.x - from.x, to.y - from.y, to.z - from.z);
+  const length = run.length();
+  const quaternion = new THREE.Quaternion().setFromUnitVectors(
+    new THREE.Vector3(0, 0, 1),
+    run.normalize(),
   );
   plan.parts.push({
     archetype: "conveyor",
@@ -304,8 +334,11 @@ function coalPlan(plant: WorldPlant): Plan {
   });
   const east = (n >= 4 ? xs[n - 1]! + pitch / 2 + 2.7 : xs[n - 1]! + pitch / 2 + 0.9) + 0.2;
   switchyard(plan, east, 1.0, 2, 2);
-  const west = xs[0]! - pitch / 2 - 0.5;
-  plan.part("admin", west - 0.2, 2.2, { w: SIZE.admin.w, d: SIZE.admin.d });
+  // Offices south of the yard, clear of the piles.
+  plan.part("admin", xs[0]! - pitch / 2 - 0.7, yardZ + pileLength / 2 + 0.9, {
+    w: SIZE.admin.w,
+    d: SIZE.admin.d,
+  });
   plan.part("aux", 0.9 + xs[n - 1]!, -2.6, { sx: 0.8, sz: 0.8, w: SIZE.aux.w });
   return plan;
 }
@@ -331,9 +364,9 @@ function ccgtPlan(plant: WorldPlant): Plan {
       x,
       y: SIZE.stackMidHeight,
       z: stackZ,
-      kind: "wisp",
+      kind: "heat",
       block: i,
-      radius: SIZE.stackMidRadius * 0.5,
+      radius: SIZE.stackMidRadius * 0.35,
     });
     plan.aviation.push({ x, y: SIZE.stackMidHeight + 0.03, z: stackZ });
     plan.part("hallSteel", x, 1.6, {
@@ -379,9 +412,9 @@ function ocgtPlan(plant: WorldPlant): Plan {
       x,
       y: SIZE.packageStackHeight,
       z: (SIZE.package.d / 2 - 0.08) * w,
-      kind: "wisp",
+      kind: "heat",
       block: i,
-      radius: 0.07,
+      radius: 0.06,
     });
     plan.part("transformer", x, 0.8, { w: 0.24, d: 0.34 });
     plan.blocks.push({ index: i, x, y: 0, z: 0 });
@@ -477,7 +510,10 @@ export function layoutPlant(
   const yaw = rng.range(-0.55, 0.55);
   const rx = clamp(Math.max(-plan.minX, plan.maxX) + PAD_MARGIN_KM, PAD_MIN_KM, PAD_MAX_KM);
   const rz = clamp(Math.max(-plan.minZ, plan.maxZ) + PAD_MARGIN_KM, PAD_MIN_KM, PAD_MAX_KM);
-  const floodsLocal: LightInstance[] = [];
+  const floodsLocal: LightInstance[] = plan.floods.map((light) => ({
+    ...light,
+    phase: rng.next(),
+  }));
   perimeter(plan, rx, rz, rng, floodsLocal, plant.tech);
 
   const y = Math.max(0, heightAt(centre.x, centre.z)) + PAD_LIFT_KM;
@@ -534,6 +570,7 @@ export function layoutPlant(
     ...toWorld(light),
     size: light.size,
     phase: light.phase,
+    cool: light.cool,
   }));
   const blocks: BlockAnchor[] = plan.blocks.map((anchor) => ({
     index: anchor.index,
@@ -551,6 +588,9 @@ export function layoutPlant(
     centre: { x: centre.x, y, z: centre.z },
     yaw,
     pad: { rx, rz },
+    // The dome covers the built-up site, not the whole fenced pad: the halo
+    // must sit ON the plant at map distance, not blur into its neighbours.
+    haloSize: Math.max(rx, rz) * 2.0,
     parts,
     plumes,
     aviation,

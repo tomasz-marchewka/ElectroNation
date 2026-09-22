@@ -13,6 +13,11 @@ export interface ShowcaseFrame {
   camera: CameraPreset;
   /** Optional hex the close cameras look at (offset col,row of map v1). */
   focus?: { col: number; row: number };
+  /**
+   * Optional day for this frame; the spec's day otherwise. Lets a frame show
+   * a season the judging day cannot (e.g. a June noon sky, day 16).
+   */
+  day?: number;
 }
 
 export interface ShowcaseSpec {
@@ -33,7 +38,8 @@ export interface ShowcaseSpec {
 const JUDGING_DAY = 1;
 
 const SKY_FRAMES: ShowcaseFrame[] = [
-  { name: "noon-summer-high", turn: 4, regime: "summerHigh", camera: "strategic" },
+  // June (day 16) — a January day cannot show a summer noon sky.
+  { name: "noon-summer-high", turn: 4, regime: "summerHigh", camera: "strategic", day: 16 },
   { name: "dawn-transitional", turn: 2, regime: "transitional", camera: "golden" },
   { name: "evening-frost", turn: 6, regime: "frostHigh", camera: "strategic" },
   { name: "night-fog", turn: 0, regime: "fogHigh", camera: "overview" },
@@ -93,19 +99,21 @@ export const SHOWCASES: Record<string, ShowcaseSpec> = {
         focus: { col: 19, row: 6 },
       },
       {
+        // Turn 4 (13:30): turn 5 is already after sunset in January.
         name: "corridor-golden",
-        turn: 5,
+        turn: 4,
         regime: "summerLow",
         camera: "golden",
         focus: { col: 6, row: 9 },
       },
       { name: "night-strategic", turn: 7, regime: "atlanticLow", camera: "strategic" },
       {
+        // The Zalesie line's construction head sits near (11,10), not (12,9).
         name: "construction-noon",
         turn: 4,
         regime: "summerHigh",
         camera: "closeup",
-        focus: { col: 12, row: 9 },
+        focus: { col: 11, row: 10 },
       },
       {
         name: "upgrade-evening",
@@ -115,8 +123,9 @@ export const SHOWCASES: Record<string, ShowcaseSpec> = {
         focus: { col: 7, row: 8 },
       },
       {
+        // Daylight: the dusk turn hid the lattice detail.
         name: "tower-detail",
-        turn: 5,
+        turn: 4,
         regime: "transitional",
         camera: "detail",
         focus: { col: 9, row: 5 },
@@ -172,6 +181,7 @@ export const SHOWCASES: Record<string, ShowcaseSpec> = {
     scenario: "midgame",
     day: JUDGING_DAY,
     frames: [
+      // Daytime with the atlantic wind behind it — the rotors spin in daylight.
       {
         name: "offshore-atlantic",
         turn: 4,
@@ -179,19 +189,32 @@ export const SHOWCASES: Record<string, ShowcaseSpec> = {
         camera: "closeup",
         focus: { col: 10, row: 2 },
       },
+      // The same farm at night: lamps on every nacelle, rotors still turning.
       {
-        name: "onshore-storm",
-        turn: 5,
-        regime: "storm",
-        camera: "golden",
-        focus: { col: 7, row: 3 },
+        name: "offshore-night",
+        turn: 7,
+        regime: "atlanticLow",
+        camera: "closeup",
+        focus: { col: 10, row: 2 },
       },
       {
+        // A Baltic storm on day 75: gusts past the 25 m/s cut-out, so the
+        // blades are actually feathered (day 1 never reaches cut-out).
+        name: "offshore-storm",
+        turn: 3,
+        regime: "storm",
+        camera: "detail",
+        focus: { col: 10, row: 2 },
+        day: 75,
+      },
+      {
+        // June (day 16): a January noon cannot stage a real summer sun.
         name: "pv-noon",
         turn: 4,
         regime: "summerHigh",
         camera: "closeup",
         focus: { col: 12, row: 9 },
+        day: 16,
       },
       {
         name: "dunkelflaute",
@@ -209,17 +232,19 @@ export const SHOWCASES: Record<string, ShowcaseSpec> = {
     day: JUDGING_DAY,
     frames: [
       {
+        // Closeup, not golden: at 110 km a 7 km reservoir is ~60 px.
         name: "pumped-golden",
         turn: 6,
         regime: "transitional",
-        camera: "golden",
+        camera: "closeup",
         focus: { col: 2, row: 12 },
       },
       {
+        // Detail: the SOC bar needs the close range in daylight.
         name: "bess-noon",
         turn: 4,
         regime: "summerHigh",
-        camera: "closeup",
+        camera: "detail",
         focus: { col: 12, row: 6 },
       },
       {
@@ -228,6 +253,15 @@ export const SHOWCASES: Record<string, ShowcaseSpec> = {
         regime: "frostHigh",
         camera: "closeup",
         focus: { col: 2, row: 12 },
+      },
+      {
+        // Day 0 midday: the plant is charging (script orders 100 MW at turn 2).
+        name: "pumped-charge",
+        turn: 3,
+        regime: "frostHigh",
+        camera: "detail",
+        focus: { col: 2, row: 12 },
+        day: 0,
       },
     ],
   },
@@ -238,10 +272,11 @@ export const SHOWCASES: Record<string, ShowcaseSpec> = {
     day: JUDGING_DAY,
     frames: [
       {
+        // Detail: the bay read (strung vs bare) needs the close range.
         name: "junction-noon",
         turn: 4,
         regime: "transitional",
-        camera: "closeup",
+        camera: "detail",
         focus: { col: 9, row: 6 },
       },
       {
@@ -252,10 +287,20 @@ export const SHOWCASES: Record<string, ShowcaseSpec> = {
         focus: { col: 0, row: 7 },
       },
       {
+        // Day 0: the border actually imports 200 MW then (the judging turn's
+        // setpoint is 100 MW but nothing flows), so the cyan read is staged.
+        name: "border-import",
+        turn: 0,
+        regime: "frostHigh",
+        camera: "detail",
+        focus: { col: 0, row: 7 },
+        day: 0,
+      },
+      {
         name: "site-progress",
         turn: 4,
         regime: "transitional",
-        camera: "closeup",
+        camera: "detail",
         focus: { col: 14, row: 12 },
       },
       {
@@ -296,6 +341,14 @@ export const SHOWCASES: Record<string, ShowcaseSpec> = {
       },
       { name: "day-strategic", turn: 4, regime: "summerHigh", camera: "strategic" },
       {
+        // The module's day read at close range (facades, courtyards, roofs).
+        name: "jasienica-day",
+        turn: 4,
+        regime: "summerHigh",
+        camera: "closeup",
+        focus: { col: 11, row: 7 },
+      },
+      {
         name: "metro-detail-night",
         turn: 7,
         regime: "atlanticLow",
@@ -306,7 +359,8 @@ export const SHOWCASES: Record<string, ShowcaseSpec> = {
   },
   effects: {
     module: "effects",
-    modules: ["terrain", "sky", "grid", "cities", "plants", "effects"],
+    // Every overlay owner loaded, or four of the ten overlays cannot appear.
+    modules: ["terrain", "sky", "grid", "cities", "plants", "res", "storage", "nodes", "effects"],
     scenario: "midgame",
     day: JUDGING_DAY,
     frames: [
@@ -318,13 +372,23 @@ export const SHOWCASES: Record<string, ShowcaseSpec> = {
         focus: { col: 19, row: 6 },
       },
       {
+        // Detail: the 14 km site reads as a snowfield at 42 km.
         name: "site-noon",
         turn: 4,
         regime: "transitional",
-        camera: "closeup",
+        camera: "detail",
         focus: { col: 14, row: 12 },
       },
       { name: "flow-strategic", turn: 7, regime: "atlanticLow", camera: "strategic" },
+      {
+        // Day 0 is the only live border import in the midgame script.
+        name: "border-import",
+        turn: 0,
+        regime: "frostHigh",
+        camera: "detail",
+        focus: { col: 0, row: 7 },
+        day: 0,
+      },
     ],
   },
   game: {
@@ -333,14 +397,25 @@ export const SHOWCASES: Record<string, ShowcaseSpec> = {
     scenario: "midgame",
     day: JUDGING_DAY,
     frames: [
+      // The four judging frames of the whole game (captures/showcase/README.md):
+      // together they answer every docs/08 §3 question at least once.
+      // 1) Judging evening: blackout + ENS, red overloaded lines, a starting coal
+      //    block, discharging storages, still rotors (Dunkelflaute).
       { name: "evening-peak-frost", turn: 6, regime: "frostHigh", camera: "strategic" },
+      // 2) Daylight: PV production, ok/warn/idle lines side by side, the
+      //    construction site and the mid-upgrade corridor at their day-1 progress.
       { name: "noon-summer", turn: 4, regime: "summerHigh", camera: "strategic" },
-      { name: "night-atlantic", turn: 0, regime: "atlanticLow", camera: "overview" },
+      // 3) Night: city lights scaled by delivered power, spinning rotors with
+      //    nacelle lamps, storages discharging into the peak.
+      { name: "night-atlantic", turn: 7, regime: "atlanticLow", camera: "strategic" },
+      // 4) Weather drama at the offshore farm: the sea state and the rain read
+      //    at 18 km (day 1 never reaches the 25 m/s cut-out; the feathered rotor
+      //    is staged by the res showcase frame `offshore-storm`, day 75).
       {
-        name: "storm-golden",
+        name: "storm-offshore",
         turn: 5,
         regime: "storm",
-        camera: "golden",
+        camera: "detail",
         focus: { col: 10, row: 2 },
       },
     ],

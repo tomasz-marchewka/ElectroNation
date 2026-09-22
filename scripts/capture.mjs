@@ -11,10 +11,12 @@
 //   node scripts/capture.mjs --headed ...      # real GPU: the perf gate
 //
 // Options: --url (default http://localhost:5173), --seed, --scenario, --day,
-// --turn, --regime, --camera, --focus col,row, --clock ms, --quality,
+// --turn, --regime, --camera, --focus col,row, --yaw deg, --pitch deg,
+// --clock ms, --quality, --theme light|dark, --select col,row, --report 0|1,
 // --motion, --showcase <module>, --all (every frame of the showcase),
 // --modules a,b,c (load only these modules — a layer's cost is the difference
 // between a capture with and without it), --hud 0|1,
+// --repeat N (median of N GPU samples — the dev machine's timer swings ~1 ms),
 // --width, --height, --dpr, --fps-frames, --headed, --strict (exit 1 on errors
 // or a failed budget), --out <path without extension>.
 
@@ -40,8 +42,13 @@ function parseArgs(argv) {
     regime: null,
     camera: null,
     focus: null,
+    yaw: null,
+    pitch: null,
     clock: "0",
     quality: null,
+    theme: null,
+    select: null,
+    report: null,
     motion: null,
     showcase: null,
     modules: null,
@@ -51,6 +58,7 @@ function parseArgs(argv) {
     height: 900,
     dpr: 1,
     fpsFrames: 120,
+    repeat: 1,
     headed: false,
     strict: false,
     out: "captures/capture",
@@ -72,6 +80,7 @@ function parseArgs(argv) {
   options.height = Number(options.height);
   options.dpr = Number(options.dpr);
   options.fpsFrames = Number(options.fpsFrames);
+  options.repeat = Math.max(1, Number(options.repeat) || 1);
   return options;
 }
 
@@ -82,7 +91,8 @@ function frameUrl(options, frame) {
   if (options.scenario !== null) query.set("scenario", options.scenario);
   if (options.showcase !== null) query.set("showcase", options.showcase);
   if (options.modules !== null) query.set("modules", options.modules);
-  if (options.day !== null) query.set("day", String(options.day));
+  const day = frame?.day ?? options.day;
+  if (day !== null && day !== undefined) query.set("day", String(day));
   const turn = frame ? frame.turn : options.turn;
   if (turn !== null && turn !== undefined) query.set("turn", String(turn));
   const regime = frame ? frame.regime : options.regime;
@@ -91,10 +101,19 @@ function frameUrl(options, frame) {
   if (camera) query.set("camera", camera);
   const focus = frame?.focus ? `${frame.focus.col},${frame.focus.row}` : options.focus;
   if (focus) query.set("focus", focus);
+  if (options.yaw !== null) query.set("yaw", String(options.yaw));
+  if (options.pitch !== null) query.set("pitch", String(options.pitch));
   if (options.clock !== null) query.set("clock", String(options.clock));
   if (options.quality) query.set("quality", options.quality);
+  if (options.theme) query.set("theme", options.theme);
+  if (options.select) query.set("select", options.select);
+  if (options.report !== null && options.report !== undefined)
+    query.set("report", String(options.report));
   if (options.motion) query.set("motion", options.motion);
-  if (options.hud !== null) query.set("hud", String(options.hud));
+  // A module showcase is judged on its own pixels: bare world unless the
+  // caller asks for the HUD (`--hud 1`, e.g. the whole-game showcase frames).
+  const hud = options.hud ?? (options.showcase ? "0" : null);
+  if (hud !== null) query.set("hud", String(hud));
   return `${options.url}/?${query.toString()}`;
 }
 
@@ -115,6 +134,19 @@ async function captureOne(browser, options, url, outBase) {
   const startedAt = Date.now();
   await page.goto(url, { waitUntil: "domcontentloaded" });
   const loadMs = Date.now() - startedAt;
+  // `window.__en` appears only once the renderer boots (seconds after DOM),
+  // so wait for it first; if it never shows up, a foreign server is answering
+  // (seen 2026-09-19 with another app) and the run is aborted instead of
+  // logging whatever that app happens to render.
+  try {
+    await page.waitForFunction(() => typeof window.__en !== "undefined", null, {
+      timeout: 30_000,
+    });
+  } catch {
+    throw new Error(
+      `capture: ${url} does not expose window.__en — a foreign server is answering; check --url`,
+    );
+  }
   await page.waitForFunction(() => window.__en?.ready === true, null, { timeout: 90_000 });
   const readyMs = Date.now() - startedAt;
 
@@ -122,6 +154,19 @@ async function captureOne(browser, options, url, outBase) {
   await page.waitForTimeout(250);
   const fps = await page.evaluate((frames) => window.__en.fps(frames), options.fpsFrames);
   const info = await page.evaluate(() => window.__en.info());
+  // GPU timer samples swing by ~1 ms on a loaded machine; the median of a few
+  // samples is the comparable number (`--repeat`, default 1).
+  const gpuSamples = [info.gpuMs];
+  for (let i = 1; i < options.repeat; i++) {
+    await page.waitForTimeout(200);
+    const again = await page.evaluate(() => window.__en.info());
+    gpuSamples.push(again.gpuMs);
+  }
+  const measured = gpuSamples.filter((value) => value !== null);
+  const gpuMedian =
+    measured.length > 0
+      ? [...measured].sort((a, b) => a - b)[Math.floor(measured.length / 2)]
+      : null;
   const scene = await page.evaluate(() => {
     const s = window.__en.scene();
     return s
@@ -147,6 +192,17 @@ async function captureOne(browser, options, url, outBase) {
   // on software GL it is only a warning — shader compilation alone takes seconds there.
   const FIRST_INTERACTIVE_MS = 4000;
   const budget = { ...info.budget, failures: [...info.budget.failures], warnings: [] };
+  // The GPU line is re-judged on the median when --repeat collected samples.
+  const GPU_BUDGET_MS = 16.7 / 2.5;
+  if (options.repeat > 1 && gpuMedian !== null && !info.software) {
+    budget.failures = budget.failures.filter((failure) => !failure.startsWith("gpu "));
+    if (gpuMedian > GPU_BUDGET_MS) {
+      budget.failures.push(
+        `gpu ${gpuMedian.toFixed(2)} ms/frame > ${GPU_BUDGET_MS.toFixed(1)} ms (median of ${options.repeat})`,
+      );
+    }
+    budget.ok = budget.failures.length === 0;
+  }
   if (readyMs > FIRST_INTERACTIVE_MS) {
     const note = `first interactive ${readyMs} ms > ${FIRST_INTERACTIVE_MS} ms`;
     if (info.software) budget.warnings.push(`${note} (software GL)`);
@@ -169,7 +225,8 @@ async function captureOne(browser, options, url, outBase) {
       worstFrameMs: info.worstFrameMs,
       software: info.software,
       cpuMs: info.cpuMs,
-      gpuMs: info.gpuMs,
+      gpuMs: gpuMedian ?? info.gpuMs,
+      gpuMsSamples: gpuSamples,
       gpuWorstMs: info.gpuWorstMs,
       projectedMidRangeFps: info.projectedMidRangeFps,
     },
@@ -259,6 +316,20 @@ async function ensureServer(url) {
   );
 }
 
+/** A frame can crash a fresh page under load (SwiftShader); one retry. */
+async function captureWithRetry(browser, options, url, outBase) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      return await captureOne(browser, options, url, outBase);
+    } catch (error) {
+      lastError = error;
+      console.warn(`capture: ${outBase} attempt ${attempt} failed: ${String(error).slice(0, 160)}`);
+    }
+  }
+  throw lastError;
+}
+
 async function main() {
   const options = parseArgs(process.argv.slice(2));
   options.url = await ensureServer(options.url);
@@ -278,13 +349,13 @@ async function main() {
       if (frames.length === 0) throw new Error(`showcase ${options.showcase} has no frames`);
       for (const frame of frames) {
         const url = frameUrl(options, frame);
-        const log = await captureOne(browser, options, url, `${options.out}-${frame.name}`);
+        const log = await captureWithRetry(browser, options, url, `${options.out}-${frame.name}`);
         logs.push(log);
         report(log, `${options.out}-${frame.name}`);
       }
     } else {
       const url = frameUrl(options, null);
-      const log = await captureOne(browser, options, url, options.out);
+      const log = await captureWithRetry(browser, options, url, options.out);
       logs.push(log);
       report(log, options.out);
     }

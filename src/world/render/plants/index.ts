@@ -35,7 +35,11 @@ const SHADOW_CAST_KM = 220;
 const DRIFT_BASE_KM_S = 0.04;
 const DRIFT_PER_MS_KM_S = 0.03;
 /** Puffs per plume source at full detail. */
-const PUFFS: Record<PlumeKind, number> = { smoke: 22, vapour: 30, wisp: 10 };
+const PUFFS: Record<PlumeKind, number> = { smoke: 38, vapour: 30, wisp: 10, heat: 26 };
+/** enPlume.y code of every kind, read by the plume shader. */
+const PLUME_CODE: Record<PlumeKind, number> = { smoke: 0, vapour: 1, wisp: 2, heat: 3 };
+/** The site halo's lift over the pad [km] — light pooling in the yard, not a disc. */
+const HALO_LIFT_KM = 0.5;
 const DEG = Math.PI / 180;
 
 const ARCHETYPE_IDS = Object.keys(ARCHETYPES) as Archetype[];
@@ -54,8 +58,10 @@ interface PlantEntry {
   ranges: Partial<Record<Archetype, { start: number; blocks: number[] }>>;
   /** Puff instance range and the block of every puff. */
   plumes: { start: number; blocks: number[]; kinds: PlumeKind[] };
-  /** State-glow instance range and the block of every glow. */
-  glows: { start: number; blocks: number[] };
+  /** State-glow instance range, the block of every glow, its blink phase. */
+  glows: { start: number; blocks: number[]; phases: number[] };
+  /** The plant's site-halo instance. */
+  halo: number;
   base: THREE.Object3D;
   blockHooks: THREE.Object3D[];
   /** Shown / from / target per block index, plus the plant-level entry at the end. */
@@ -168,6 +174,7 @@ export function createPlantsModule(): WorldModule {
   let plumePool: Pool | null = null;
   let aviationPool: Pool | null = null;
   let glowPool: Pool | null = null;
+  let sitePool: Pool | null = null;
   let floodPool: Pool | null = null;
   let entries: PlantEntry[] = [];
   let builtKey: string | null = null;
@@ -182,6 +189,7 @@ export function createPlantsModule(): WorldModule {
     plumePool?.dispose(ctxRef.root);
     aviationPool?.dispose(ctxRef.root);
     glowPool?.dispose(ctxRef.root);
+    sitePool?.dispose(ctxRef.root);
     floodPool?.dispose(ctxRef.root);
     for (const entry of entries) {
       ctxRef.root.remove(entry.base);
@@ -230,24 +238,86 @@ export function createPlantsModule(): WorldModule {
       entry.glows.blocks.forEach((block, i) => {
         const show = showOf(block);
         const at = entry.glows.start + i;
-        // Starting: orange × warm-up, at any hour. Online: warm × night (the shader gates it).
-        // Hue-stable under ACES: a saturated orange kept under the bloom threshold
-        // reads as orange; a brighter one tone-maps to yellow-white.
+        // Starting: orange × warm-up, at any hour, and a LARGER dot than a running
+        // block — a unit coming up is the loudest thing on the site. Online: warm
+        // × night (the shader gates it), the dot slightly dimmer and tighter so
+        // the window band and the site halo can carry the rest of the read.
         const starting = show.warm > 1e-3;
-        const k = starting ? 0.9 + 0.9 * show.warm : 1.1 * show.on;
+        const k = starting ? 0.9 + 0.7 * show.warm : 1.05 * show.on;
         const tint = starting ? [1.0, 0.3, 0.02] : [1.0, 0.76, 0.48];
         colors[at * 3] = tint[0]! * k;
         colors[at * 3 + 1] = tint[1]! * k;
         colors[at * 3 + 2] = tint[2]! * k;
-        state.setY(at, starting ? 1 : 0);
+        const scale = starting ? 1.2 + 1.1 * show.warm : 0.85 + 0.3 * show.on;
+        state.setXYZ(at, entry.glows.phases[i] ?? 0, starting ? 1 : 0, scale);
       });
       glows.instanceColor.addUpdateRange(entry.glows.start * 3, entry.glows.blocks.length * 3);
       glows.instanceColor.needsUpdate = true;
-      state.addUpdateRange(entry.glows.start * 2, entry.glows.blocks.length * 2);
+      state.addUpdateRange(entry.glows.start * 3, entry.glows.blocks.length * 3);
       state.needsUpdate = true;
     }
+    applyHalo(entry);
     const data = entry.base.userData as Record<string, unknown>;
     data.shown = entry.shown.slice(0, -1);
+  };
+
+  /**
+   * The site halo of one plant: warmth scaled by the OUTPUT, orange while a
+   * unit warms up, amber when the plant is dumping power nobody took. The
+   * dump's gate opens at any hour — a surplus must be visible with the clock
+   * pinned (its static twin) — while the rest of the halo is a night signal.
+   */
+  const applyHalo = (entry: PlantEntry): void => {
+    const mesh = sitePool?.mesh;
+    if (!mesh?.instanceColor) return;
+    const plant = entry.plant;
+    const capacity = plant.capacityMw > 0 ? plant.capacityMw : 1;
+    const outputFrac = clamp(plant.outputMw / capacity, 0, 1);
+    const dumpFrac = plant.outputMw > 0 ? clamp(plant.dumpMw / plant.outputMw, 0, 1) : 0;
+    let warm = 0;
+    let online = false;
+    for (const block of plant.blocks) {
+      if (block.status === "online") online = true;
+      if (block.status === "starting") warm = Math.max(warm, block.warmup);
+    }
+    // A plant that is off breathes a faint ember; a starting one burns orange.
+    // The gains are relative to the shader's uPeak (0,12), so the brightest
+    // state (a unit warming up) lands at ~0,16 alpha and a running site at
+    // ~0,13 — enough to read at 500 km, never enough to wash the terrain.
+    let r: number;
+    let g: number;
+    let b: number;
+    let gain: number;
+    let always = 0;
+    if (warm > 0 && !online) {
+      // Starting: a deep red-orange, unmistakable against both the warm run
+      // and the amber dump.
+      [r, g, b] = [1.0, 0.14, 0.0];
+      gain = 0.8 + 0.7 * warm;
+      always = 0.5 + 0.5 * warm;
+    } else if (online) {
+      // Running: pale warm white, its brightness the output.
+      [r, g, b] = [1.0, 0.66, 0.3];
+      gain = 0.35 + 0.75 * outputFrac;
+    } else {
+      [r, g, b] = [1.0, 0.6, 0.3];
+      gain = 0.1;
+    }
+    if (dumpFrac > 0) {
+      // Surplus nobody took: the site turns amber and the gate opens wide —
+      // a dump must read at noon on green terrain (its static twin), not only
+      // against a dark sky. Amber is yellower than a warm-up's orange so the
+      // two states stay apart at map distance.
+      [r, g, b] = [1.0, 0.4, 0.0];
+      gain = Math.max(gain, 1.1 + 0.35 * dumpFrac);
+      always = Math.max(always, 0.7 + 0.3 * dumpFrac);
+    }
+    const at = entry.halo;
+    mesh.instanceColor.setXYZ(at, r * gain, g * gain, b * gain);
+    mesh.instanceColor.needsUpdate = true;
+    const state = mesh.geometry.getAttribute("enSite") as THREE.InstancedBufferAttribute;
+    state.setX(at, always);
+    state.needsUpdate = true;
   };
 
   const rebuild = (scene: WorldScene, ctx: ModuleContext): void => {
@@ -267,6 +337,7 @@ export function createPlantsModule(): WorldModule {
     let aviationCount = 0;
     let glowCount = 0;
     let floodCount = 0;
+    const siteCount = layouts.length;
     // A plume must stay one body on every tier: the count falls only half as far as the detail.
     const puffsOf = (kind: PlumeKind): number =>
       Math.max(8, Math.round(PUFFS[kind] * (0.5 + 0.5 * profile.detail)));
@@ -292,7 +363,7 @@ export function createPlantsModule(): WorldModule {
     }
     const puffMesh = plumePool?.rebuild(ctx.root, puffCount, 4, "enPlume") ?? null;
     if (puffMesh) puffMesh.renderOrder = 20;
-    const aviationMesh = aviationPool?.rebuild(ctx.root, aviationCount, 2, "enGlow") ?? null;
+    const aviationMesh = aviationPool?.rebuild(ctx.root, aviationCount, 3, "enGlow") ?? null;
     if (aviationMesh) {
       aviationMesh.renderOrder = 22;
       aviationMesh.instanceColor = new THREE.InstancedBufferAttribute(
@@ -300,7 +371,7 @@ export function createPlantsModule(): WorldModule {
         3,
       );
     }
-    const glowMesh = glowPool?.rebuild(ctx.root, glowCount, 2, "enGlow") ?? null;
+    const glowMesh = glowPool?.rebuild(ctx.root, glowCount, 3, "enGlow") ?? null;
     if (glowMesh) {
       glowMesh.renderOrder = 23;
       glowMesh.instanceColor = new THREE.InstancedBufferAttribute(
@@ -308,7 +379,15 @@ export function createPlantsModule(): WorldModule {
         3,
       );
     }
-    const floodMesh = floodPool?.rebuild(ctx.root, floodCount, 1, "enPhase") ?? null;
+    const siteMesh = sitePool?.rebuild(ctx.root, siteCount, 1, "enSite") ?? null;
+    if (siteMesh) {
+      siteMesh.renderOrder = 8;
+      siteMesh.instanceColor = new THREE.InstancedBufferAttribute(
+        new Float32Array(siteCount * 3),
+        3,
+      );
+    }
+    const floodMesh = floodPool?.rebuild(ctx.root, floodCount, 2, "enPhase") ?? null;
     if (floodMesh) floodMesh.renderOrder = 21;
 
     const matrix = new THREE.Matrix4();
@@ -318,6 +397,7 @@ export function createPlantsModule(): WorldModule {
     let puffCursor = 0;
     let aviationCursor = 0;
     let glowCursor = 0;
+    let siteCursor = 0;
     let floodCursor = 0;
     entries = layouts.map((layout, index) => {
       const plant = scene.plants[index]!;
@@ -341,7 +421,7 @@ export function createPlantsModule(): WorldModule {
         const state = puffMesh.geometry.getAttribute("enPlume") as THREE.InstancedBufferAttribute;
         for (const source of layout.plumes) {
           const n = puffsOf(source.kind);
-          const kind = source.kind === "smoke" ? 0 : source.kind === "vapour" ? 1 : 2;
+          const kind = PLUME_CODE[source.kind];
           for (let i = 0; i < n; i++) {
             position.set(source.x, source.y, source.z);
             quaternion.identity();
@@ -367,12 +447,12 @@ export function createPlantsModule(): WorldModule {
           scale.set(light.size, light.size, light.size);
           matrix.compose(position, quaternion, scale);
           aviationMesh.setMatrixAt(aviationCursor, matrix);
-          state.setXY(aviationCursor, light.phase, 0);
+          state.setXYZ(aviationCursor, light.phase, 0, 1);
           aviationMesh.instanceColor!.setXYZ(aviationCursor, 1.0, 0.06, 0.02);
           aviationCursor += 1;
         }
       }
-      const glows: PlantEntry["glows"] = { start: glowCursor, blocks: [] };
+      const glows: PlantEntry["glows"] = { start: glowCursor, blocks: [], phases: [] };
       if (glowMesh) {
         const state = glowMesh.geometry.getAttribute("enGlow") as THREE.InstancedBufferAttribute;
         for (const light of layout.glows) {
@@ -381,11 +461,23 @@ export function createPlantsModule(): WorldModule {
           scale.set(light.size, light.size, light.size);
           matrix.compose(position, quaternion, scale);
           glowMesh.setMatrixAt(glowCursor, matrix);
-          state.setXY(glowCursor, light.phase, 0);
+          state.setXYZ(glowCursor, light.phase, 0, 1);
           glowMesh.instanceColor!.setXYZ(glowCursor, 0, 0, 0);
           glows.blocks.push(light.block);
+          glows.phases.push(light.phase);
           glowCursor += 1;
         }
+      }
+      const halo = siteCursor;
+      if (siteMesh) {
+        position.set(layout.centre.x, layout.centre.y + HALO_LIFT_KM, layout.centre.z);
+        quaternion.identity();
+        scale.set(layout.haloSize, layout.haloSize, layout.haloSize);
+        matrix.compose(position, quaternion, scale);
+        siteMesh.setMatrixAt(halo, matrix);
+        (siteMesh.geometry.getAttribute("enSite") as THREE.InstancedBufferAttribute).setX(halo, 0);
+        siteMesh.instanceColor!.setXYZ(halo, 0, 0, 0);
+        siteCursor += 1;
       }
       if (floodMesh) {
         const phase = floodMesh.geometry.getAttribute("enPhase") as THREE.InstancedBufferAttribute;
@@ -395,7 +487,7 @@ export function createPlantsModule(): WorldModule {
           scale.set(light.size, 1, light.size);
           matrix.compose(position, quaternion, scale);
           floodMesh.setMatrixAt(floodCursor, matrix);
-          phase.setX(floodCursor, light.phase);
+          phase.setXY(floodCursor, light.phase, light.cool ?? 0);
           floodCursor += 1;
         }
       }
@@ -441,6 +533,7 @@ export function createPlantsModule(): WorldModule {
         ranges,
         plumes,
         glows,
+        halo,
         base,
         blockHooks,
         shown: target.map((show) => ({ ...show })),
@@ -472,6 +565,12 @@ export function createPlantsModule(): WorldModule {
       glowMesh.instanceMatrix.needsUpdate = true;
       glowMesh.instanceColor!.needsUpdate = true;
       (glowMesh.geometry.getAttribute("enGlow") as THREE.InstancedBufferAttribute).needsUpdate =
+        true;
+    }
+    if (siteMesh) {
+      siteMesh.instanceMatrix.needsUpdate = true;
+      siteMesh.instanceColor!.needsUpdate = true;
+      (siteMesh.geometry.getAttribute("enSite") as THREE.InstancedBufferAttribute).needsUpdate =
         true;
     }
     if (floodMesh) {
@@ -519,6 +618,8 @@ export function createPlantsModule(): WorldModule {
       aviationPool = new Pool(dot, materials.aviation, "plants:aviation-lights");
       const spark = new THREE.PlaneGeometry(1, 1);
       glowPool = new Pool(spark, materials.glow, "plants:block-glows");
+      const dome = new THREE.PlaneGeometry(1, 1);
+      sitePool = new Pool(dome, materials.site, "plants:site-halos");
       const pool = new THREE.PlaneGeometry(1, 1);
       pool.rotateX(-Math.PI / 2);
       floodPool = new Pool(pool, materials.flood, "plants:floodlights");
@@ -559,6 +660,9 @@ export function createPlantsModule(): WorldModule {
           target.length === entry.target.length &&
           target.every((show, i) => sameShow(show, entry.target[i]!))
         ) {
+          // The blocks did not move, but a dump (output vs. what was taken) may
+          // have: the halo is its only encoding, so it is refreshed every turn.
+          applyHalo(entry);
           return;
         }
         entry.target = target;
@@ -609,6 +713,8 @@ export function createPlantsModule(): WorldModule {
       if (aviationPool?.mesh) aviationPool.mesh.visible = lightsOn;
       // The state glow shows an orange warm-up by day too; the shader gates the rest by night.
       if (glowPool?.mesh) glowPool.mesh.visible = true;
+      // The site halo keeps its dump signal by day (enSite); the rest is night.
+      if (sitePool?.mesh) sitePool.mesh.visible = true;
       if (floodPool?.mesh) floodPool.mesh.visible = lightsOn && detailVisible;
 
       for (const entry of entries) {
@@ -630,6 +736,8 @@ export function createPlantsModule(): WorldModule {
       aviationPool = null;
       glowPool?.geometry.dispose();
       glowPool = null;
+      sitePool?.geometry.dispose();
+      sitePool = null;
       floodPool?.geometry.dispose();
       floodPool = null;
       materials?.dispose();

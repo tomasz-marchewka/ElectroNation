@@ -24,6 +24,10 @@ export interface WaterUniforms {
   uIce: { value: number };
   uSkyColor: { value: THREE.Color };
   uHasEnv: { value: number };
+  /** 1 close up … 0 at the strategic distance: gates the second wave and foam. */
+  uFar: { value: number };
+  /** 0 calm … 1 storm (the open-water wind of the turn, from 12 m/s up). */
+  uStorm: { value: number };
 }
 
 const VERTEX_PARS = /* glsl */ `
@@ -40,6 +44,8 @@ uniform vec4 uWind;
 uniform float uIce;
 uniform vec3 uSkyColor;
 uniform float uHasEnv;
+uniform float uFar;
+uniform float uStorm;
 varying vec3 vEnWorldPos;
 `;
 
@@ -60,16 +66,31 @@ enWater = mix( enWater, vec3( 0.07, 0.22, 0.24 ), enLake * 0.5 * ( 1.0 - enDeep 
 // Everything the surface paints is gated to where the bed is UNDER it: foam
 // and ice must never appear on the land the plane passes beneath.
 float enUnder = smoothstep( 0.0, 0.004, enDepth );
-float enFoamNoise = texture2D( uFoam, enP / 9.0 + uWind.xy * uTime * 0.004 ).r;
-float enFoam = enUnder * ( 1.0 - smoothstep( 0.006, 0.035, enDepth ) ) * smoothstep( 0.35, 0.75, enFoamNoise );
-float enAlpha = max( smoothstep( 0.0, 0.06, enDepth ), enFoam );
 float enIceMask = enUnder * uIce * max( enLake, 1.0 - smoothstep( 0.08, 0.3, enDepth ) );
+// The shore foam band is a closeup detail: far out a couple of texels are a
+// pixel, so the tap is skipped entirely past ~200 km.
+float enFoam = 0.0;
+if ( uFar > 0.02 ) {
+	float enFoamNoise = texture2D( uFoam, enP / 9.0 + uWind.xy * uTime * 0.004 ).r;
+	enFoam = enUnder * ( 1.0 - smoothstep( 0.006, 0.035, enDepth ) ) * smoothstep( 0.35, 0.75, enFoamNoise );
+}
+// White horses in a storm (docs/08 §4): the crests grow with the open-water
+// wind and break the surface into white — a wind-roughened sea, not a mirror.
+float enCrest = 0.0;
+if ( uStorm > 0.02 && uFar > 0.05 ) {
+	float enCrestNoise = texture2D( uFoam, enP / 3.2 - uWind.xy * uTime * 0.01 ).b;
+	enCrest = enUnder * uStorm * smoothstep( 0.52, 0.86, enCrestNoise ) * ( 1.0 - enIceMask );
+}
+enFoam = max( enFoam, enCrest * 0.85 );
+float enAlpha = max( smoothstep( 0.0, 0.06, enDepth ), max( enFoam, enCrest ) );
 enWater = mix( enWater, vec3( 0.8, 0.86, 0.9 ), enIceMask );
 enAlpha = mix( enAlpha, 1.0, enIceMask );
 enFoam *= 1.0 - enIceMask;
 diffuseColor.rgb = mix( enWater, vec3( 0.9, 0.93, 0.95 ), enFoam );
 diffuseColor.a = enAlpha;
-float enRoughness = mix( mix( 0.14, 0.6, enFoam ), 0.5, enIceMask );
+// Rough but not glassy in a storm; ice is glassier than open water.
+float enRoughness = mix( mix( 0.14, 0.6, enFoam ), 0.62, uStorm );
+enRoughness = mix( enRoughness, 0.5, enIceMask );
 `;
 
 const ROUGHNESS = /* glsl */ `
@@ -84,11 +105,15 @@ const NORMAL = /* glsl */ `
 	vec2 enPerp = vec2( -enDir.y, enDir.x );
 	float enSpeed = 0.35 + 0.65 * uWind.z;
 	vec2 enUv1 = enP / 7.0 + enDir * uTime * 0.012 * enSpeed * enMotion;
-	vec2 enUv2 = enP / 2.4 + ( enDir * 0.5 + enPerp ) * uTime * 0.02 * enSpeed * enMotion;
-	vec3 enN1 = texture2D( uWaves, enUv1 ).xyz * 2.0 - 1.0;
-	vec3 enN2 = texture2D( uWaves, enUv2 ).xyz * 2.0 - 1.0;
-	float enAmp = ( 0.35 + 0.65 * uWind.z ) * ( 1.0 - 0.85 * enIceMask );
-	vec3 enTn = normalize( vec3( ( enN1.xy + enN2.xy * 0.7 ) * enAmp, 1.0 ) );
+	// The fine chop (2,4 km) is the second tap and the first thing to go with
+	// distance: at the strategic view it is sub-pixel shimmer, not relief.
+	float enAmp = ( 0.35 + 0.65 * uWind.z ) * ( 1.0 - 0.85 * enIceMask ) * ( 1.0 + 0.9 * uStorm );
+	vec3 enWaves = texture2D( uWaves, enUv1 ).xyz * 2.0 - 1.0;
+	if ( uFar > 0.66 ) {
+		vec2 enUv2 = enP / 2.4 + ( enDir * 0.5 + enPerp ) * uTime * 0.02 * enSpeed * enMotion;
+		enWaves.xy += ( texture2D( uWaves, enUv2 ).xy * 2.0 - 1.0 ) * 0.7;
+	}
+	vec3 enTn = normalize( vec3( enWaves.xy * enAmp, 1.0 ) );
 	vec3 enWorldN = normalize( vec3( enTn.x, enTn.z, enTn.y ) );
 	normal = normalize( ( viewMatrix * vec4( enWorldN, 0.0 ) ).xyz );
 }
@@ -165,6 +190,8 @@ export function createWater(
     uIce: { value: 0 },
     uSkyColor: { value: new THREE.Color(0.55, 0.7, 0.95) },
     uHasEnv: { value: 0 },
+    uFar: { value: 1 },
+    uStorm: { value: 0 },
   };
   const material = new THREE.MeshStandardMaterial({
     color: 0xffffff,

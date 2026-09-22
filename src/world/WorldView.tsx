@@ -4,6 +4,7 @@
 // else: every number on screen comes from the scene it is handed.
 
 import { useEffect, useRef, useState } from "react";
+import { createWorldAudio, type WorldAudio } from "./audio";
 import type { WorldScene } from "./bridge/worldScene";
 import { installCaptureApi } from "./capture/api";
 import type { CaptureParams } from "./capture/params";
@@ -85,11 +86,15 @@ export function WorldView({
   const hostRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rendererRef = useRef<WorldRenderer | null>(null);
+  const audioRef = useRef<WorldAudio | null>(null);
+  const sceneRef = useRef<WorldScene | null>(scene);
   const [renderer, setRenderer] = useState<WorldRenderer | null>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const motion = useWorldSettings((store) => store.motion);
   const quality = useWorldSettings((store) => store.quality);
+  const audioEnabled = useWorldSettings((store) => store.audio.enabled);
+  const audioVolume = useWorldSettings((store) => store.audio.volume);
 
   const latest = useRef({
     onHexClick,
@@ -161,6 +166,22 @@ export function WorldView({
         showcaseFrames: () => [...(latest.current.showcaseFrames ?? [])],
       });
     }
+    // Audio is created with the renderer and fed the same scene: muted by
+    // default, never in capture mode, and the AudioContext only appears once
+    // the player enables it from a gesture (audio brief).
+    const worldAudio = createWorldAudio(
+      () => sceneRef.current,
+      () => ({
+        target: { x: world.rig.target.x, z: world.rig.target.z },
+        distanceKm: world.rig.distanceKm,
+      }),
+    );
+    audioRef.current = worldAudio;
+    const storedAudio = useWorldSettings.getState().audio;
+    worldAudio.setEnabled(storedAudio.enabled);
+    worldAudio.setVolume(storedAudio.volume);
+    const audioTimer = window.setInterval(() => worldAudio.update(), 250);
+
     world.setScene(scene);
     if (params.camera) {
       const focus = params.focus
@@ -168,13 +189,17 @@ export function WorldView({
         : undefined;
       world.camera(params.camera, focus, false);
     }
+    if (params.yaw !== null || params.pitch !== null) world.orient(params.yaw, params.pitch);
     world.start();
     report();
 
     return () => {
       window.clearTimeout(settle);
+      window.clearInterval(audioTimer);
       detach();
       observer.disconnect();
+      worldAudio.dispose();
+      audioRef.current = null;
       world.dispose();
       rendererRef.current = null;
       setRenderer(null);
@@ -186,8 +211,17 @@ export function WorldView({
   }, [moduleKey, params.clock, params.quality, params.motion, params.camera, exposeApi]);
 
   useEffect(() => {
+    sceneRef.current = scene;
     rendererRef.current?.setScene(scene);
   }, [scene]);
+
+  useEffect(() => {
+    audioRef.current?.setEnabled(audioEnabled);
+  }, [audioEnabled]);
+
+  useEffect(() => {
+    audioRef.current?.setVolume(audioVolume);
+  }, [audioVolume]);
 
   useEffect(() => {
     rendererRef.current?.setMotion(params.motion ?? motion);

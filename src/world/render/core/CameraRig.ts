@@ -240,6 +240,16 @@ export class CameraRig implements CameraView {
     this.apply();
   }
 
+  /** Snaps the current view to an explicit orientation (capture override). */
+  orient(yawDeg: number | null, pitchDeg: number | null): void {
+    this.goal = null;
+    if (yawDeg !== null) this.yawDeg = ((yawDeg % 360) + 360) % 360;
+    if (pitchDeg !== null) {
+      this.pitchDeg = clamp(pitchDeg, CAMERA_LIMITS.minPitchDeg, CAMERA_LIMITS.maxPitchDeg);
+    }
+    this.apply();
+  }
+
   /** Drags the target on the ground by a world-space delta. */
   pan(dx: number, dz: number): void {
     this.goal = null;
@@ -300,6 +310,10 @@ export class CameraRig implements CameraView {
 
   /** Ground-plane point under a normalised device coordinate, or null when it looks at the sky. */
   groundAt(ndcX: number, ndcY: number, y = 0): THREE.Vector3 | null {
+    // Raycasts must not use the matrices of the last RENDERED frame: a preset
+    // applied while the camera sits elsewhere would frame against stale
+    // matrices (interaction found this through centredInSafeFrame).
+    this.camera.updateMatrixWorld();
     const ray = new THREE.Raycaster();
     ray.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
     const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -y);

@@ -24,12 +24,21 @@ export const TILE_SPAN_RADII = 3;
 /** Quilt cells per side of a city; the quilt floats this high over the ground [km]. */
 const QUILT_CELLS = 16;
 const QUILT_LIFT_KM = 0.06;
-/** Blur of a lamp pool on the map [km] — a real pool is ~120 m across at world scale. */
-const LAMP_BLUR_KM = 0.15;
+/**
+ * Blur of a lamp on the map [km]. Wider than a real pool (~120 m) on purpose:
+ * the atlas is read at map distance, where two lamps 260 m apart must merge
+ * into a street, not shine as separate white dots.
+ */
+const LAMP_BLUR_KM = 0.32;
+/** Smallest blur in texels: below this the map is a field of one-texel spikes. */
+const LAMP_BLUR_TEXELS = 2;
+/** Light a single lamp throws on the map [km²]; the street sum of ~4 lamps/km
+ *  lands near 0,35 and only the dense core saturates toward white. */
+const LAMP_ENERGY_KM2 = 0.32;
 /** Soft knee: 1 − exp(−radiance × KNEE); a core of ~5 lamps/km² lands near 0,6. */
-const KNEE = 0.2;
+const KNEE = 0.24;
 /** Warm haze a lit block throws over its own footprint (per storey of cityBlockLow). */
-const BLOCK_GLOW = 0.9;
+const BLOCK_GLOW = 1.7;
 const BLOCK_TINT: readonly [number, number, number] = [1.0, 0.74, 0.44];
 
 export interface LightTile {
@@ -93,8 +102,8 @@ function rasterise(layout: CityLayout, accum: Float32Array): number {
   const perKm2 = 1 / (texelKm * texelKm);
   for (const lamp of layout.lamps) {
     const [fx, fy] = toTile(lamp.x, lamp.z);
-    const sigma = Math.max(1, LAMP_BLUR_KM / texelKm);
-    splat(accum, TILE_TEXELS, fx, fy, sigma, perKm2, lamp.color);
+    const sigma = Math.max(LAMP_BLUR_TEXELS, LAMP_BLUR_KM / texelKm);
+    splat(accum, TILE_TEXELS, fx, fy, sigma, LAMP_ENERGY_KM2 * perKm2, lamp.color);
   }
   for (const building of layout.buildings) {
     const [fx, fy] = toTile(building.x, building.z);
@@ -281,7 +290,7 @@ export function buildLightQuilt(
     uNight: { value: 0 },
     uFade: fade,
     // Under the bloom threshold (1,0): the quilt is a glow, never a white blot.
-    uGain: { value: 0.6 },
+    uGain: { value: 0.45 },
   };
   const material = new THREE.MeshBasicMaterial({
     map: atlas.texture,

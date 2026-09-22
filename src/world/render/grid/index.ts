@@ -73,8 +73,9 @@ const NEAR_FACTOR = 1.2;
 const NEAR_BASE_KM = 24;
 /** The partition is redone when the camera moved this far [km] or the radius changed this much. */
 const REPACK_KM = 3;
-/** Ghost towers of an upgrade stand this far beside the old line [km]. */
-const GHOST_OFFSET_KM = 0.45;
+/** Ghost towers of an upgrade stand this far beside the old line [km] — far
+ * enough that the cage never reads as part of the live tower. */
+const GHOST_OFFSET_KM = 1.1;
 /** Samples per span of the polyline handed to effects. */
 const POLYLINE_SAMPLES = 6;
 
@@ -89,6 +90,27 @@ const DEG = Math.PI / 180;
 const NEAR_HALO_GAIN = 0.15;
 const FAR_HALO_GAIN = 0.24;
 const HALO_DAYLIGHT_SHARE = 0.4;
+/**
+ * The share of the halo that survives in full daylight. Below it an amber
+ * warn trace at noon is a 3 px smudge no dispatcher can name, so the halo
+ * never fades past this floor (CR: the ≥ 75 % state must be answerable).
+ */
+const HALO_DAY_FLOOR = 0.62;
+
+/**
+ * Share of the load radiance that survives in full daylight, per class
+ * (x idle / ok, y warn, z over) — see ConductorUniforms.uDayScale. A daylit
+ * "ok" wire at half radiance was a white neon ribbon at closeup; at noon it
+ * is a sun-lit strand that still reads warmer and brighter than idle, while
+ * amber and red keep their alarm strength around the clock.
+ */
+/** Daytime targets of the per-class load radiance (see DAY_SCALE). */
+const DAY_SCALE_NOON = new THREE.Vector3(0.3, 0.74, 0.82);
+const DAY_SCALE_NIGHT = new THREE.Vector3(1, 1, 1);
+const DAY_SCALE = DAY_SCALE_NIGHT.clone();
+
+/** The idle twin by day: dimmed, but never off (see ConductorUniforms.uIdleDay). */
+const IDLE_DAY_NOON = 0.45;
 
 /**
  * Width of the far tube per line type, relative to the material's pixel
@@ -97,10 +119,14 @@ const HALO_DAYLIGHT_SHARE = 0.4;
  */
 const FAR_WIDTH_BY_TYPE: Record<LineType, number> = { lv: 0.6, mv: 0.85, hv: 1.15 };
 
-/** Weathered zinc: mid-grey when new, dark with age, an occasional rust tint. */
-const STEEL_NEW = new THREE.Color().setRGB(0.5, 0.51, 0.53, THREE.SRGBColorSpace);
-const STEEL_OLD = new THREE.Color().setRGB(0.3, 0.31, 0.34, THREE.SRGBColorSpace);
-const STEEL_RUST = new THREE.Color().setRGB(0.42, 0.3, 0.24, THREE.SRGBColorSpace);
+/**
+ * Weathered zinc: dark with age, an occasional rust tint. Deliberately dark
+ * values — a lattice reads as a silhouette against bright haze the way a real
+ * tower does; mid-grey steel washes out to nothing at 18 km.
+ */
+const STEEL_NEW = new THREE.Color().setRGB(0.34, 0.35, 0.38, THREE.SRGBColorSpace);
+const STEEL_OLD = new THREE.Color().setRGB(0.2, 0.21, 0.24, THREE.SRGBColorSpace);
+const STEEL_RUST = new THREE.Color().setRGB(0.34, 0.24, 0.19, THREE.SRGBColorSpace);
 
 interface Placed {
   matrix: number[];
@@ -129,7 +155,12 @@ interface LineBuild {
   /** One tube per side at the mean phase height — drawn where the span is far. */
   far: ConductorInstance[];
   polylines: Map<string, THREE.Vector3[]>;
-  constructionHead: THREE.Vector3 | null;
+  /** The line's type — which pylon pools its structures belong to. */
+  type: LineType;
+  /** The last erected tower of a line under construction and its transform. */
+  constructionHead: { at: THREE.Vector3; matrix: number[] } | null;
+  /** The type whose marker pool draws the construction head. */
+  headType: LineType | null;
   upgradeHead: THREE.Vector3 | null;
 }
 
@@ -193,37 +224,52 @@ export function createGridModule(): WorldModule {
   let geometries: Record<LineType, PylonGeometries> | null = null;
   let steel: THREE.MeshStandardMaterial | null = null;
   let ghostMaterial: THREE.MeshStandardMaterial | null = null;
+  let markingMaterial: THREE.MeshStandardMaterial | null = null;
+  const ghostGlow = { value: 0.5 };
+  const markerGlow = { value: 0.45 };
   const tubes: THREE.BufferGeometry[] = [];
   const materials: THREE.Material[] = [];
+  /** One object, shared by all four shaders, so frame() writes it once. */
+  const idleDay = { value: 1 };
   const nearUniforms: ConductorUniforms = {
     uBreath: { value: 1 },
     uPixelRadius: { value: 0.001 },
     uMinRadius: { value: 0.008 },
     uGlowGain: { value: 1 },
+    uDayScale: { value: DAY_SCALE },
+    uIdleDay: idleDay,
   };
   const farUniforms: ConductorUniforms = {
     uBreath: { value: 1 },
     uPixelRadius: { value: 0.0016 },
     uMinRadius: { value: 0.022 },
     uGlowGain: { value: 1 },
+    uDayScale: { value: DAY_SCALE },
+    uIdleDay: idleDay,
   };
   const nearGlowUniforms: ConductorUniforms = {
     uBreath: { value: 1 },
     uPixelRadius: { value: 0.003 },
     uMinRadius: { value: 0.024 },
     uGlowGain: { value: NEAR_HALO_GAIN },
+    uDayScale: { value: DAY_SCALE },
+    uIdleDay: idleDay,
   };
   const farGlowUniforms: ConductorUniforms = {
     uBreath: { value: 1 },
     uPixelRadius: { value: 0.005 },
     uMinRadius: { value: 0.07 },
     uGlowGain: { value: FAR_HALO_GAIN },
+    uDayScale: { value: DAY_SCALE },
+    uIdleDay: idleDay,
   };
 
   const towersNear = {} as Record<LineType, InstancePool>;
   const towersFar = {} as Record<LineType, InstancePool>;
   const portals = {} as Record<LineType, InstancePool>;
   const ghosts = {} as Record<LineType, InstancePool>;
+  /** Scaffolding + gin pole of the last erected tower of every line being built. */
+  const markers = {} as Record<LineType, InstancePool>;
   let conductorsNear: InstancePool | null = null;
   let conductorsFar: InstancePool | null = null;
   let glowNear: InstancePool | null = null;
@@ -258,19 +304,59 @@ export function createGridModule(): WorldModule {
       vertexColors: true,
     });
     steel.name = "grid-steel";
+    // The ghost is a hologram of the future tower: drawn as a wireframe cage
+    // with hatch bands, self-lit so it glows at night, vertex-coloured so the
+    // hatch reads brighter than the poles (the emission follows the vertex
+    // colour in the shader below).
     ghostMaterial = new THREE.MeshStandardMaterial({
-      color: new THREE.Color().setRGB(0.7, 0.88, 1, THREE.SRGBColorSpace),
-      emissive: new THREE.Color(0.22, 0.55, 0.85),
-      emissiveIntensity: 1.1,
-      metalness: 0.1,
-      roughness: 0.6,
+      color: new THREE.Color(1, 1, 1),
+      metalness: 0.0,
+      roughness: 1,
       transparent: true,
-      opacity: 0.45,
+      opacity: 0.72,
       depthWrite: false,
       vertexColors: true,
+      wireframe: true,
     });
     ghostMaterial.name = "grid-ghost";
-    materials.push(steel, ghostMaterial);
+    ghostMaterial.onBeforeCompile = (shader) => {
+      shader.uniforms.uGhostGlow = ghostGlow;
+      shader.fragmentShader = shader.fragmentShader
+        .replace(
+          "#include <common>",
+          `#include <common>
+uniform float uGhostGlow;`,
+        )
+        .replace(
+          "#include <emissivemap_fragment>",
+          `#include <emissivemap_fragment>
+totalEmissiveRadiance += diffuseColor.rgb * uGhostGlow;`,
+        );
+    };
+    ghostMaterial.customProgramCacheKey = () => "en-grid-ghost";
+    markingMaterial = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(1, 1, 1),
+      metalness: 0.0,
+      roughness: 0.9,
+      vertexColors: true,
+    });
+    markingMaterial.name = "grid-construction-marker";
+    markingMaterial.onBeforeCompile = (shader) => {
+      shader.uniforms.uMarkerGlow = markerGlow;
+      shader.fragmentShader = shader.fragmentShader
+        .replace(
+          "#include <common>",
+          `#include <common>
+uniform float uMarkerGlow;`,
+        )
+        .replace(
+          "#include <emissivemap_fragment>",
+          `#include <emissivemap_fragment>
+totalEmissiveRadiance += diffuseColor.rgb * uMarkerGlow;`,
+        );
+    };
+    markingMaterial.customProgramCacheKey = () => "en-grid-marker";
+    materials.push(steel, ghostMaterial, markingMaterial);
     for (const type of LINE_TYPES) {
       const set = geometries[type];
       towersNear[type] = new InstancePool(set.near, steel, ctx.root, {
@@ -294,8 +380,15 @@ export function createGridModule(): WorldModule {
         castShadow: true,
         receiveShadow: true,
       });
-      ghosts[type] = new InstancePool(set.near, ghostMaterial, ctx.root, {
+      ghosts[type] = new InstancePool(set.ghost, ghostMaterial, ctx.root, {
         name: `grid-ghosts-${type}`,
+        color: false,
+        load: false,
+        castShadow: false,
+        receiveShadow: false,
+      });
+      markers[type] = new InstancePool(set.marker, markingMaterial, ctx.root, {
+        name: `grid-construction-heads-${type}`,
         color: false,
         load: false,
         castShadow: false,
@@ -342,6 +435,7 @@ export function createGridModule(): WorldModule {
   ): LineBuild => {
     const build: LineBuild = {
       key,
+      type: line.type,
       towers: emptyByType(),
       portals: emptyByType(),
       ghosts: emptyByType(),
@@ -349,6 +443,7 @@ export function createGridModule(): WorldModule {
       far: [],
       polylines: new Map(),
       constructionHead: null,
+      headType: null,
       upgradeHead: null,
     };
     const spec = PYLON_SPECS[line.type];
@@ -362,6 +457,7 @@ export function createGridModule(): WorldModule {
     // finished line has them all, the end portal only when finished.
     const erectedLimit = line.built ? Number.POSITIVE_INFINITY : line.progress * totalArc + 1e-6;
     let lastErected = -1;
+    let lastErectedMatrix: number[] | null = null;
     structures.forEach((placement, index) => {
       const erected =
         line.built || (placement.arc <= erectedLimit && index < structures.length - 1);
@@ -378,10 +474,17 @@ export function createGridModule(): WorldModule {
         color: [tint.r, tint.g, tint.b],
       };
       (placement.kind === "portal" ? build.portals : build.towers)[line.type].push(instance);
+      lastErectedMatrix = instance.matrix;
     });
     if (!line.built && lastErected >= 0) {
       const head = structures[lastErected];
-      if (head) build.constructionHead = new THREE.Vector3(head.x, head.y, head.z);
+      if (head) {
+        build.constructionHead = {
+          at: new THREE.Vector3(head.x, head.y, head.z),
+          matrix: lastErectedMatrix ?? [...matrix.elements],
+        };
+        build.headType = line.type;
+      }
     }
 
     // Spans between erected structures — minus the last one while building.
@@ -473,12 +576,21 @@ export function createGridModule(): WorldModule {
     // as far as the raise has come.
     if (line.upgrade) {
       const target = line.upgrade.type;
-      const limit = line.upgrade.progress * totalArc + 1e-6;
+      const progress = line.upgrade.progress;
+      const limit = progress * totalArc + 1e-6;
       let lastGhost: Placement | null = null;
       for (const placement of structures) {
         if (placement.kind === "portal" || placement.arc > limit) continue;
         attachmentWorld(placement, GHOST_OFFSET_KM, 0, p0);
-        matrix.makeRotationY(placement.yaw).setPosition(p0.x, placement.y, p0.z);
+        // The raise grows with the upgrade: the leading ghost starts as a
+        // stub and reaches full height as the target progress passes it.
+        const share = totalArc > 0 ? placement.arc / totalArc : 0;
+        const grown = Math.min(1, Math.max(0, (progress - share) / 0.18));
+        const scaleY = 0.3 + 0.7 * grown;
+        matrix
+          .makeRotationY(placement.yaw)
+          .scale(new THREE.Vector3(1, scaleY, 1))
+          .setPosition(p0.x, placement.y, p0.z);
         build.ghosts[target].push({ matrix: [...matrix.elements], x: p0.x, z: p0.z });
         lastGhost = placement;
       }
@@ -488,7 +600,7 @@ export function createGridModule(): WorldModule {
   };
 
   /** Whether a structure at (x, z) draws its near geometry under the current partition. */
-  const isNear = (p: Placed): boolean =>
+  const isNear = (p: { x: number; z: number }): boolean =>
     lod.near && Math.hypot(p.x - lod.x, p.z - lod.z) < lod.radius;
 
   /** The load emissive of every packed conductor instance from the segment map. */
@@ -521,15 +633,20 @@ export function createGridModule(): WorldModule {
       const far: TowerInstance[] = [];
       const portalList: TowerInstance[] = [];
       const ghostList: Placed[] = [];
+      const headList: Placed[] = [];
       for (const build of builds.values()) {
         for (const tower of build.towers[type]) (isNear(tower) ? near : far).push(tower);
         for (const portal of build.portals[type]) if (isNear(portal)) portalList.push(portal);
         for (const ghost of build.ghosts[type]) if (isNear(ghost)) ghostList.push(ghost);
+        const head = build.constructionHead;
+        if (head && build.headType === type && isNear({ x: head.at.x, z: head.at.z }))
+          headList.push({ matrix: head.matrix, x: head.at.x, z: head.at.z });
       }
       towersNear[type]?.fill(packMatrices(near), packColors(near));
       towersFar[type]?.fill(packMatrices(far), packColors(far));
       portals[type]?.fill(packMatrices(portalList), packColors(portalList));
       ghosts[type]?.fill(packMatrices(ghostList));
+      markers[type]?.fill(packMatrices(headList));
     }
     const near: ConductorInstance[] = [];
     const far: ConductorInstance[] = [];
@@ -558,7 +675,7 @@ export function createGridModule(): WorldModule {
       }
     }
     for (const [id, build] of builds) {
-      const at = build.constructionHead ?? build.upgradeHead;
+      const at = build.constructionHead?.at ?? build.upgradeHead;
       if (!at) continue;
       let head = heads.get(id);
       if (!head) {
@@ -672,7 +789,8 @@ export function createGridModule(): WorldModule {
         uniforms.uBreath.value = breath;
       }
       // A conductor is ≈ 1,1 px wide at closeup and 1,1–2,1 px by type at the
-      // strategic view; its halo ≈ 3 px and ≈ 5 px, dimmed by day like bloom.
+      // strategic view; its halo radius ≈ 1,6 px and ≈ 2,6 px, dimmed by day
+      // like bloom.
       const height = ctx.renderer.domElement.clientHeight || 900;
       const perPixel = (2 * Math.tan((ctx.view.camera.fov / 2) * DEG)) / height;
       nearUniforms.uPixelRadius.value = 0.55 * perPixel;
@@ -680,9 +798,13 @@ export function createGridModule(): WorldModule {
       nearGlowUniforms.uPixelRadius.value = 1.6 * perPixel;
       farGlowUniforms.uPixelRadius.value = 2.6 * perPixel;
       const daylight = Math.min(1, Math.max(0, ctx.environment.daylight));
-      const haloShare = 1 - (1 - HALO_DAYLIGHT_SHARE) * daylight;
+      // The floor keeps the warn halo nameable at noon; the load core keeps a
+      // stronger share by day too (an alarm, not a highlighter).
+      const haloShare = Math.max(HALO_DAY_FLOOR, 1 - (1 - HALO_DAYLIGHT_SHARE) * daylight);
       nearGlowUniforms.uGlowGain.value = NEAR_HALO_GAIN * haloShare;
       farGlowUniforms.uGlowGain.value = FAR_HALO_GAIN * haloShare;
+      DAY_SCALE.lerpVectors(DAY_SCALE_NIGHT, DAY_SCALE_NOON, daylight);
+      idleDay.value = 1 - (1 - IDLE_DAY_NOON) * daylight;
       if (refreshLod(ctx) && builds.size > 0) pack(ctx);
     },
 
@@ -692,6 +814,7 @@ export function createGridModule(): WorldModule {
         towersFar[type]?.dispose();
         portals[type]?.dispose();
         ghosts[type]?.dispose();
+        markers[type]?.dispose();
       }
       for (const pool of [conductorsNear, conductorsFar, glowNear, glowFar]) pool?.dispose();
       conductorsNear = null;
@@ -721,6 +844,7 @@ export function createGridModule(): WorldModule {
       materials.length = 0;
       steel = null;
       ghostMaterial = null;
+      markingMaterial = null;
       lod.near = false;
       lod.x = Number.NaN;
       lod.z = Number.NaN;

@@ -234,18 +234,39 @@ function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
   return merged;
 }
 
-const ROOF: Rgb = [0.72, 0.72, 0.74];
-const DARK_ROOF: Rgb = [0.55, 0.56, 0.58];
+const ROOF: Rgb = [0.46, 0.46, 0.48];
+const DARK_ROOF: Rgb = [0.22, 0.23, 0.25];
 
-/** The site apron: a flat disc of yard surface, scaled per plant. */
-function padGeometry(): THREE.BufferGeometry {
-  const geometry = new THREE.CircleGeometry(1, 28);
-  geometry.rotateX(-Math.PI / 2);
-  // UVs in km for a nominal 3 km radius; the instance scale stretches them mildly.
+/** UVs in km for a nominal 3 km radius; the instance scale stretches them mildly. */
+function padUv(geometry: THREE.BufferGeometry): void {
   const uv = geometry.attributes.uv as THREE.BufferAttribute;
   for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 6, uv.getY(i) * 6);
   uv.needsUpdate = true;
-  return stamp(geometry, { color: WHITE });
+}
+
+/**
+ * The site apron: a flat disc of yard surface, scaled per plant, with a darker
+ * kerb ring on its rim and two haul tracks crossing it. The edge is what makes
+ * the site sit in the field instead of floating on it as one pale ellipse.
+ */
+function padGeometry(): THREE.BufferGeometry {
+  const disc = new THREE.CircleGeometry(1, 28);
+  disc.rotateX(-Math.PI / 2);
+  padUv(disc);
+  const parts = [stamp(disc, { color: WHITE })];
+  const kerb = new THREE.RingGeometry(0.955, 1.0, 28);
+  kerb.rotateX(-Math.PI / 2);
+  kerb.translate(0, 0.012, 0);
+  padUv(kerb);
+  parts.push(stamp(kerb, { color: [0.5, 0.5, 0.5], wallsOnly: false }));
+  for (const angle of [0.22, -0.18]) {
+    const track = new THREE.BoxGeometry(1.9, 0.012, 0.1);
+    track.rotateY(angle);
+    track.translate(0, 0.008, angle > 0 ? 0.3 : -0.34);
+    kmUv(track);
+    parts.push(stamp(track, { color: [0.3, 0.3, 0.3] }));
+  }
+  return merge(parts);
 }
 
 /** Reactor building: a cylinder with a hemispherical containment cap. */
@@ -261,9 +282,9 @@ function domeGeometry(): THREE.BufferGeometry {
       new THREE.Vector2(Math.max(0.0001, r * Math.cos(a)), cylinderTop + r * Math.sin(a)),
     );
   }
-  const shell = lathePart(points, 28, { color: [0.98, 0.97, 0.95] });
+  const shell = lathePart(points, 28, { color: [0.9, 0.89, 0.86] });
   // Annex ring at the foot — the fuel-handling floor of every PWR.
-  const ring = cylinderPart(r * 1.25, r * 1.3, 0.2, 28, {}, { color: [0.9, 0.9, 0.88] });
+  const ring = cylinderPart(r * 1.25, r * 1.3, 0.2, 28, {}, { color: [0.78, 0.78, 0.76] });
   return merge([shell, ring]);
 }
 
@@ -287,7 +308,7 @@ function towerGeometry(): THREE.BufferGeometry {
   }
   // Slight lip at the top and a thin inner wall so the tower has no visible hole edge.
   points.push(new THREE.Vector2(top * 1.02, H + 0.02), new THREE.Vector2(top * 0.94, H - 0.06));
-  const shell = lathePart(points, 36, { color: [0.86, 0.85, 0.83] });
+  const shell = lathePart(points, 36, { color: [0.76, 0.75, 0.73] });
   // Raking columns of the air inlet.
   const columns: THREE.BufferGeometry[] = [];
   const n = 24;
@@ -299,10 +320,10 @@ function towerGeometry(): THREE.BufferGeometry {
     column.rotateY(angle);
     column.translate(Math.cos(angle) * base * 0.98, 0, Math.sin(angle) * base * 0.98);
     kmUv(column);
-    columns.push(stamp(column, { color: [0.7, 0.7, 0.7] }));
+    columns.push(stamp(column, { color: [0.5, 0.5, 0.5] }));
   }
   // Basin: a low wall around the pond.
-  const basin = cylinderPart(base * 1.08, base * 1.1, 0.05, 36, {}, { color: [0.6, 0.62, 0.62] });
+  const basin = cylinderPart(base * 1.08, base * 1.1, 0.05, 36, {}, { color: [0.42, 0.44, 0.44] });
   return merge([shell, basin, ...columns]);
 }
 
@@ -316,20 +337,20 @@ function stackGeometry(height: number, radius: number): THREE.BufferGeometry {
     new THREE.Vector2(radius * 0.45, height * 0.985),
   ];
   const shell = lathePart(points, 18, { color: WHITE, vNormalized: true });
-  const foot = cylinderPart(radius * 1.3, radius * 1.4, 0.12, 18, {}, { color: [0.7, 0.7, 0.68] });
+  const foot = cylinderPart(radius * 1.3, radius * 1.4, 0.12, 18, {}, { color: [0.5, 0.5, 0.48] });
   return merge([shell, foot]);
 }
 
 /** Coal boiler house: tall block with a bunker bay in front and a furnace band. */
 function boilerGeometry(): THREE.BufferGeometry {
   const { w, h, d } = SIZE.boiler;
-  const main = boxPart(w, h, d, {}, { color: [0.62, 0.64, 0.6], emit: 1 });
+  const main = boxPart(w, h, d, {}, { color: [0.44, 0.46, 0.42], emit: 1 });
   const bunker = boxPart(
     w,
     h * 0.62,
     d * 0.45,
     { z: d / 2 + (d * 0.45) / 2 },
-    { color: [0.58, 0.6, 0.57], emit: 2, wall: { y0: 0, y1: h } },
+    { color: [0.4, 0.42, 0.4], emit: 2, wall: { y0: 0, y1: h } },
   );
   const roofBox = boxPart(w * 0.5, 0.18, d * 0.5, { y: h }, { color: DARK_ROOF });
   const duct = boxPart(
@@ -337,7 +358,7 @@ function boilerGeometry(): THREE.BufferGeometry {
     h * 0.55,
     0.16,
     { x: -w * 0.42, z: -d / 2 - 0.1 },
-    { color: [0.45, 0.46, 0.46] },
+    { color: [0.3, 0.31, 0.31] },
   );
   return merge([main, bunker, roofBox, duct]);
 }
@@ -346,12 +367,14 @@ function boilerGeometry(): THREE.BufferGeometry {
 function hallGeometry(color: Rgb, roof: Rgb): THREE.BufferGeometry {
   const { w, h, d } = SIZE.hall;
   const main = boxPart(w, h, d, {}, { color, emit: 1 });
+  // The monitor is its own emit: a dim continuous strip over the ridge, so a
+  // hall shows a lit skyline without turning its whole wall into one lantern.
   const monitor = boxPart(
     w,
     0.12,
     d * 0.32,
     { y: h },
-    { color: roof, emit: 1, wall: { y0: h, y1: h + 0.12 } },
+    { color: roof, emit: 5, wall: { y0: h, y1: h + 0.12 } },
   );
   return merge([main, monitor]);
 }
@@ -359,21 +382,21 @@ function hallGeometry(color: Rgb, roof: Rgb): THREE.BufferGeometry {
 /** CCGT: HRSG box with its gas-turbine enclosure and intake house in front. */
 function hrsgGeometry(): THREE.BufferGeometry {
   const { w, h, d } = SIZE.hrsg;
-  const boiler = boxPart(w, h, d, {}, { color: [0.62, 0.63, 0.65] });
+  const boiler = boxPart(w, h, d, {}, { color: [0.46, 0.47, 0.5] });
   const roofBox = boxPart(w * 0.6, 0.06, d * 0.7, { y: h }, { color: DARK_ROOF });
   const turbine = boxPart(
     w * 0.9,
     h * 0.5,
     d * 0.6,
     { z: d / 2 + (d * 0.6) / 2 },
-    { color: [0.7, 0.71, 0.7], emit: 4 },
+    { color: [0.52, 0.53, 0.52], emit: 4 },
   );
   const intake = boxPart(
     w * 1.1,
     h * 0.45,
     d * 0.3,
     { y: h * 0.5, z: d / 2 + d * 0.5 },
-    { color: [0.76, 0.77, 0.77] },
+    { color: [0.58, 0.59, 0.59] },
   );
   return merge([boiler, roofBox, turbine, intake]);
 }
@@ -381,13 +404,15 @@ function hrsgGeometry(): THREE.BufferGeometry {
 /** OCGT: container-sized package, intake filter house and a short exhaust stack. */
 function packageGeometry(): THREE.BufferGeometry {
   const { w, h, d } = SIZE.package;
-  const body = boxPart(w, h, d, {}, { color: [0.82, 0.8, 0.74], emit: 4 });
+  // The body is a plain enclosure: only the exhaust stack carries the heat
+  // glow, so a running OCGT reads as a stack, not as a lit crate.
+  const body = boxPart(w, h, d, {}, { color: [0.64, 0.62, 0.56] });
   const intake = boxPart(
     w * 1.35,
     h * 1.6,
     d * 0.3,
     { z: -d / 2 - (d * 0.3) / 2 },
-    { color: [0.75, 0.76, 0.75] },
+    { color: [0.55, 0.56, 0.55] },
   );
   const stack = cylinderPart(
     0.06,
@@ -395,9 +420,9 @@ function packageGeometry(): THREE.BufferGeometry {
     SIZE.packageStackHeight,
     12,
     { z: d / 2 - 0.08 },
-    { color: [0.6, 0.6, 0.6], emit: 4 },
+    { color: [0.42, 0.42, 0.42], emit: 4 },
   );
-  const skid = boxPart(w * 1.2, 0.03, d * 1.1, {}, { color: [0.45, 0.45, 0.45] });
+  const skid = boxPart(w * 1.2, 0.03, d * 1.1, {}, { color: [0.28, 0.28, 0.28] });
   return merge([body, intake, stack, skid]);
 }
 
@@ -405,15 +430,30 @@ function packageGeometry(): THREE.BufferGeometry {
 function accGeometry(): THREE.BufferGeometry {
   const { w, h, d } = SIZE.acc;
   const legH = h * 0.55;
-  const deck = boxPart(w, h - legH, d, { y: legH }, { color: [0.58, 0.6, 0.62] });
+  const deck = boxPart(w, h - legH, d, { y: legH }, { color: [0.4, 0.42, 0.44] });
   const parts = [deck];
   for (let i = 0; i < 3; i++) {
     for (let j = 0; j < 3; j++) {
       const x = (i - 1) * (w / 3);
       const z = (j - 1) * (d / 3);
+      // The fan itself is a near-black disc of blades; only the rim catches the
+      // deck light, scaled by the plant's load — the CCGT's own night signature
+      // (an OCGT has no ACC). A glowing disc read as a bead, not a machine.
       parts.push(
-        cylinderPart(w / 7, w / 7, 0.03, 12, { x, y: h, z }, { color: [0.35, 0.36, 0.38] }),
+        cylinderPart(
+          w / 7.4,
+          w / 7.4,
+          0.02,
+          12,
+          { x, y: h, z },
+          { color: [0.06, 0.07, 0.08], wallsOnly: false },
+        ),
       );
+      const rim = new THREE.RingGeometry(w / 7.2, w / 6.2, 12);
+      rim.rotateX(-Math.PI / 2);
+      rim.translate(x, h + 0.025, z);
+      kmUv(rim);
+      parts.push(stamp(rim, { color: [0.62, 0.68, 0.78], emit: 8, wallsOnly: false }));
     }
   }
   for (const sx of [-1, 1]) {
@@ -424,7 +464,7 @@ function accGeometry(): THREE.BufferGeometry {
           legH,
           0.08,
           { x: sx * w * 0.42, z: sz * d * 0.42 },
-          { color: [0.5, 0.5, 0.5] },
+          { color: [0.32, 0.32, 0.32] },
         ),
       );
     }
@@ -432,22 +472,28 @@ function accGeometry(): THREE.BufferGeometry {
   return merge(parts);
 }
 
-/** A long coal mound. */
+/** A long coal mound; its up-facing lumps catch the yard floodlighting. */
 function stockpileGeometry(): THREE.BufferGeometry {
   const geometry = new THREE.SphereGeometry(1, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
   geometry.scale(SIZE.stockpile.l / 2, SIZE.stockpile.h, SIZE.stockpile.w / 2);
   geometry.computeVertexNormals();
   kmUv(geometry);
-  return stamp(geometry, { color: WHITE, wallsOnly: false });
+  return stamp(geometry, { color: WHITE, emit: 6, wallsOnly: false });
 }
 
-/** Inclined conveyor gallery; the instance matrix tilts it. */
+/** Inclined conveyor gallery with a lamp bar under it; the instance matrix tilts it. */
 function conveyorGeometry(): THREE.BufferGeometry {
   const L = SIZE.conveyorLength;
   const gallery = new THREE.BoxGeometry(0.1, 0.1, L);
   gallery.translate(0, 0.05, 0);
   kmUv(gallery);
-  return stamp(gallery, { color: [0.6, 0.6, 0.58] });
+  const lamps = new THREE.BoxGeometry(0.03, 0.02, L * 0.98);
+  lamps.translate(0, -0.015, 0);
+  kmUv(lamps);
+  return merge([
+    stamp(gallery, { color: [0.42, 0.42, 0.4] }),
+    stamp(lamps, { color: [0.9, 0.85, 0.7], emit: 7, wall: { y0: -0.03, y1: 0.05 } }),
+  ]);
 }
 
 function pipeRackGeometry(): THREE.BufferGeometry {
@@ -466,12 +512,12 @@ function pipeRackGeometry(): THREE.BufferGeometry {
 
 /** One metre of fence; the instance scales it to length. */
 function fenceGeometry(): THREE.BufferGeometry {
-  return boxPart(1, 0.06, 0.02, {}, { color: [0.55, 0.56, 0.58] });
+  return boxPart(1, 0.06, 0.02, {}, { color: [0.38, 0.39, 0.41] });
 }
 
 function mastGeometry(): THREE.BufferGeometry {
   const h = SIZE.mastHeight;
-  const pole = cylinderPart(0.012, 0.02, h, 6, {}, { color: [0.7, 0.7, 0.72] });
+  const pole = cylinderPart(0.012, 0.02, h, 6, {}, { color: [0.5, 0.5, 0.52] });
   const head = boxPart(
     0.16,
     0.05,
@@ -485,28 +531,30 @@ function mastGeometry(): THREE.BufferGeometry {
 /** Switchyard gantry: two posts and a beam. */
 function portalGeometry(): THREE.BufferGeometry {
   const h = SIZE.portalHeight;
-  const posts = [-0.45, 0.45].map((x) => boxPart(0.05, h, 0.05, { x }, { color: [0.8, 0.8, 0.8] }));
+  const posts = [-0.45, 0.45].map((x) =>
+    boxPart(0.05, h, 0.05, { x }, { color: [0.58, 0.58, 0.58] }),
+  );
   const beam = boxPart(1.0, 0.05, 0.05, { y: h - 0.05 }, { color: [0.8, 0.8, 0.8] });
   return merge([...posts, beam]);
 }
 
 function transformerGeometry(): THREE.BufferGeometry {
-  const tank = boxPart(0.24, 0.24, 0.34, {}, { color: [0.45, 0.47, 0.45] });
-  const fins = boxPart(0.06, 0.2, 0.3, { x: -0.16 }, { color: [0.4, 0.42, 0.4] });
+  const tank = boxPart(0.24, 0.24, 0.34, {}, { color: [0.3, 0.32, 0.3] });
+  const fins = boxPart(0.06, 0.2, 0.3, { x: -0.16 }, { color: [0.26, 0.28, 0.26] });
   const conservator = cylinderPart(0.04, 0.04, 0.3, 8, { y: 0.24 }, { color: [0.45, 0.47, 0.45] });
   return merge([tank, fins, conservator]);
 }
 
 function adminGeometry(): THREE.BufferGeometry {
   const { w, h, d } = SIZE.admin;
-  const main = boxPart(w, h, d, {}, { color: [0.85, 0.84, 0.82], emit: 1 });
+  const main = boxPart(w, h, d, {}, { color: [0.68, 0.67, 0.65], emit: 1 });
   const roof = boxPart(w, 0.02, d, { y: h }, { color: ROOF });
   return merge([main, roof]);
 }
 
 function auxGeometry(): THREE.BufferGeometry {
   const { w, h, d } = SIZE.aux;
-  const main = boxPart(w, h, d, {}, { color: [0.92, 0.91, 0.89], emit: 1 });
+  const main = boxPart(w, h, d, {}, { color: [0.74, 0.73, 0.71], emit: 1 });
   const roof = boxPart(w * 0.4, 0.1, d * 0.4, { y: h }, { color: DARK_ROOF });
   return merge([main, roof]);
 }
@@ -518,9 +566,9 @@ const BUILDERS: Record<Archetype, () => THREE.BufferGeometry> = {
   stackTall: () => stackGeometry(SIZE.stackTallHeight, SIZE.stackTallRadius),
   stackMid: () => stackGeometry(SIZE.stackMidHeight, SIZE.stackMidRadius),
   boiler: boilerGeometry,
-  hallBrick: () => hallGeometry([0.98, 0.98, 0.98], [0.5, 0.5, 0.52]),
-  hallSteel: () => hallGeometry([0.86, 0.9, 0.94], [0.62, 0.64, 0.66]),
-  hallConcrete: () => hallGeometry([0.9, 0.89, 0.86], [0.6, 0.6, 0.6]),
+  hallBrick: () => hallGeometry([0.88, 0.86, 0.84], [0.34, 0.34, 0.36]),
+  hallSteel: () => hallGeometry([0.74, 0.78, 0.82], [0.4, 0.42, 0.44]),
+  hallConcrete: () => hallGeometry([0.78, 0.77, 0.74], [0.4, 0.4, 0.4]),
   hrsg: hrsgGeometry,
   package: packageGeometry,
   acc: accGeometry,

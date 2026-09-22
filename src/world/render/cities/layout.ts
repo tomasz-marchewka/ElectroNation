@@ -27,7 +27,7 @@ import type { ArchetypeId } from "./archetypes";
 const HEX_INRADIUS_KM = HEX_PITCH_KM / 2;
 
 /** Linear albedo the facade palettes are scaled to: plaster and concrete, never paper. */
-const WALL_ALBEDO = 0.42;
+const WALL_ALBEDO = 0.45;
 
 /** Roof tones the material knows (materials.ts enRoofTone). */
 export const ROOF = { gravel: 0, terracotta: 1, membrane: 2, bitumen: 3, green: 4 } as const;
@@ -351,7 +351,7 @@ export function layoutCity(
         if (roll > 0.9) continue; // a park
         const h = midHeight * (0.6 + 0.5 * roll2);
         if (roll < 0.55) {
-          const roof = rng.next() < 0.5 ? ROOF.terracotta : ROOF.gravel;
+          const roof = rng.next() < 0.62 ? ROOF.terracotta : ROOF.gravel;
           place("perimeter", cu, cv, cw * 0.95, h, cd * 0.95, rng.pick(MID_TINTS), roof, 0);
         } else if (roll < 0.82 || off || scale < 0.5) {
           // An estate: two or three slabs across the cell.
@@ -433,7 +433,9 @@ export function layoutCity(
     const spacing = 0.26 / Math.sqrt(detail);
     const sodium: [number, number, number] = [1.0, 0.55, 0.16];
     const led: [number, number, number] = [0.9, 0.9, 0.82];
-    const ledShare = 0.08 + 0.32 * scale;
+    // Only the arterials went LED in Poland: a few side streets in a metro,
+    // none worth mentioning in a town — the sodium orange stays the signature.
+    const ledShare = 0.02 + 0.16 * scale;
     const along = (fixed: Street, axis: "u" | "v"): void => {
       const lines = fixed.avenue
         ? [fixed.at - fixed.width * 0.35, fixed.at + fixed.width * 0.35]

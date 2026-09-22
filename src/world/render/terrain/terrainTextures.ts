@@ -396,6 +396,38 @@ function paintLayer(
   }
 }
 
+/**
+ * Mean linear albedo and mean roughness of each layer, from the painted
+ * slices: what a tier that drops a layer's fetch multiplies by its weight.
+ * The sRGB bytes are decoded the way the sampler decodes them, so a folded
+ * layer lands at the same brightness as a sampled one.
+ */
+function layerMeans(albedo: Uint8Array): THREE.Vector4[] {
+  const pixels = LAYER_SIZE * LAYER_SIZE;
+  const colour = new THREE.Color();
+  return LAYERS.map((_, slice) => {
+    let r = 0;
+    let g = 0;
+    let b = 0;
+    let a = 0;
+    const base = slice * pixels * 4;
+    for (let i = 0; i < pixels; i++) {
+      const o = base + i * 4;
+      colour.setRGB(
+        albedo[o]! / 255,
+        albedo[o + 1]! / 255,
+        albedo[o + 2]! / 255,
+        THREE.SRGBColorSpace,
+      );
+      r += colour.r;
+      g += colour.g;
+      b += colour.b;
+      a += albedo[o + 3]! / 255;
+    }
+    return new THREE.Vector4(r / pixels, g / pixels, b / pixels, a / pixels);
+  });
+}
+
 function arrayTexture(data: Uint8Array, colorSpace: THREE.ColorSpace): THREE.DataArrayTexture {
   const texture = new THREE.DataArrayTexture(data, LAYER_SIZE, LAYER_SIZE, LAYERS.length);
   texture.format = THREE.RGBAFormat;
@@ -416,6 +448,12 @@ export interface TerrainTextureSet {
   albedo: THREE.DataArrayTexture;
   /** Tangent-space normals; one slice per layer. */
   normal: THREE.DataArrayTexture;
+  /**
+   * Linear mean albedo (rgb) and mean roughness (a) per layer, LAYERS order:
+   * the lower tiers drop a layer's fetch and fold this in instead, so the
+   * biome keeps its hue without paying for the tile.
+   */
+  layerMean: readonly THREE.Vector4[];
   /** Low-frequency variation over the whole country: R brightness, G snow edge, B hue. */
   macro: THREE.DataTexture;
   /** Ridged relief normal of the range, tile RELIEF_TILE_KM. */
@@ -439,6 +477,7 @@ export function terrainTextures(): TerrainTextureSet {
   const normalData = new Uint8Array(pixels * LAYERS.length);
   const specs = layerSpecs();
   LAYERS.forEach((name, slice) => paintLayer(name, specs[name], slice, albedoData, normalData));
+  const layerMean = layerMeans(albedoData);
 
   const macro = proceduralTexture({
     name: "terrain-macro",
@@ -489,6 +528,7 @@ export function terrainTextures(): TerrainTextureSet {
   cached = {
     albedo: arrayTexture(albedoData, THREE.SRGBColorSpace),
     normal: arrayTexture(normalData, THREE.NoColorSpace),
+    layerMean,
     macro,
     relief,
     waves,

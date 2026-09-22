@@ -74,7 +74,12 @@ const DARK: readonly [number, number, number] = [0.22, 0.23, 0.24];
 const CONCRETE: readonly [number, number, number] = [0.62, 0.6, 0.56];
 const PILE: readonly [number, number, number] = [0.2, 0.19, 0.18];
 const SPLASH: readonly [number, number, number] = [0.42, 0.24, 0.13];
-const YELLOW: readonly [number, number, number] = [0.98, 0.72, 0.06];
+/**
+ * Baltic transition-piece yellow — weathered, not the safety-paint lemon:
+ * five years of salt and UV take the saturation out of it, and at 20×
+ * exaggeration a saturated plate reads as a toy mushroom.
+ */
+const YELLOW: readonly [number, number, number] = [0.72, 0.55, 0.14];
 
 /**
  * A tapered tower `height` km tall standing at the origin, foot → top along
@@ -201,7 +206,10 @@ function bladeGeometry(pitchDeg: number): THREE.BufferGeometry {
       const b = s * POINTS + ((p + 1) % POINTS);
       const c = (s + 1) * POINTS + ((p + 1) % POINTS);
       const d = (s + 1) * POINTS + p;
-      indices.push(a, b, c, a, c, d);
+      // The loop runs leading edge → upper surface → trailing → lower, so the
+      // natural winding puts the normals INSIDE the blade (the overcast frame
+      // read as a white/black kick-plate). Reversed to face outward.
+      indices.push(a, c, b, a, d, c);
     }
   }
   // Caps: a fan at the root and at the tip.
@@ -219,10 +227,10 @@ function bladeGeometry(pitchDeg: number): THREE.BufferGeometry {
     return positions.length / 3 - 1;
   };
   const root = capCentre(0);
-  for (let p = 0; p < POINTS; p++) indices.push(root, (p + 1) % POINTS, p);
+  for (let p = 0; p < POINTS; p++) indices.push(root, p, (p + 1) % POINTS);
   const tip = capCentre(SECTIONS - 1);
   const tipBase = (SECTIONS - 1) * POINTS;
-  for (let p = 0; p < POINTS; p++) indices.push(tip, tipBase + p, tipBase + ((p + 1) % POINTS));
+  for (let p = 0; p < POINTS; p++) indices.push(tip, tipBase + ((p + 1) % POINTS), tipBase + p);
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(positions), 3));
   geometry.setIndex(indices);
@@ -250,11 +258,15 @@ export function rotorGeometry(feathered: boolean): THREE.BufferGeometry {
   return merged(parts);
 }
 
-/** A translucent disc the size of the rotor, in the nacelle's frame. */
+/**
+ * A translucent disc the size of the rotor, in the nacelle's frame. The uv
+ * stays on the geometry: the disc shader reads the radial density from it
+ * (`length(uv * 2 - 1)`), so dropping the attribute would silently flatten
+ * every disc to zero alpha.
+ */
 export function discGeometry(): THREE.BufferGeometry {
   const disc = new THREE.CircleGeometry(ROTOR_RADIUS_KM, 36);
   disc.translate(0, 0, HUB_OFFSET_KM);
-  disc.deleteAttribute("uv");
   return disc;
 }
 
@@ -274,16 +286,32 @@ export function foundationGeometry(): THREE.BufferGeometry {
   const tp = new THREE.CylinderGeometry(0.078, 0.078, 0.28, 12, 1, false);
   tp.translate(0, 0.26, 0);
   parts.push(paint(tp, YELLOW));
-  const platform = new THREE.CylinderGeometry(0.15, 0.15, 0.015, 12, 1, false);
-  platform.translate(0, TP_TOP_KM - 0.0075, 0);
+  // A working platform, not a lid: 0.11 km radius against the 0.15 the first
+  // build had (a 0.3 km yellow disc was the "mushroom" of the storm frame).
+  const platform = new THREE.CylinderGeometry(0.105, 0.105, 0.012, 12, 1, false);
+  platform.translate(0, TP_TOP_KM - 0.006, 0);
   parts.push(paint(platform, YELLOW));
   for (const x of [-0.035, 0.035]) {
-    const fender = new THREE.CylinderGeometry(0.007, 0.007, 0.5, 6, 1, false);
+    const fender = new THREE.CylinderGeometry(0.006, 0.006, 0.5, 6, 1, false);
     fender.translate(x, 0.1, 0.1);
     parts.push(paint(fender, DARK));
   }
-  const ladder = new THREE.BoxGeometry(0.05, 0.45, 0.01);
-  ladder.translate(0, 0.14, 0.098);
+  // Boat landing on the +Z face: a dark deck at the waterline with yellow
+  // handrails and the ladder — the readable "you can moor here" of the
+  // detail LOD, where the first build showed only a grey box.
+  const landing = new THREE.BoxGeometry(0.12, 0.012, 0.06);
+  landing.translate(0, 0.09, 0.104);
+  parts.push(paint(landing, DARK));
+  for (const x of [-0.055, 0.055]) {
+    const rail = new THREE.BoxGeometry(0.008, 0.055, 0.008);
+    rail.translate(x, 0.12, 0.13);
+    parts.push(paint(rail, YELLOW));
+  }
+  const handrail = new THREE.BoxGeometry(0.118, 0.008, 0.008);
+  handrail.translate(0, 0.148, 0.13);
+  parts.push(paint(handrail, YELLOW));
+  const ladder = new THREE.BoxGeometry(0.035, 0.1, 0.008);
+  ladder.translate(0, 0.035, 0.106);
   parts.push(paint(ladder, DARK));
   return merged(parts);
 }
@@ -294,9 +322,9 @@ export function foundationGeometry(): THREE.BufferGeometry {
  */
 export function substationGeometry(): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
-  const building = new THREE.BoxGeometry(0.34, HEIGHT_KM.container, 0.22);
+  const building = new THREE.BoxGeometry(0.28, HEIGHT_KM.container, 0.19);
   building.translate(-0.12, HEIGHT_KM.container / 2, 0.16);
-  parts.push(paint(building, [0.78, 0.77, 0.74]));
+  parts.push(paint(building, [0.66, 0.64, 0.58]));
   for (const x of [0.1, 0.32]) {
     const transformer = new THREE.BoxGeometry(0.14, 0.16, 0.12);
     transformer.translate(x, 0.08, 0.16);

@@ -71,7 +71,13 @@ test("the curated mid-game state loads with a dark city and a loaded line", asyn
   const scene = await page.evaluate(() => window.__en!.scene());
   expect(scene?.time.resolved).toBe(true);
   expect(scene?.cities.some((city) => city.lit === 0)).toBe(true);
-  await expect(page.locator(".en-wlabel.is-overload")).toHaveCount(1);
+  // Every overloaded line is named, not just the worst one (bridge hotspot
+  // list), so the label count equals the number of lines at their limit.
+  const overloaded =
+    scene?.lines.filter((line) => line.segments.some((segment) => segment.load === "over"))
+      .length ?? 0;
+  expect(overloaded).toBeGreaterThan(0);
+  await expect(page.locator(".en-wlabel.is-overload")).toHaveCount(overloaded);
 });
 
 test("the SVG renderer stays reachable by URL", async ({ page }) => {

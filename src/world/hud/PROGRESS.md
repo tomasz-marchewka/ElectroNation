@@ -1,98 +1,105 @@
 # hud — progress
 
 Hand-over for the HUD module (docs/08 §7, ARCHITECTURE §3, §9, §16). Written at the end
-of step 2 of the finishing pipeline.
+of the second fix round (final-gate items A–E + the round-1 list).
 
 ## Checklist
 
 - [x] 1 World-anchored labels — DOM writes only from a rAF loop (reads before writes,
   writes only on change), priority layout in `labelLayout.ts` (pure), alerts never
   culled and led, shell surfaces as hard occluders and world strips as soft ones, four
-  depth tiers, city weight, muted cities, halo + scrim. Step 1 fixed the ref-reset
-  regression that hid every label. Step 2 verified selection emphasis and hover by
-  capture: the selected hex's labels (`KAMIONKA · 237 MW`, `−88 MW ⚠`) glow in the
-  action colour at strategic and close-up range while the line's `NN 150/150 ⚠` stays
-  red; hover lifts `JASIENICA` one step (border only — subtle by design). With the
-  report dock open the labels under it are hidden or led out (`JASIENICA`, `BUDOWA`
-  led to the dock's edge), 26/29 placed. Frame 0.2–0.3 ms / layout 0.1 ms, 29 labels.
-  Not yet re-checked: LIFT_KM anchors against real object silhouettes (the tree still
-  draws no city/plant meshes in the close-up: 21 draw calls).
+  depth tiers, city weight, muted cities, halo + scrim. **Round 2:** an alert whose
+  anchor the projection rejects (behind the camera, e.g. `SN 500/500 ⚠` at closeup
+  19,6) now gets a synthetic anchor on the camera basis: the chip is clamped to that
+  viewport edge with the direction glyph and a leader, so no alert is ever dropped.
+  A `led` object under the shell (the TG KAMIONKA plant under the ribbon) is led out
+  instead of hidden — the leader carries the name back. 29/29 at strategic, 5/5 at
+  closeup, `culled` empty in both.
 - [x] 2 Strips — weather strip, world legend, settings strip, diagnostics, showcase
-  caption verified on screen in every s2 capture. Step 2 decisions: the legend now
-  starts folded (`settingsStore` default `closed`) because unfolded it was a 500 px
-  strip across the north coast in the strategic frame (SOLNICA and the far coast were
-  under it); its title + `ROZWIŃ ▸` stay top-right. With the report dock open, the
-  world strips step right of the dock (they were fully hidden under it before) and the
-  legend no longer moves — in the world layout the dock takes the LEFT edge of the
-  workspace (the map region is out of flow), so the old `right: panel + report` rule
-  pushed the folded legend under the dock.
-- [x] 3 Contrast and themes — verified by capture: dark evening strategic, light evening
-  strategic, dark noon strategic, light noon strategic (s1), close-ups Kamionka dark
-  (selected) and Jasienica light (s1), report dock open. Step 2 found and fixed a shell
-  regression: the fixed map region lives in `.en-body`'s stacking context and painted
-  OVER the top bar (a Playwright click on RAPORTY hit the canvas; the bar was missing
-  from every s1/early-s2 capture). `hud.css` now lifts `.en-topbar` and `.en-report`
-  to z-index 2. One primary action (ZATWIERDŹ TURĘ ▸) on screen in the dispatcher
-  state; the hex panel replaces it with `◂ WRÓĆ DO PANELU DYSPOZYTORA` (app panel).
-- [x] 4 Copy rules — all label text is the bridge's; strips use the allowed glyphs only,
-  U+2212, comma decimals, space thousands. Tests green: components 92/92, Playwright
-  chromium 5/5, unit 516/516, lint, tsc, prettier. No new dependency.
+  caption. Legend starts folded; diagnostics render only when there is a diagnosis.
+  **Round 2:** the folded legend chip is caption size and `--en-text-3`.
+- [x] 3 Contrast and themes — verified by capture: dark and light, evening and noon
+  strategic, close-ups 19,6 and 11,7. **Round 2:** chips carry a soft drop shadow and
+  the hairline edge; leaders 1,5 px with the anchor dot; tier opacity (0,88 → 1) and
+  tier font size fall with depth; alerts are square red pills with a 2 px left bar.
+- [x] 4 Copy rules — label text is the bridge's; strips use the allowed glyphs only
+  (the Dunkelflaute note is re-worded by `plainGlyphs`), U+2212, comma decimals,
+  space thousands. The bridge's own wording is a change request below.
+- [x] 5 Composition — **Round 2:** at the strategic preset on laptop heights the
+  ribbon's coverage chart folds away (`.en-app--world:has(.en-wlabels.is-compact)
+  .en-region--chart`) and the world gets the height back. WorldView's safe frame at
+  1600×900: 1199×645 → **world share 0,537** (was 0,420); at 2560×1440: **0,570**
+  (the chart stays on tall screens). Draw calls 110 (1600 strategic) / 124 (2560).
+- [x] 6 Dispatcher panel — **Round 2:** on short viewports the panel is ONE scroll
+  column: the NASTAWY section takes its full content height (707 of 707 px, no
+  292 px window) and the balance + commit stay pinned at the foot. TG KAMIONKA,
+  the plant feeding the blacked-out city, is visible without scrolling.
+- [x] 7 Weather override — the top bar's value names itself `PROGNOZA REŻIMU` (chip)
+  while the strip keeps `PODGLĄD POGODY: <reżim>`; the PODGLĄD tag no longer sits on
+  the contradicting value.
 
-## Measured (captures/hud/s2/*.json, headless SwiftShader)
+## Measured (captures/hud/s3/*.json, headless SwiftShader)
 
-- game-evening: drawCalls 20 · triangles 103 874 · gpuBytesEstimate 4 845 374 · readyMs
-  11 039 (software GL warning only) · consoleErrors [] · pageErrors [] · budget ok ·
-  every module ready.
-- game-noon-dark: drawCalls 19 · triangles 103 874 · readyMs 7 987 · errors 0.
-- Label layer (`window.__enLabels`): frameMs 0.2–0.3, layoutMs 0.1, 29 labels; with
-  the report dock open 0.3 ms.
+- strategic frostHigh dark: drawCalls 110 · triangles 275 794 · gpuBytes 13,2 MB ·
+  errors 0 · budget ok · every module ready · labels 29/29, culled [].
+- strategic frostHigh light: same counts; 103–110 calls across the summer frames.
+- closeup 19,6: 128 calls · 348 611 tris · 5 labels placed (was 4 with 1 culled).
+- closeup 11,7: 137 calls · 398 267 tris.
+- 2560×1440 strategic: 124 calls · 314 568 tris · share 0,570.
+- bare world (`--hud 0`): 112 calls · 4 261 ms ready.
+- Label layer (`window.__enLabels`): frameMs 0,8 · layoutMs 0,6 · 29 labels.
 
 ## Latest screenshots
 
-- captures/hud/s2/game-evening.png — turn 6 frostHigh, strategic, dark, top bar back,
-  legend folded, SOLNICA visible.
-- captures/hud/s2/game-evening-light.png — same frame, light theme (top bar still
-  missing there: captured before the z-index fix).
-- captures/hud/s2/game-noon-dark.png — turn 4 summerHigh, strategic, dark (before fix).
-- captures/hud/s2/select-kamionka-evening.png — Kamionka selected, Jasienica hovered.
-- captures/hud/s2/closeup-kamionka-selected.png — closeup 19,6, selected labels.
-- captures/hud/s2/report-open-evening.png — report dock open, strips stepped right.
+- captures/hud/s3/b-strategic-frost.png — turn 6 frostHigh, strategic, dark: chart
+  folded, micro labels with names (`FW WYDMY · ~0`, `ROZBUDOWA DO WN · 1 DOBA`),
+  top bar `PROGNOZA REŻIMU`, panel shows TG KAMIONKA.
+- captures/hud/s3/c-strategic-frost-light.png — same frame, light theme.
+- captures/hud/s3/c-strategic-summer.png / c-strategic-summer-light.png — turn 4
+  summerHigh, both themes.
+- captures/hud/s3/b-closeup-19-6.png — Kamionka selected, `SN 500/500 ⚠` clamped to
+  the left edge with the cue, TG KAMIONKA led out above the ribbon.
+- captures/hud/s3/c-closeup-11-7.png — Jasienica close-up, chart back (no compact).
+- captures/hud/s3/c-strategic-2560.png — 2560×1440, chart stays, share 0,570.
+- captures/hud/s3/d-strategic-bare.png — `--hud 0`, world untouched.
 
 ## Known gaps
 
-- With the report dock open the weather strip now covers the north-west of the visible
-  board (380 px of a 680 px world); labels are led out, but a compact one-line form of
-  the strips while the report is open would be better. Judgement call, not canon.
-- Hover emphasis is border-only (design: "no colour of its own"); barely visible on
-  the night board. Consider a one-step scrim lift.
-- LIFT_KM anchors unverified against object meshes (none drawn in this tree yet).
-- `scripts/capture.mjs` does not forward `--theme`; light captures used
-  `--url "http://localhost:5173/?theme=light&capture=1&x="`. Selection, hover and the
-  report dock were captured with a scratchpad Playwright script (same boot as the
-  harness, then `window.__en.select(q, r)`, a mouse move, or a click on RAPORTY).
+- The strategic chart fold is a CSS reaction to the label layer's `is-compact` class
+  (camera > 320 km). A player on a tall screen keeps the chart; on a laptop it is
+  gone with no way back. A fold toggle in the ribbon or a docked chart in the report
+  dock would be better — see change requests.
+- `LIFT_KM` anchors still unverified against object meshes.
+- The panel's sticky foot overlays the last rows of the setpoint list while scrolling
+  (standard sticky footer; the list scrolls under it).
+- Hover emphasis stays border-only by design.
 
 ## Change requests
 
-- scripts/capture.mjs: forward `--theme light|dark` as the `theme` query parameter;
-  add `--select q,r` and `--report 1` so HUD states are reproducible by the harness.
-- src/app/styles/css/app-shell.css: below 1500 px `.en-workspace.has-report >
-  .en-reportdock { flex: 1; width: auto }` — in the world layout (map out of flow) the
-  dock would fill the whole workspace; give the world layout a fixed dock width.
+- `src/app/components/TopBar.tsx` + `src/app/store/selectors.ts`: docs/08 §3 wants the
+  hour in the top bar. Proposal: extend `topBarContext(game)` to
+  `ROK 1 · STYCZEŃ · DOBA ROBOCZA B · 19:30` (the shown turn's block middle), and add
+  an optional `regimeNote`/`regimeOverridden` prop so the bar can print the capture
+  override regime in accent and the day's forecast as a muted `PROGNOZA REŻIMU` chip —
+  the HUD can only relabel the bar in CSS today.
+- `src/world/bridge/buildWorldScene.ts` (line ~320): only the single hottest overload
+  is emitted (`key: "overload"`). With two conductors at 100 % (SN 500/500 and the LV
+  line to Kamionka) only one carries a label. Proposal: push one label per overloaded
+  segment (cap ~3 by ratio), keys `${line.id}:${segment.segmentId}:overload`, same
+  `overloadLabel` text and priority 10 — the layout already stacks alerts.
+- `src/world/bridge/hud.ts` (line 90): the Dunkelflaute note uses `→` and `≈`, not in
+  the allowed glyph set. Proposal: `⚠ Dunkelflaute: wiatr 1,7 m/s poniżej 3 m/s i GHI
+  0 W/m² · OZE bliskie zera` — the HUD keeps rendering the note as given.
+- `src/app/timeline/TimelineView.tsx` / `app-shell.css`: the chart's viewBox is fixed
+  at 1060×130, so its height can only follow the column width (140 px at 1600, 258 px
+  at 2560). Proposal: derive the region height from a token
+  (`.en-region--chart { height: var(--en-chart-h) }`) and let the model's height scale
+  with it, so the chart can shrink instead of folding; or dock the chart into the
+  report dock at strategic.
 
-## Next step
+## Integrator notes acknowledged (2026-09-21)
 
-Decide the compact strip form while the report is open; re-check LIFT_KM once object
-meshes land; capture a light-theme frame after the top bar fix; rewrite this file.
-
-## Integrator notes (2026-09-05, before the fix round)
-
-- Round-1 critics (art 6,5 / legibility 6,5) — the ranked issues are in the fix brief.
-  Two of them are applied by the integrator: the bridge derivation note no longer
-  appears in DIAGNOSTYKA (it lives in the capture log and docs/STATUS.json), and
-  `?hud=0` renders the bare world.
-- Composition (flagged as "core", but it is the world layout's CSS, i.e. yours): at
-  1600×900 the world keeps ~28 % of the viewport under the ribbon, the legend strip and
-  the report strip. In the world layout cap the ribbon chart's height on short
-  viewports (`.en-app--world .en-region--chart { aspect-ratio: auto; height: clamp(...) }`)
-  and let the weather strip fold to one line; measure the uncovered area with
-  WorldView's safe frame (it is what the camera presets fit the board into).
+- `hudVisible` → `params.hud` and the `?select` effect after the scenario effect are
+  untouched (App.tsx only read, never edited this round).
+- Captures under `captures/hud/s3/`; the round-1 `captures/hud/fix2/` set stays as
+  the before-pictures.

@@ -21,7 +21,7 @@
 // UI strings are Polish (player-facing); identifiers and comments stay English.
 
 import { useEffect, useMemo, useState } from "react";
-import { REGIME_IDS, hexKey, type HexCoord, type RegimeId } from "../engine";
+import { REGIME_IDS, hexKey, offsetToAxial, type HexCoord, type RegimeId } from "../engine";
 import {
   DEFAULT_SHOWCASE,
   buildWorldScene,
@@ -118,7 +118,9 @@ export function App() {
   const showcase = showcaseSpec(params.showcase);
   const wants3d = (params.renderer ?? envRenderer() ?? settingsRenderer) === "3d";
   const use3d = wants3d && webgl;
-  const hudVisible = params.hud && showcase === null;
+  // A showcase is bare by default (the harness passes hud=0); `--hud 1` still
+  // overlays the strips, which the whole-game showcase frames need.
+  const hudVisible = params.hud;
   const [worldStatus, setWorldStatus] = useState<{ diagnostics: string[]; tier: string }>({
     diagnostics: [],
     tier: "medium",
@@ -147,6 +149,14 @@ export function App() {
     );
     // Once, at boot: the parameters never change within a page.
   }, [params, replaceGame, showcase]);
+
+  // A capture may also pin a selection and the report: HUD states that used to
+  // require clicking are reproducible by URL alone. Declared AFTER the scenario
+  // effect, because `replaceGame` resets the selection.
+  useEffect(() => {
+    if (params.select) selectHex(offsetToAxial(params.select));
+    if (params.report && !useGameStore.getState().reportOpen) toggleReport();
+  }, [params, selectHex, toggleReport]);
 
   // The map paints the last resolved turn and ONLY it (01 §8 pt 1): reading an
   // older turn on the ribbon never rewinds the world, because the world of a

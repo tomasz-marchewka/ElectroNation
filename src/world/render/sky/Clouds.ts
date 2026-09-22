@@ -98,9 +98,13 @@ uniform float uLit;
 ${COVERAGE_GLSL}
 void main() {
   vec2 w = vWorld.xz;
+  float dist = length(cameraPosition - vWorld);
   float n = cloudField(w);
+  // Screen-space cull: a fragment smaller than a few pixels is dandruff at the
+  // strategic distance — the terrain read it as a white speckle over the board.
+  if (fwidth(n) > 0.15) discard;
   float a = cloudAlpha(n);
-  if (a < 0.004) discard;
+  if (a < 0.02) discard;
   float depth = cloudDepth(n);
   vec3 V = normalize(cameraPosition - vWorld);
   float above = smoothstep(-1.5, 1.5, cameraPosition.y - uAltitude);
@@ -128,7 +132,6 @@ void main() {
   } else {
     col = (uSkyColor * 1.1 + uSunColor * 0.4 * max(uSunDir.y, 0.0)) * (1.0 - uDark * 0.5 * depth);
   }
-  float dist = length(cameraPosition - vWorld);
   float fogF = 1.0 - exp(-uFogDensity * uFogDensity * dist * dist);
   col = mix(col, uFogColor, fogF);
   float radial = 1.0 - smoothstep(uFadeRadius * 0.6, uFadeRadius, length(w - uCenter));

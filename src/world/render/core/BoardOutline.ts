@@ -26,8 +26,11 @@ export function createBoardOutlineModule(): WorldModule {
     const positions: number[] = [];
     const waterPositions: number[] = [];
     for (const hex of scene.board.hexes) {
-      // Water reads as water, not as a gridded plate: its outline is fainter.
-      const target = hex.terrain === "sea" || hex.terrain === "lake" ? waterPositions : positions;
+      // Open sea is where the grid stops being useful — nothing is buildable
+      // there and the outline cuts across the offshore farms — so it is left
+      // blank. Lakes keep a faint outline (water reads as water, not a plate).
+      if (hex.terrain === "sea") continue;
+      const target = hex.terrain === "lake" ? waterPositions : positions;
       const corners = hexCorners({ x: hex.x, z: hex.z }, HEX_RADIUS_KM * 0.985);
       for (let i = 0; i < 6; i++) {
         const a = corners[i]!;
@@ -69,9 +72,17 @@ export function createBoardOutlineModule(): WorldModule {
     },
     update(scene, previous, ctx) {
       const key = `${scene.board.cols}x${scene.board.rows}:${ctx.terrain.snowlineKm}`;
-      if (builtFor === key && previous !== null) return;
-      builtFor = key;
-      rebuild(scene, ctx);
+      if (builtFor !== key || previous === null) {
+        builtFor = key;
+        rebuild(scene, ctx);
+      }
+      // The grid is a picking reference, not a light source: it fades with the
+      // sun so a night frame is not a glowing wireframe (critic r1).
+      const daylight = Math.min(1, Math.max(0.05, (scene.sun.altitudeDeg + 6) / 18));
+      if (lines) (lines.material as THREE.LineBasicMaterial).opacity = 0.16 * daylight;
+      if (waterLines) {
+        (waterLines.material as THREE.LineBasicMaterial).opacity = 0.05 * daylight;
+      }
     },
     frame() {},
     dispose() {

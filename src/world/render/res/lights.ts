@@ -115,6 +115,8 @@ export function glowGeometry(): THREE.BufferGeometry {
 export interface DiscUniforms {
   /** Colour of the swept disc — daylight white, night grey (set per frame). */
   uColor: { value: THREE.Color };
+  /** Overall opacity: fades the disc out after dusk (the lamps are the night twin). */
+  uOpacity: { value: number };
 }
 
 const DISC_VERTEX = /* glsl */ `
@@ -140,17 +142,19 @@ void main() {
 
 const DISC_FRAGMENT = /* glsl */ `
 uniform vec3 uColor;
+uniform float uOpacity;
 varying float vRadius;
 varying float vStrength;
 #include <fog_pars_fragment>
 void main() {
   float r = vRadius;
-  // Denser toward the hub (three chords sweep a smaller circle), a faint tip
-  // ring, a soft outer edge: the long-exposure look of a running rotor.
-  float body = mix( 1.0, 0.4, r );
-  float ring = smoothstep( 0.84, 0.96, r ) * ( 1.0 - smoothstep( 0.96, 1.0, r ) );
-  float edge = 1.0 - smoothstep( 0.965, 1.0, r );
-  float alpha = vStrength * ( 0.5 * body + 0.45 * ring ) * edge;
+  // A smear, not a plate: densest at the hub, where three chords overlap,
+  // thinning steadily to the tip, and a wide soft falloff instead of the
+  // hard rim of the first build (a 0.965–1.0 edge read as a dinner plate in
+  // the overcast frame). No tip ring — a rim is exactly the wrong cue.
+  float hub = mix( 1.0, 0.28, smoothstep( 0.0, 0.85, r ) );
+  float edge = 1.0 - smoothstep( 0.3, 1.0, r );
+  float alpha = uOpacity * vStrength * 0.62 * hub * edge;
   vec3 color = uColor;
   #ifdef USE_FOG
     #ifdef FOG_EXP2
@@ -159,7 +163,9 @@ void main() {
       float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );
     #endif
     color = mix( color, fogColor, fogFactor );
-    alpha *= 1.0 - 0.8 * fogFactor;
+    // A swept disc is a surface (unlike the point-source lamp): haze fades it,
+    // but a farm in mist must still read as running, so the fade is gentle.
+    alpha *= 1.0 - 0.45 * fogFactor;
   #endif
   gl_FragColor = vec4( color, alpha );
 }`;
@@ -172,6 +178,7 @@ void main() {
 export function createDiscMaterial(): { material: THREE.ShaderMaterial; uniforms: DiscUniforms } {
   const own: Record<string, THREE.IUniform> = {
     uColor: { value: new THREE.Color(0.9, 0.92, 0.95) },
+    uOpacity: { value: 1 },
   };
   const material = new THREE.ShaderMaterial({
     uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, own]),

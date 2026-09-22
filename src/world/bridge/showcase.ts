@@ -153,13 +153,16 @@ function midgameScenario(): Scenario {
     ],
     storages: [
       {
+        // 8 h at rated power (the hex cap): the day-1 evening discharge covers
+        // the afternoon and the peak, and the pack still reads a quarter full
+        // at the judging turn instead of empty (the brief's SOC-bar read).
         id: "storage-bess-jasienica",
         name: "BESS Jasienica",
         hex: at(12, 6),
         tech: "battery",
         powerMw: 250,
-        capacityMwh: 500,
-        socMwh: 380,
+        capacityMwh: 2_000,
+        socMwh: 1_140,
         setpoint: { mode: "idle", mw: 0 },
       },
       {
@@ -205,6 +208,10 @@ function midgameScenario(): Scenario {
     routed(base, "line-mv-modrzyca-turow", "mv", at(4, 9), at(2, 6)),
     routed(base, "line-mv-wydmy-nadmorze", "mv", at(7, 3), at(3, 2)),
     routed(base, "line-mv-turow-nadmorze", "mv", at(2, 6), at(3, 2)),
+    // A three-lane corridor (the brief demands the bundle read; the judging
+    // state had none). Two extra MV circuits along the same NW route.
+    routed(base, "line-mv-turow-nadmorze-b", "mv", at(2, 6), at(3, 2)),
+    routed(base, "line-mv-turow-nadmorze-c", "mv", at(2, 6), at(3, 2)),
     routed(base, "line-mv-kotlina-modrzyca", "mv", at(2, 12), at(4, 9)),
     routed(base, "line-lv-rownina-jasienica", "lv", at(12, 9), at(11, 7)),
     routed(base, "line-lv-wzgorze-wierzbnik", "lv", at(16, 10), at(18, 9)),
@@ -245,6 +252,23 @@ const MIDGAME_SCRIPT: ScriptedAction[] = [
     action: { type: "setStorage", storageId: "storage-bess-jasienica", mode: "charge", mw: 250 },
   },
   { beforeTurn: 0, action: { type: "setImport", borderId: "border-zachod", mw: 200 } },
+  // Day 0, afternoon: the border flips to export for four turns, so the amber
+  // export read has a reproducible frame; day 1 restores the import order.
+  { beforeTurn: 3, action: { type: "setImport", borderId: "border-zachod", mw: 0 } },
+  { beforeTurn: 3, action: { type: "setExport", borderId: "border-zachod", mw: 500 } },
+  { beforeTurn: 7, action: { type: "setExport", borderId: "border-zachod", mw: 0 } },
+  { beforeTurn: 7, action: { type: "setImport", borderId: "border-zachod", mw: 200 } },
+  // Day 0, midday: the pumped plant charges for three turns, so the charge
+  // state (intake swirl, rising reservoir) has a reproducible frame, then idles
+  // until the evening discharge of day 1.
+  {
+    beforeTurn: 2,
+    action: { type: "setStorage", storageId: "storage-esp-kotlina", mode: "charge", mw: 100 },
+  },
+  {
+    beforeTurn: 5,
+    action: { type: "setStorage", storageId: "storage-esp-kotlina", mode: "idle", mw: 0 },
+  },
   // Work in the queue: a coal block being built in the highlands.
   { beforeTurn: 0, action: { type: "buildPlant", tech: "coal", size: "small", hex: at(14, 12) } },
   // Day 1, morning: the Łęgi corridor is raised to HV — 70 % of 12 h per hex
@@ -252,6 +276,13 @@ const MIDGAME_SCRIPT: ScriptedAction[] = [
   {
     beforeTurn: TURNS_PER_DAY + 3,
     action: { type: "upgradeLine", lineId: "line-mv-legi-centrum", lineType: "hv" },
+  },
+  // Day 1, midday: FPV Wzgórze is switched off by the operator, so the world
+  // carries a disabled farm (no lamps, no output marker) from the afternoon
+  // on — including the judging evening, where PV produces nothing anyway.
+  {
+    beforeTurn: TURNS_PER_DAY + 4,
+    action: { type: "setFarmEnabled", farmId: "farm-pv-wzgorze", enabled: false },
   },
   // Day 1: the evening ramp is prepared — the second coal block is ordered late
   // enough to still be starting at SZCZYT WIECZORNY, the reservoir is drawn on.

@@ -20,6 +20,13 @@ export interface CaptureParams {
   camera: CameraPreset | null;
   /** Hex the close camera presets look at, as offset col,row (`?focus=9,6`). */
   focus: { col: number; row: number } | null;
+  /** Camera orientation override [deg], applied after the preset (`?yaw=180`). */
+  yaw: number | null;
+  pitch: number | null;
+  /** Hex selected in the app's store at boot, as offset col,row (`?select=19,6`). */
+  select: { col: number; row: number } | null;
+  /** `?report=1` opens the period report — reproducible HUD states. */
+  report: boolean;
   /** Pinned animation clock [s]; null runs free. */
   clock: number | null;
   quality: QualityTier | "auto" | null;
@@ -78,6 +85,13 @@ export function parseCaptureParams(search: string): CaptureParams {
     focusRest.length === 0 && focusCol != null && focusRow != null
       ? { col: focusCol, row: focusRow }
       : null;
+  const [selectCol, selectRow, ...selectRest] = (query.get("select") ?? "")
+    .split(",")
+    .map((part) => integer(part));
+  const select =
+    selectRest.length === 0 && selectCol != null && selectRow != null
+      ? { col: selectCol, row: selectRow }
+      : null;
   return {
     capture: query.get("capture") === "1" || query.get("capture") === "true",
     seed: integer(query.get("seed")),
@@ -90,6 +104,10 @@ export function parseCaptureParams(search: string): CaptureParams {
         ? (camera as CameraPreset)
         : null,
     focus,
+    yaw: real(query.get("yaw")),
+    pitch: real(query.get("pitch")),
+    select,
+    report: query.get("report") === "1",
     clock: clockMs === null ? null : clockMs / 1000,
     quality:
       quality === "high" || quality === "medium" || quality === "low" || quality === "auto"
