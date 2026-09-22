@@ -276,6 +276,18 @@ body,
     width: auto;
     border-left: 0;
   }
+
+  /* In the 3D world the map never steps out: at narrow widths the report dock
+     keeps its fixed width and the world keeps the rest (docs/08 §7). */
+  .en-app--world .en-workspace.has-report > .en-region--map {
+    display: block;
+  }
+
+  .en-app--world .en-workspace.has-report > .en-reportdock {
+    flex: none;
+    width: var(--en-report-w);
+    border-left: var(--en-border-w) solid var(--en-border);
+  }
 }
 
 .en-reportdock__head {

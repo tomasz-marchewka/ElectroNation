@@ -112,6 +112,11 @@ export interface GameStore {
   skipStop: SkipStop | null;
   saveNotice: SaveNotice | null;
   /**
+   * Whether transitions write the autosave. Off in capture mode (docs/08 §9):
+   * a curated showcase state must never overwrite the player's own session.
+   */
+  persist: boolean;
+  /**
    * Applies a player action (a JSON object — the future replay protocol).
    * Returns false when the engine refused it: an illegal action comes back as
    * the very same state (build.ts), which is the interface's cue to explain.
@@ -160,6 +165,12 @@ export interface GameStore {
   hydrate: () => Promise<void>;
   /** Takes over a state read from a save file, then autosaves it. */
   importSave: (file: Blob) => Promise<void>;
+  /**
+   * Replaces the session with a state built elsewhere — the showcase states of
+   * the capture harness (src/world/bridge/showcase.ts). Clears every view
+   * pointer into the old world and turns the autosave off for the session.
+   */
+  replaceGame: (game: GameState) => void;
 }
 
 /** Everything that pointed into the world being replaced (new game, load). */
@@ -195,7 +206,7 @@ export const useGameStore = create<GameStore>()((set, get) => {
       selectedTurn: null,
       timelineFrom: null,
     });
-    void saveGame(game);
+    if (get().persist) void saveGame(game);
   }
 
   return {
@@ -207,6 +218,7 @@ export const useGameStore = create<GameStore>()((set, get) => {
     selectedTurn: null,
     timelineFrom: null,
     saveNotice: null,
+    persist: true,
     reportOpen: false,
     reportScope: "turn",
     reportAnchor: null,
@@ -284,7 +296,10 @@ export const useGameStore = create<GameStore>()((set, get) => {
     restart: (seed) => {
       const game = newGame(seed);
       set({ game, ...CLEARED_VIEW, saveNotice: null });
-      void saveGame(game);
+      if (get().persist) void saveGame(game);
+    },
+    replaceGame: (game) => {
+      set({ game, ...CLEARED_VIEW, saveNotice: null, persist: false });
     },
     hydrate: async () => {
       if (seedIsPinned(currentSearch())) return;
@@ -303,7 +318,7 @@ export const useGameStore = create<GameStore>()((set, get) => {
         return;
       }
       set({ game: result.state, ...CLEARED_VIEW, saveNotice: { kind: "loaded" } });
-      void saveGame(result.state);
+      if (get().persist) void saveGame(result.state);
     },
   };
 });

@@ -100,6 +100,9 @@ const FIXTURE: Scenario = {
       hex: at(0, 1),
       tech: "coal",
       capacityMw: 900,
+      // Automatic control: the 800 MW order lives on the plant (01 §5.1, 0.28);
+      // under manual control it would sit dormant behind the block orders.
+      automation: true,
       setpointMw: 800,
     },
   ],

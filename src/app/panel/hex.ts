@@ -8,6 +8,7 @@
 // catalogue is stale (its "150 MW / 300 MWh — 900 mln" battery is not even a
 // size the game sells any more, and its biome multipliers predate 02 §8.1).
 
+import { plantOrderMw } from "../dispatch";
 import {
   BORDER_SPEC,
   CITY_CONNECTION_COST_PLN,
@@ -861,10 +862,7 @@ function plantView(state: GameState, report: TurnReport | null, plant: PlantStat
   );
   // In manual control the plant-level setpoint is dormant — the order the
   // panel reports is the sum of the block orders (01 §5.1, 0.28).
-  const orderedMw =
-    plant.controlMode === "auto"
-      ? plant.setpointMw
-      : plant.blocks.reduce((sum, block) => sum + block.setpointMw, 0);
+  const orderedMw = plantOrderMw(plant);
   return {
     kind: PLANT_CATALOG_NAMES[plant.tech],
     status: alert
