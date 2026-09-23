@@ -65,6 +65,28 @@ test("committing a turn resolves it in the world too", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test("OPCJE GRY switches the clouds on a running world (docs/08 §6)", async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto("/?capture=1&seed=1&clock=0");
+  await waitForWorld(page);
+
+  await page.getByRole("button", { name: "OPCJE GRY" }).click();
+  const clouds = page.getByRole("group", { name: "CHMURY" });
+  await expect(clouds.getByRole("button", { name: "PRZEJRZYSTE" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  for (const choice of ["PEŁNE", "BRAK", "PRZEJRZYSTE"]) {
+    await clouds.getByRole("button", { name: choice }).click();
+    await page.evaluate(() => window.__en!.step(0.1));
+  }
+
+  const info = await page.evaluate(() => window.__en!.info());
+  expect(info.diagnostics).toEqual([]);
+  expect(info.modules.every((module) => module.state === "ready")).toBe(true);
+  expect(errors).toEqual([]);
+});
+
 test("the curated mid-game state loads with a dark city and a loaded line", async ({ page }) => {
   await page.goto("/?capture=1&scenario=midgame&day=1&turn=6&clock=0&camera=strategic");
   await waitForWorld(page);

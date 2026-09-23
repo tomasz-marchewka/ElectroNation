@@ -95,6 +95,11 @@ export interface GameStore {
   bottleneck: BottleneckRef | null;
   /** Whether the detailed report is docked next to (or over) the map. */
   reportOpen: boolean;
+  /**
+   * Whether OPCJE GRY holds the right column. It gives way to the hex panel:
+   * a hex picked on the map closes it, as does starting a line.
+   */
+  optionsOpen: boolean;
   /** Which period the detailed report aggregates over. */
   reportScope: ReportScope;
   /**
@@ -151,11 +156,17 @@ export interface GameStore {
   /** Opens or closes the detailed report. */
   toggleReport: () => void;
   closeReport: () => void;
+  /** Opens or closes OPCJE GRY. */
+  toggleOptions: () => void;
+  closeOptions: () => void;
   /** Switches the scope, keeping the moment being read (only the zoom changes). */
   setReportScope: (scope: ReportScope) => void;
   /** Steps the report one period back (−1) or forward (+1), clamped. */
   stepReport: (delta: number) => void;
-  /** Starts a fresh session on `seed`; clears the selection and the autosave. */
+  /**
+   * Starts a fresh session on `seed`; clears the selection and the autosave
+   * and closes OPCJE GRY.
+   */
   restart: (seed: number) => void;
   /**
    * Boot step: continues the autosave when there is one. Never rejects — a
@@ -220,6 +231,7 @@ export const useGameStore = create<GameStore>()((set, get) => {
     saveNotice: null,
     persist: true,
     reportOpen: false,
+    optionsOpen: false,
     reportScope: "turn",
     reportAnchor: null,
     dispatch: (action) => {
@@ -247,9 +259,14 @@ export const useGameStore = create<GameStore>()((set, get) => {
     showNow: () => set({ selectedTurn: null, timelineFrom: null }),
     // Routing owns the map clicks until it ends (M7 brief pt 3).
     selectHex: (hex) =>
-      set((store) => (store.routing ? store : { selectedHex: hex, bottleneck: null })),
+      set((store) => {
+        if (store.routing) return store;
+        return hex
+          ? { selectedHex: hex, bottleneck: null, optionsOpen: false }
+          : { selectedHex: null, bottleneck: null };
+      }),
     startRouting: (from) =>
-      set({ selectedHex: from, routing: startRouting(from), bottleneck: null }),
+      set({ selectedHex: from, routing: startRouting(from), bottleneck: null, optionsOpen: false }),
     setRoutingType: (lineType) =>
       set((store) =>
         store.routing ? { routing: setRoutingType(store.routing, lineType) } : store,
@@ -277,6 +294,8 @@ export const useGameStore = create<GameStore>()((set, get) => {
     showBottleneck: (ref) => set({ bottleneck: ref }),
     toggleReport: () => set((store) => ({ reportOpen: !store.reportOpen })),
     closeReport: () => set({ reportOpen: false }),
+    toggleOptions: () => set((store) => ({ optionsOpen: !store.optionsOpen })),
+    closeOptions: () => set({ optionsOpen: false }),
     setReportScope: (scope) => set({ reportScope: scope }),
     stepReport: (delta) =>
       set((store) => {
@@ -295,7 +314,9 @@ export const useGameStore = create<GameStore>()((set, get) => {
       }),
     restart: (seed) => {
       const game = newGame(seed);
-      set({ game, ...CLEARED_VIEW, saveNotice: null });
+      // Starting over means playing: OPCJE GRY, where NOWA GRA lives, steps
+      // aside. A loaded file keeps it open — its notice is read there.
+      set({ game, ...CLEARED_VIEW, saveNotice: null, optionsOpen: false });
       if (get().persist) void saveGame(game);
     },
     replaceGame: (game) => {

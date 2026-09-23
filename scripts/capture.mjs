@@ -13,9 +13,9 @@
 // Options: --url (default http://localhost:5173), --seed, --scenario, --day,
 // --turn, --regime, --camera, --focus col,row, --yaw deg, --pitch deg,
 // --clock ms, --quality, --theme light|dark, --select col,row, --report 0|1,
-// --motion, --showcase <module>, --all (every frame of the showcase),
-// --modules a,b,c (load only these modules — a layer's cost is the difference
-// between a capture with and without it), --hud 0|1,
+// --motion, --clouds full|clear|none, --showcase <module>, --all (every frame
+// of the showcase), --modules a,b,c (load only these modules — a layer's cost
+// is the difference between a capture with and without it), --hud 0|1,
 // --repeat N (median of N GPU samples — the dev machine's timer swings ~1 ms),
 // --width, --height, --dpr, --fps-frames, --headed, --strict (exit 1 on errors
 // or a failed budget), --out <path without extension>.
@@ -50,6 +50,7 @@ function parseArgs(argv) {
     select: null,
     report: null,
     motion: null,
+    clouds: null,
     showcase: null,
     modules: null,
     all: false,
@@ -110,6 +111,7 @@ function frameUrl(options, frame) {
   if (options.report !== null && options.report !== undefined)
     query.set("report", String(options.report));
   if (options.motion) query.set("motion", options.motion);
+  if (options.clouds) query.set("clouds", options.clouds);
   // A module showcase is judged on its own pixels: bare world unless the
   // caller asks for the HUD (`--hud 1`, e.g. the whole-game showcase frames).
   const hud = options.hud ?? (options.showcase ? "0" : null);

@@ -2,7 +2,7 @@
 // same query string means the same thing in the app and in the harness.
 
 import type { CameraPreset } from "../render/core/CameraRig";
-import type { MotionMode, QualityTier } from "../render/core/types";
+import type { CloudMode, MotionMode, QualityTier } from "../render/core/types";
 
 export type RendererChoice = "3d" | "svg";
 
@@ -31,6 +31,8 @@ export interface CaptureParams {
   clock: number | null;
   quality: QualityTier | "auto" | null;
   motion: MotionMode | null;
+  /** `?clouds=full|clear|none` — the cloud setting; null keeps the player's. */
+  clouds: CloudMode | null;
   showcase: string | null;
   /** `?modules=terrain,sky,plants` — the module subset to load instead of the showcase's or the whole game's. */
   modules: string[] | null;
@@ -76,6 +78,7 @@ export function parseCaptureParams(search: string): CaptureParams {
   const camera = query.get("camera");
   const quality = query.get("quality");
   const motion = query.get("motion");
+  const clouds = query.get("clouds");
   const renderer = query.get("renderer");
   const clockMs = real(query.get("clock"));
   const [focusCol, focusRow, ...focusRest] = (query.get("focus") ?? "")
@@ -114,6 +117,7 @@ export function parseCaptureParams(search: string): CaptureParams {
         ? quality
         : null,
     motion: motion === "full" || motion === "reduced" || motion === "none" ? motion : null,
+    clouds: clouds === "full" || clouds === "clear" || clouds === "none" ? clouds : null,
     showcase: query.get("showcase"),
     modules: moduleList(query.get("modules")),
     renderer: renderer === "svg" || renderer === "3d" ? renderer : null,

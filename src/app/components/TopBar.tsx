@@ -1,11 +1,12 @@
 // Adapted from design-system/components/shell/TopBar.{jsx,d.ts}.
 // The bar is read-only by design (TopBar.prompt.md): no actions live here.
 //
-// One deliberate exception, `actions`: the detailed report is opened from the
-// top of the screen, and the screen has no other strip up there — the biome
-// legend is drawn inside the map's SVG, not in the DOM. The slot takes the
-// segmented control's small button, never the primary one: the screen's single
-// primary action stays ZATWIERDŹ TURĘ (Button.prompt.md).
+// One deliberate exception, `actions`: RAPORTY and OPCJE GRY open a layer of
+// the screen — the report dock, the options in the right column under them —
+// and the screen has no other strip up there; the top-right corner is also
+// where a player looks for a game's options. The slot takes the segmented
+// control's small button, never the primary one: the screen's single primary
+// action stays ZATWIERDŹ TURĘ (Button.prompt.md).
 
 import type { ReactNode } from "react";
 

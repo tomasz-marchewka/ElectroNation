@@ -185,12 +185,8 @@
   }
 }
 
-.en-app--world .en-chartlegend,
-.en-app--world .en-themeswitch {
-  background: color-mix(in srgb, var(--en-bg-app) 92%, transparent);
-}
-
 .en-app--world .en-chartlegend {
+  background: color-mix(in srgb, var(--en-bg-app) 92%, transparent);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
@@ -1038,44 +1034,8 @@
   transform: translateY(-50%);
 }
 
-/* ── settings strip ──────────────────────────────────────
-   Joins the theme switch in the legend strip. */
-.en-worldsettings {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--en-space-6);
-  font-family: var(--en-font-mono);
-  font-size: var(--en-fs-micro);
-  color: var(--en-text-4);
-}
-
-.en-worldsettings__group {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--en-space-3);
-}
-
-.en-worldsettings__label {
-  letter-spacing: 1px;
-}
-
-/* What the renderer actually runs at: the settled tier and the frame rate. */
-.en-worldsettings__readout {
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.5px;
-  color: var(--en-text-4);
-  white-space: nowrap;
-}
-
-.en-worldsettings__readout b {
-  font-weight: var(--en-fw-medium);
-  color: var(--en-text-2);
-}
-
-/* The strip is driven by mouse, and it must stay reachable by keyboard: the
-   browser's own focus ring is kept, lifted off the segment's edge. */
-.en-worldsettings .en-seg:focus-visible,
+/* The legend is driven by mouse, and it must stay reachable by keyboard: the
+   browser's own focus ring is kept, lifted off the toggle's edge. */
 .en-worldlegend__toggle:focus-visible {
   outline: 2px solid var(--en-info);
   outline-offset: 1px;

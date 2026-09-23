@@ -146,6 +146,7 @@ test("reading a turn back on the ribbon leaves the world where it is (01 §2.5)"
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(String(error)));
   await page.goto("/");
+  await page.getByRole("button", { name: "OPCJE GRY" }).click();
   await page.getByRole("button", { name: "NOWA GRA" }).click();
   await page.getByRole("button", { name: "POTWIERDŹ ✓" }).click();
 
@@ -199,7 +200,10 @@ test("both themes render the whole screen without errors", async ({ page }) => {
   await page.getByRole("button", { name: "ZATWIERDŹ TURĘ ▸" }).click();
 
   for (const theme of ["JASNY", "CIEMNY"]) {
+    // MOTYW lives in OPCJE GRY; the dispatcher panel comes back once it closes.
+    await page.getByRole("button", { name: "OPCJE GRY" }).click();
     await page.getByRole("button", { name: theme }).click();
+    await page.keyboard.press("Escape");
     await expect(page.locator("[data-region='report']")).toBeVisible();
     await expect(page.locator(".en-panel .en-section")).toHaveCount(3);
     await expect(page.getByText("BILANS PRZY OBECNYCH NASTAWACH")).toBeVisible();
@@ -232,24 +236,29 @@ test("the session travels through a save file", async ({ page }) => {
   await expect(page.locator(".en-panel__meta")).toContainText("TURA 2/8");
 
   const downloading = page.waitForEvent("download");
+  await page.getByRole("button", { name: "OPCJE GRY" }).click();
   await page.getByRole("button", { name: "ZAPISZ DO PLIKU" }).click();
   const download = await downloading;
   expect(download.suggestedFilename()).toMatch(/^electronation-save-\d{4}-\d{2}-\d{2}\.json$/);
   const savedPath = await download.path();
 
-  // A fresh session on the same origin, then the file put back into it.
+  // A fresh session on the same origin, then the file put back into it. The
+  // new game closes the options; the load keeps them open for its notice.
   await page.getByRole("button", { name: "NOWA GRA" }).click();
   await page.getByRole("button", { name: "POTWIERDŹ ✓" }).click();
   await expect(page.locator(".en-panel__meta")).toContainText("TURA 1/8");
 
+  await page.getByRole("button", { name: "OPCJE GRY" }).click();
   await page.locator(".en-sessionbar__file").setInputFiles(savedPath);
 
   await expect(page.locator(".en-sessionbar__note")).toHaveText("✓ ZAPIS WCZYTANY");
+  await page.keyboard.press("Escape");
   await expect(page.locator(".en-panel__meta")).toContainText("TURA 2/8");
 });
 
 test("a file that is not a save is refused with a diagnosis", async ({ page }) => {
   await page.goto("/");
+  await page.getByRole("button", { name: "OPCJE GRY" }).click();
 
   await page.locator(".en-sessionbar__file").setInputFiles({
     name: "strona.html",
@@ -260,6 +269,7 @@ test("a file that is not a save is refused with a diagnosis", async ({ page }) =
   await expect(page.locator(".en-sessionbar__note")).toHaveText(
     "✕ PLIK NIE JEST ZAPISEM ELECTRONATION",
   );
+  await page.keyboard.press("Escape");
   await expect(page.locator(".en-panel__meta")).toContainText("TURA 1/8");
 });
 
@@ -281,6 +291,7 @@ test("pełna pętla: nowa gra, budowa, linia, koniec doby, wznowienie po przeła
   await page.goto("/");
 
   // A known starting point: whatever the autosave slot held is overwritten.
+  await page.getByRole("button", { name: "OPCJE GRY" }).click();
   await page.getByRole("button", { name: "NOWA GRA" }).click();
   await page.getByRole("button", { name: "POTWIERDŹ ✓" }).click();
   await expect(page.locator(".en-panel__meta")).toContainText("TURA 1/8");
@@ -354,6 +365,7 @@ test("the theme switch repaints the page and survives a reload", async ({ page }
   await page.goto("/");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 
+  await page.getByRole("button", { name: "OPCJE GRY" }).click();
   await page.getByRole("button", { name: "JASNY" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
 

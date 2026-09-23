@@ -1,10 +1,11 @@
-// World settings of the HUD (docs/08 §4, §7): motion, quality, renderer and
-// whether the world legend is unfolded. View preferences, deliberately
-// outside GameState — the world looks the same whatever they are set to, it
-// only moves and costs differently.
+// World settings of the HUD (docs/08 §4, §6, §7): motion, quality, renderer,
+// clouds and sound — what OPCJE GRY sets — and whether the world legend is
+// unfolded. View preferences, deliberately outside GameState: the game plays
+// the same whatever they are set to; the world only moves, looks and costs
+// differently.
 
 import { create } from "zustand";
-import type { MotionMode, QualityTier } from "../render/core/types";
+import type { CloudMode, MotionMode, QualityTier } from "../render/core/types";
 
 export type QualityChoice = QualityTier | "auto";
 export type RendererChoice = "3d" | "svg";
@@ -22,6 +23,7 @@ export interface WorldSettings {
   motion: MotionMode;
   quality: QualityChoice;
   renderer: RendererChoice;
+  clouds: CloudMode;
   /** The light-encoding key over the world: unfolded until the player folds it. */
   legend: LegendChoice;
   audio: WorldAudioSettings;
@@ -31,6 +33,7 @@ interface Stored {
   motion?: unknown;
   quality?: unknown;
   renderer?: unknown;
+  clouds?: unknown;
   legend?: unknown;
   audio?: unknown;
 }
@@ -47,6 +50,10 @@ function parseQualityChoice(value: unknown): QualityChoice {
 
 function parseRenderer(value: unknown): RendererChoice {
   return value === "svg" || value === "3d" ? value : "3d";
+}
+
+function parseClouds(value: unknown): CloudMode {
+  return value === "full" || value === "none" ? value : "clear";
 }
 
 function parseLegend(value: unknown): LegendChoice {
@@ -82,6 +89,9 @@ export function defaultSettings(): WorldSettings {
     motion: osPrefersReducedMotion() ? "reduced" : "full",
     quality: "auto",
     renderer: "3d",
+    // Parted over the board: the clouds must never cost the read of the map
+    // (docs/08 §3); the full layer is the player's choice, not the default.
+    clouds: "clear",
     // Folded: unfolded it is a strip across the north coast in the strategic
     // frame; the title stays top-right and one press opens the key.
     legend: "closed",
@@ -100,6 +110,7 @@ function readStored(): WorldSettings {
       motion: parseMotion(stored.motion, defaults.motion),
       quality: parseQualityChoice(stored.quality),
       renderer: parseRenderer(stored.renderer),
+      clouds: parseClouds(stored.clouds),
       legend: parseLegend(stored.legend),
       audio: parseAudio(stored.audio),
     };
@@ -121,6 +132,7 @@ export interface WorldSettingsStore extends WorldSettings {
   setMotion: (motion: MotionMode) => void;
   setQuality: (quality: QualityChoice) => void;
   setRenderer: (renderer: RendererChoice) => void;
+  setClouds: (clouds: CloudMode) => void;
   setLegend: (legend: LegendChoice) => void;
   setAudioEnabled: (enabled: boolean) => void;
   setAudioVolume: (volume: number) => void;
@@ -131,6 +143,7 @@ function settingsOf(store: WorldSettings): WorldSettings {
     motion: store.motion,
     quality: store.quality,
     renderer: store.renderer,
+    clouds: store.clouds,
     legend: store.legend,
     audio: store.audio,
   };
@@ -148,6 +161,10 @@ export const useWorldSettings = create<WorldSettingsStore>()((set, get) => ({
   },
   setRenderer: (renderer) => {
     set({ renderer });
+    persist(settingsOf(get()));
+  },
+  setClouds: (clouds) => {
+    set({ clouds });
     persist(settingsOf(get()));
   },
   setLegend: (legend) => {
