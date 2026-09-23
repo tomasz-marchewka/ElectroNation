@@ -65,7 +65,11 @@ export const PAD_FLAT_KM = 4;
 export const PAD_BLEND_KM = 7;
 /** Shore height the land eases to next to water [km]. */
 const BEACH_KM = 0.03;
-/** Height of the far plain the skirt fades to on land edges [km]. */
+/**
+ * Height of the far plain the skirt fades to on land edges [km]. With its
+ * noise it stays above sea level: the water reads the border of the uniform
+ * grid outward (water.ts) and must find dry land there.
+ */
 const FAR_PLAIN_KM = 0.06;
 /** Sea floor the skirt fades to on sea edges [km]. */
 const FAR_SEA_KM = -0.55;
