@@ -14,6 +14,16 @@
       "port": 5174
     },
     {
+      "name": "game-build",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "npx vite build && mkdir -p node_modules/.cache/pages && ln -sfn \"$PWD/dist\" node_modules/.cache/pages/ElectroNation && python3 -m http.server 4173 --directory node_modules/.cache/pages"
+      ],
+      "port": 4173,
+      "url": "http://localhost:4173"
+    },
+    {
       "name": "prototype",
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "8123", "--directory", "prototyp"],
