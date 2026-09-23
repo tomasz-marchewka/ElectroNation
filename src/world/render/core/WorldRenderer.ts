@@ -17,6 +17,7 @@ import { worldRng } from "./prng";
 import { disposeTextures } from "./textures";
 import {
   motionSettings,
+  type CloudMode,
   type Diagnostics,
   type EnvironmentProvider,
   type ModuleContext,
@@ -42,6 +43,7 @@ export interface WorldRendererOptions {
   modules: WorldModule[];
   quality: QualityTier | "auto";
   motion: MotionMode;
+  clouds: CloudMode;
   /** Pinned animation clock [s]; null runs free. */
   pinnedClock: number | null;
   seed: number;
@@ -129,6 +131,7 @@ export class WorldRenderer {
       quality: this.quality.tier,
       clock: this.clock,
       motion: motionSettings(options.motion),
+      clouds: options.clouds,
       rng: (stream) => worldRng(options.seed, stream),
       terrain: FLAT_TERRAIN,
       environment: defaultEnvironment(),
@@ -212,6 +215,12 @@ export class WorldRenderer {
 
   setQuality(tier: QualityTier): void {
     this.quality.set(tier);
+  }
+
+  setClouds(mode: CloudMode): void {
+    if (this.shared.clouds === mode) return;
+    this.shared.clouds = mode;
+    this.registry.refresh();
   }
 
   private applyQuality(): void {

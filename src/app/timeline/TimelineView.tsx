@@ -16,7 +16,7 @@
 // chart's own background — colour taken away rather than added, which is what
 // keeps seven layers readable while none of them can be mistaken for measured.
 
-import { useRef, type PointerEvent, type ReactNode, type WheelEvent } from "react";
+import { useRef, type PointerEvent, type WheelEvent } from "react";
 import { WINDOW_TURNS, round01, type ChartPoint, type TimelineModel } from "./timeline";
 
 /** Trackpad pixels that make up one turn of scrolling. */
@@ -92,22 +92,9 @@ export interface TimelineViewProps {
   onNow: () => void;
   /** Whether the ribbon is already showing now, with nothing else selected. */
   atNow: boolean;
-  /**
-   * Parked at the end of the legend, which is the bottom strip of the working
-   * column and the screen's only place for a utility control (every corner of
-   * the map carries a legend of its own).
-   */
-  children?: ReactNode;
 }
 
-export function TimelineView({
-  model,
-  onSelect,
-  onScroll,
-  onNow,
-  atNow,
-  children,
-}: TimelineViewProps) {
+export function TimelineView({ model, onSelect, onScroll, onNow, atNow }: TimelineViewProps) {
   const { caption, scaleLabel, nowLabel, range } = model;
   const wheelRef = useRef(0);
   const dragRef = useRef<{
@@ -404,7 +391,6 @@ export function TimelineView({
           </span>
         ))}
         <span className="en-chartlegend__note">{model.note}</span>
-        {children}
       </div>
     </>
   );

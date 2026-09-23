@@ -1,7 +1,7 @@
 # ElectroNation — Interfejs 3D: świat, czytelność, HUD
 
-**Wersja:** 0.1
-**Data:** 2026-09-02
+**Wersja:** 0.2
+**Data:** 2026-09-23
 **Status:** **obowiązuje** dla warstwy prezentacji: model reliefowy kraju w Three.js
 i nakładka HUD. Zakres funkcjonalny interfejsu nadal definiuje [01 §8](01-mechanika-gry.md)
 — ten dokument mówi wyłącznie, **jak** stan gry jest pokazywany w trzech wymiarach i czego
@@ -75,7 +75,7 @@ i sylwetce** — nigdy przez przemalowanie materiału ani plakietkę, która zas
 | Które miasto ma niedobór? | okna miasta świecą proporcjonalnie do **udziału dostarczonej mocy**; przy ENS > 0 czerwony pierścień na ziemi i etykieta z `−ENS`; miasto niepodłączone — ciemna osada bez pierścienia | `lit = dostarczone / popyt` |
 | Która godzina? | pozycja i barwa słońca, niebo, cienie, światła miast; godzina w pasku górnym | godzina = środek bloku tury (NOC → 01:30 … PÓŹNY WIECZÓR → 22:30) |
 | Które bloki pracują / startują? | **w ruchu** — ciepłe okna hali + smuga i para skalowane **produkcją**, nie nastawą; **w rozruchu** — pomarańczowa poświata rozgrzewania narastająca z licznikiem, cienka smuga; **wyłączony** — ciemny | `outputMw / mw`, `startupTurnsLeft` |
-| Co robi pogoda? | niebo, chmury, opad, mgła, wirniki; pasek pogody HUD z liczbami ostatniej rozstrzygniętej tury | prawda tury rozstrzygniętej (ujawniona — 06 §8.6.1) |
+| Co robi pogoda? | niebo, chmury (nad planszą domyślnie tylko ich cienie — §6), opad, mgła, wirniki; pasek pogody HUD z liczbami ostatniej rozstrzygniętej tury | prawda tury rozstrzygniętej (ujawniona — 06 §8.6.1) |
 | Która farma jest wyłączona / przycięta? | wyłączona — wirniki stoją, światła gondoli zgaszone; przycięta — bursztynowy pierścień u podstawy | `enabled`, `curtailedMw` |
 | Co jest w budowie? | rusztowanie i dźwig, sylwetka rosnąca z postępem, etykieta `BUDOWA · 2 DOBY` | `remainingDays / totalDays` |
 | Którędy pójdzie linia? | wstęga trasy na terenie w kolorze akcji (czerwona, gdy trasa niedozwolona), koszt przy końcu trasy | ten sam rachunek, co w panelu trasowania |
@@ -109,7 +109,7 @@ zostaje **uchylona dla warstwy świata**. Nakładka HUD pozostaje statyczna jak 
 | przejście rozstrzygnięcia tury (słońce, światła, przepływy) | raz, 1,5 s | HUD |
 | ruch kamery (dolot, presety) | 0,6 s | — |
 
-Ustawienie `RUCH: PEŁNY / OGRANICZONY / BRAK` w pasku ustawień (dół ekranu, obok motywu):
+Ustawienie `RUCH: PEŁNY / OGRANICZONY / BRAK` w OPCJACH GRY (§7):
 
 - **OGRANICZONY** (domyślny także wtedy, gdy system operacyjny prosi o mniej ruchu):
   bez oddechu, bez cząstek, bez dryfu chmur; wirniki i smugi nadal się poruszają, bo niosą
@@ -151,6 +151,23 @@ funkcją silnika `generateDayTruth`, gdy raport dotyczy doby, której stan już 
 Osiem reżimów 06 §8.2 ma osiem rozpoznawalnych twarzy; sztorm i oba wyże zimowe są z nich
 najważniejsze, bo to one są testem gracza.
 
+**Chmury a mapa.** Warstwa chmur leży ~8 km nad terenem, a każdy preset kamery patrzy na
+kraj z góry, więc chmura staje między kamerą a heksem — i zasłania to, co gracz ma odczytać
+(§3). Ustawienie `CHMURY: PEŁNE / PRZEJRZYSTE / BRAK` w OPCJACH GRY (§7):
+
+- **PRZEJRZYSTE** (domyślne): nad planszą chmury się rozstępują — przez heksy przechodzą
+  tylko ich cienie, a warstwa zamyka się w pasie ~45 km za granicą planszy. Prześwit liczy
+  się tam, gdzie promień widzenia trafia w ziemię, nie pod chmurą, więc z żadnego kąta
+  chmura nie przykrywa heksa. Pierścień chmur wokół kraju przy okazji odcina obszar gry od
+  terenu za nim.
+- **PEŁNE**: warstwa nad całym krajem, jak w wersji 0.1 — z bliska gęstnieje nad mapą.
+- **BRAK**: ani warstwy, ani cieni; zachmurzenie podaje pasek pogody.
+
+Pogoda gry jest w każdym trybie ta sama: światło pod pokrywą, mgła, opad i zapaść PV
+w GHI nie zależą od ustawienia. Z daleka warstwa traci szczegóły drobniejsze niż ~2 piksele
+(wygaszają się do średniej), więc widok strategiczny pokazuje miękkie kłęby, a nie biały
+szum.
+
 ## 7. HUD
 
 Nakładka React nad sceną: **warstwowa, świadoma głębi, czytelna zarówno na śnieżnym polu
@@ -173,7 +190,7 @@ Każdy panel, który istnieje dziś, przetrwał w tej samej treści (modele wido
 
 | Panel | W HUD 3D |
 |---|---|
-| pasek górny (kontekst, reżim, KPI, RAPORTY) | u góry, na całą szerokość, nad sceną |
+| pasek górny (kontekst, reżim, KPI, RAPORTY, OPCJE GRY) | u góry, na całą szerokość, nad sceną |
 | panel dyspozytora / panel heksa / trasowanie (jedna kolumna 400 px) | zadokowany po prawej, nad sceną; scena widoczna pod nim jest rozmyta |
 | prognoza z pasmami, kolumna „bilans przy obecnych nastawach" | bez zmian |
 | suwaki nastaw per blok z bursztynowym znacznikiem mocy bieżącej | bez zmian |
@@ -181,7 +198,7 @@ Każdy panel, który istnieje dziś, przetrwał w tej samej treści (modele wido
 | wstęga czasu z wykresem pokrycia (prawda pełna, plan szrafurą) | dół lewej kolumny, nad sceną |
 | pasek raportu tury | dół, na całą szerokość |
 | raport okresowy | dok obok panelu, jak dotąd |
-| zapis / wczytanie, motyw | pasek narzędzi na dole legendy |
+| zapis / wczytanie, motyw | OPCJE GRY (sekcja GRA, wiersz MOTYW) |
 
 Nowe elementy HUD:
 
@@ -189,7 +206,15 @@ Nowe elementy HUD:
   obiektów, z priorytetem (alarmy nad nazwami), wygaszane z odległością i zasłonięciem;
 - **pasek pogody** — liczby ostatniej rozstrzygniętej tury: wiatr [m/s] per klasa,
   zachmurzenie, temperatura, GHI, śnieg; z notą `Dunkelflaute`, gdy warunki 06 §12.12;
-- **pasek ustawień** — `RUCH`, `JAKOŚĆ: AUTO / WYSOKA / ŚREDNIA / NISKA`, `RENDERER: 3D / SVG`;
+- **OPCJE GRY** — przycisk w pasku górnym obok `RAPORTY`; panel zajmuje prawą kolumnę tak
+  jak panel heksa (system projektowy nie ma okna modalnego) i zamyka się `ESC`, tym samym
+  przyciskiem albo `◂ WRÓĆ DO PANELU DYSPOZYTORA`; wybór heksa na mapie też go zamyka,
+  a potwierdzona `NOWA GRA` wraca do panelu dyspozytora. Sekcje: **GRAFIKA** — `JAKOŚĆ:
+  AUTO / WYSOKA / ŚREDNIA / NISKA` z odczytem poziomu i FPS, `CHMURY: PEŁNE / PRZEJRZYSTE /
+  BRAK` (§6), `RUCH` (§4), `RENDERER: 3D / SVG`, `MOTYW: CIEMNY / JASNY`; **DŹWIĘK** —
+  `ODGŁOSY: WYŁ. / WŁ.` (domyślnie wyłączone), `GŁOŚNOŚĆ`; **GRA** — `NOWA GRA`, `ZAPISZ DO
+  PLIKU`, `WCZYTAJ Z PLIKU`. Ustawienia pamięta przeglądarka; nie są częścią stanu gry.
+  Bez WebGL2 (albo na mapie SVG) wybory dotyczące świata 3D stoją wyszarzone z notą, skąd;
 - **linia diagnostyki** — `⚠ moduł <id> wyłączony — <błąd>`: awaria jednego modułu gasi jego
   warstwę, nigdy grę;
 - **baner podglądu** — w trybie przechwytywania z nadpisaną pogodą (`?regime=`) HUD mówi
@@ -242,6 +267,7 @@ Nowe elementy HUD:
 | ✅ | Świat pokazuje turę ostatnio rozstrzygniętą; godzina = środek bloku |
 | ✅ | Polityka ruchu §4 uchyla „interfejs statyczny" tylko dla świata; trzy ustawienia `RUCH` |
 | ✅ | Panele dzisiejsze przetrwały w tej samej treści; nowa jest nakładka, etykiety w świecie, pasek pogody, ustawienia, diagnostyka |
+| ✅ | Wszystkie ustawienia w OPCJACH GRY (prawa kolumna, przycisk w pasku górnym); chmury domyślnie PRZEJRZYSTE — nad planszą tylko ich cienie (§6) |
 | ✅ | Mapa SVG zostaje jako renderer zapasowy (bez WebGL2, `?renderer=svg`) i jako punkt odniesienia ślepego testu czytelności |
 | ✅ | Zasoby wyłącznie CC0 lub proceduralne; w tej wersji wszystko proceduralne |
 | ✅ | `three@0.184.0` — najnowsze wydanie osiągalne w środowisku budowy (rejestr npm niedostępny) |

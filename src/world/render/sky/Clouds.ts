@@ -7,6 +7,11 @@
 // clouds must never cost the read of the map under them (docs/08 §3); a
 // camera that dives under the layer sees the darker bases instead.
 //
+// The player's setting (docs/08 §6) decides how much of that reaches the
+// board: PEŁNE draws the layer over the whole country, PRZEJRZYSTE parts it
+// over the board — only the shadows cross the hexes, the layer closes again
+// in a ring outside them — and BRAK draws neither the layer nor its shadows.
+//
 // The same coverage function is rendered into a small texture the terrain
 // multiplies its sunlight by — cloud shadows that match the clouds above them,
 // drift included, displaced away from the sun by the layer's altitude. The
@@ -17,6 +22,7 @@
 
 import * as THREE from "three";
 import { proceduralTexture, type NoiseField } from "../core/textures";
+import type { CloudMode } from "../core/types";
 import type { Lighting, SkyState } from "./skyState";
 
 /** Period of the coverage field [km]; the shadow texture tiles with it. */
@@ -34,6 +40,8 @@ const HIGH_LAYER_WIND = 1.7;
 const HEAP_KM = 2.2;
 /** How far the shadow of the layer may be displaced from the cloud [km] (a 10° sun). */
 const MAX_SHADOW_REACH_KM = 45;
+/** Band outside the board over which a parted layer closes again [km]. */
+const CLEAR_BAND_KM = 45;
 
 const COVERAGE_GLSL = /* glsl */ `
 uniform sampler2D uNoise;
@@ -45,23 +53,46 @@ uniform float uCells;
 uniform float uWarp;
 uniform float uDetailPhase;
 
+// How much of a tap survives a pixel footprint of fp [km]: a pattern finer
+// than a couple of pixels is not cloud but speckle — the threshold turns it
+// into white dandruff — so the tap fades to its mean (the rank-normalised
+// channels average 0,5) as its finest wavelength shrinks toward the pixel.
+float cloudDetail(float wavelengthKm, float fp) {
+  return smoothstep(1.0, 2.5, wavelengthKm / max(fp, 1e-4));
+}
+
 // Every octave repeats an integer number of times per period: the field tiles.
-float cloudField(vec2 world) {
+// The finest wavelength of a tap is the period over its repeats and over the
+// channel's lattice (R: 4, G: 8 per texture). The curl of the lumps — a warp
+// of tens of kilometres over a few — scrambles a far view from pixel to pixel,
+// so from ~40 m a pixel it hands over to a slow warp a few cells wide, which
+// still hides the tiling of the base octave. fp = 0 is the full field.
+float cloudField(vec2 world, float fp) {
   vec2 p = (world - uDrift) / uPeriod;
   float k = uCells;
-  vec2 warp = (texture2D(uNoise, p * k * 2.0 + vec2(0.31, 0.77)).rg - 0.5) * (uWarp * 0.09);
+  float cell = uPeriod / k;
+  float curl = 1.0 - smoothstep(0.04, 0.25, fp);
+  float kw = max(1.0, floor(k * 0.25));
+  vec2 warp = (texture2D(uNoise, p * k * 2.0 + vec2(0.31, 0.77)).rg - 0.5) * (uWarp * 0.09 * curl)
+    + (texture2D(uNoise, p * kw + vec2(0.57, 0.19)).rg - 0.5) * (uWarp * 0.03 * (1.0 - curl));
   float a = texture2D(uNoise, (p + warp) * k).r;
   float b = texture2D(uNoise, (p + warp * 0.6) * k * 3.0 + vec2(0.37, 0.11)).g;
   float c = texture2D(uNoise, (p + warp * 0.3) * k * 8.0 + vec2(0.71, 0.53) + uDetailPhase).g;
   float d = texture2D(uNoise, p * k * 23.0 + vec2(0.13, 0.91)).g;
+  b = mix(0.5, b, cloudDetail(cell / 24.0, fp));
+  c = mix(0.5, c, cloudDetail(cell / 64.0, fp));
+  d = mix(0.5, d, cloudDetail(cell / 184.0, fp));
   float n = 0.55 * a + 0.25 * b + 0.13 * c + 0.07 * d;
   return clamp(0.5 + (n - 0.5) * 1.8, 0.0, 1.0);
 }
 // cover 0 → nothing passes even the soft edge; cover 1 → everything is cloud.
 float cloudThreshold() { return (1.0 + uSoft) - uCover * (1.02 + 2.0 * uSoft); }
-float cloudAlpha(float n) {
+// The edge widens by the field's change across a pixel (aa = fwidth(n)), so
+// a far edge is a soft gradient rather than pixels flipping in and out.
+float cloudAlpha(float n, float aa) {
   float th = cloudThreshold();
-  return smoothstep(th - uSoft, th + uSoft, n);
+  float soft = uSoft + aa;
+  return smoothstep(th - soft, th + soft, n);
 }
 // 0 at the edge of a cloud, 1 in its thick core.
 float cloudDepth(float n) {
@@ -95,15 +126,35 @@ uniform float uFogDensity;
 uniform float uFadeRadius;
 uniform vec2 uCenter;
 uniform float uLit;
+uniform vec4 uBoard;
+uniform float uClear;
+uniform float uClearKm;
 ${COVERAGE_GLSL}
+// How open a parted layer is at a point: 0 over the board, 1 past a band
+// outside it. Measured where the view ray through the point meets the ground,
+// not under the cloud, so from no angle does a cloud pixel land on a pixel of
+// the board. A camera under the layer sees it against the sky with no ground
+// behind it: nothing to part there.
+float openOver(vec3 p) {
+  float drop = cameraPosition.y - p.y;
+  if (drop <= 0.0) return 1.0;
+  vec2 g = cameraPosition.xz + (p.xz - cameraPosition.xz) * (cameraPosition.y / drop);
+  vec2 outside = max(max(uBoard.xy - g, g - uBoard.zw), 0.0);
+  return smoothstep(0.0, uClearKm, length(outside));
+}
 void main() {
   vec2 w = vWorld.xz;
-  float dist = length(cameraPosition - vWorld);
-  float n = cloudField(w);
+  // Kilometres per pixel on the layer, taken before any fragment is dropped.
+  float fp = length(fwidth(w));
+  float n = cloudField(w, fp);
+  // Parted over the board: the fragment goes before the lit tops cost anything.
+  float open = uClear > 0.5 ? openOver(vWorld) : 1.0;
   // Screen-space cull: a fragment smaller than a few pixels is dandruff at the
   // strategic distance — the terrain read it as a white speckle over the board.
-  if (fwidth(n) > 0.15) discard;
-  float a = cloudAlpha(n);
+  float aa = fwidth(n);
+  if (aa > 0.15 || open < 0.01) discard;
+  float dist = length(cameraPosition - vWorld);
+  float a = cloudAlpha(n, aa);
   if (a < 0.02) discard;
   float depth = cloudDepth(n);
   vec3 V = normalize(cameraPosition - vWorld);
@@ -112,11 +163,11 @@ void main() {
   if (uLit > 0.5) {
     // The tops as a height field: normals from the thickness, heaps shading heaps.
     float e = 2.5;
-    float hx = cloudDepth(cloudField(w + vec2(e, 0.0))) - cloudDepth(cloudField(w - vec2(e, 0.0)));
-    float hz = cloudDepth(cloudField(w + vec2(0.0, e))) - cloudDepth(cloudField(w - vec2(0.0, e)));
+    float hx = cloudDepth(cloudField(w + vec2(e, 0.0), fp)) - cloudDepth(cloudField(w - vec2(e, 0.0), fp));
+    float hz = cloudDepth(cloudField(w + vec2(0.0, e), fp)) - cloudDepth(cloudField(w - vec2(0.0, e), fp));
     vec3 N = normalize(vec3(-hx * uRelief * 4.0, 1.0, -hz * uRelief * 4.0));
     vec2 toSun = uSunDir.xz / max(uSunDir.y, 0.12) * uHeap;
-    float taller = cloudDepth(cloudField(w + toSun)) - depth;
+    float taller = cloudDepth(cloudField(w + toSun, fp)) - depth;
     float shade = 1.0 - 0.65 * smoothstep(0.0, 0.45, taller) * uRelief;
     float ndl = max(dot(N, uSunDir), 0.0);
     vec3 topLit = uSunColor * (0.5 * ndl + 0.06 * max(uSunDir.y, 0.0)) * shade;
@@ -135,7 +186,7 @@ void main() {
   float fogF = 1.0 - exp(-uFogDensity * uFogDensity * dist * dist);
   col = mix(col, uFogColor, fogF);
   float radial = 1.0 - smoothstep(uFadeRadius * 0.6, uFadeRadius, length(w - uCenter));
-  float alpha = a * (0.55 + 0.45 * depth) * uCap * radial;
+  float alpha = a * (0.55 + 0.45 * depth) * uCap * radial * open;
   gl_FragColor = vec4(col, alpha);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
@@ -155,8 +206,10 @@ varying vec2 vUv;
 ${COVERAGE_GLSL}
 void main() {
   vec2 w = vUv * uPeriod;
-  float n = cloudField(w);
-  float a = cloudAlpha(n);
+  // The full field, curl included: the shadows keep the shape of the clouds a
+  // close camera sees above them.
+  float n = cloudField(w, 0.0);
+  float a = cloudAlpha(n, 0.0);
   float shade = 1.0 - a * (0.5 + 0.5 * cloudDepth(n)) * 0.95;
   gl_FragColor = vec4(vec3(shade), 1.0);
 }
@@ -258,6 +311,9 @@ function layerMaterial(noise: THREE.Texture, altitudeKm: number): THREE.ShaderMa
       uFadeRadius: { value: FADE_RADIUS_KM },
       uCenter: { value: new THREE.Vector2() },
       uLit: { value: 1 },
+      uBoard: { value: new THREE.Vector4() },
+      uClear: { value: 0 },
+      uClearKm: { value: CLEAR_BAND_KM },
     },
     transparent: true,
     depthWrite: false,
@@ -294,6 +350,8 @@ export class CloudLayers {
   private centre = new THREE.Vector2();
   private highLayerAmount = 0;
   private detailPhase = 0;
+  private layers: 1 | 2 = 1;
+  private mode: CloudMode = "full";
 
   constructor() {
     this.noise = cloudNoiseTexture();
@@ -347,20 +405,36 @@ export class CloudLayers {
     this.shadowScene.add(this.shadowQuad);
   }
 
-  /** Where the board is: the plane and the radial fade centre on it. */
-  setBoard(centreX: number, centreZ: number): void {
-    this.centre.set(centreX, centreZ);
-    this.low.position.set(centreX, LOW_LAYER.altitudeKm, centreZ);
-    this.high.position.set(centreX, HIGH_LAYER.altitudeKm, centreZ);
-    (this.lowMaterial.uniforms.uCenter!.value as THREE.Vector2).copy(this.centre);
-    (this.highMaterial.uniforms.uCenter!.value as THREE.Vector2).copy(this.centre);
+  /**
+   * The board rectangle on the ground [km]: the plane and the radial fade
+   * centre on it, and a parted layer keeps off it.
+   */
+  setBoard(x0: number, z0: number, x1: number, z1: number): void {
+    this.centre.set((x0 + x1) / 2, (z0 + z1) / 2);
+    this.low.position.set(this.centre.x, LOW_LAYER.altitudeKm, this.centre.y);
+    this.high.position.set(this.centre.x, HIGH_LAYER.altitudeKm, this.centre.y);
+    for (const material of [this.lowMaterial, this.highMaterial]) {
+      (material.uniforms.uCenter!.value as THREE.Vector2).copy(this.centre);
+      (material.uniforms.uBoard!.value as THREE.Vector4).set(x0, z0, x1, z1);
+    }
   }
 
   /** Two layers with lit relief on high, one flat-lit layer on low. */
   configure(layers: 1 | 2, lit: boolean): void {
-    this.high.visible = layers === 2;
+    this.layers = layers;
+    this.high.visible = layers === 2 && this.mode !== "none";
     this.lowMaterial.uniforms.uLit!.value = lit ? 1 : 0;
     this.highMaterial.uniforms.uLit!.value = lit ? 1 : 0;
+  }
+
+  /** The player's cloud setting (docs/08 §6); the shadows are the sky module's to drop. */
+  setMode(mode: CloudMode): void {
+    this.mode = mode;
+    const clear = mode === "clear" ? 1 : 0;
+    this.lowMaterial.uniforms.uClear!.value = clear;
+    this.highMaterial.uniforms.uClear!.value = clear;
+    this.low.visible = mode !== "none";
+    this.high.visible = this.layers === 2 && mode !== "none";
   }
 
   /** Coverage and look from the state; light from the derived lighting. */

@@ -197,27 +197,18 @@ body,
   margin-left: auto;
 }
 
-/* ── theme switch ───────────────────────────────────────
-   Bottom right, discreetly, as in the reference build
-   (ui_kits/dispatcher/index.html) — the top bar stays free of actions.
-   Two differences from the reference: it rides the working column rather than
-   the viewport (the reference's `position: fixed` would cover the bottom right
-   of the panel — the screen's only primary button — and swallow its clicks),
-   and it sits IN the chart legend instead of floating over it. Floating was
-   fine while the strip below the chart was empty; the legend fills it. */
-.en-themeswitch {
-  background: var(--en-bg-app);
-}
-
 /* ── session bar (M9) ───────────────────────────────────
-   New game, save to file, load from file, in the same utility strip and with
-   the same discretion as the theme switch next to it. The bar borrows the
-   segmented control's small button — these are actions, not a choice, so none
-   of them is ever pressed. The legend's own type carries the notice line. */
+   New game, save to file, load from file: the GRA section of OPCJE GRY. The
+   bar borrows the segmented control's small button — these are actions, not a
+   choice, so none of them is ever pressed. The notice reads under them. */
 .en-sessionbar {
   display: flex;
-  align-items: center;
-  gap: var(--en-space-5);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--en-space-3);
+  font-family: var(--en-font-mono);
+  font-size: var(--en-fs-micro);
+  color: var(--en-text-3);
 }
 
 .en-sessionbar__note.is-ok {

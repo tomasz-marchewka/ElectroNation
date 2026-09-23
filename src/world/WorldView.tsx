@@ -93,6 +93,7 @@ export function WorldView({
   const [error, setError] = useState<string | null>(null);
   const motion = useWorldSettings((store) => store.motion);
   const quality = useWorldSettings((store) => store.quality);
+  const clouds = useWorldSettings((store) => store.clouds);
   const audioEnabled = useWorldSettings((store) => store.audio.enabled);
   const audioVolume = useWorldSettings((store) => store.audio.volume);
 
@@ -119,6 +120,7 @@ export function WorldView({
         modules: worldModules(moduleIds),
         quality: params.quality ?? useWorldSettings.getState().quality,
         motion: params.motion ?? useWorldSettings.getState().motion,
+        clouds: params.clouds ?? useWorldSettings.getState().clouds,
         pinnedClock: params.clock,
         seed: scene.seed,
       });
@@ -233,6 +235,10 @@ export function WorldView({
     const tier: QualityTier | "auto" = params.quality ?? quality;
     if (tier !== "auto") world.setQuality(tier);
   }, [quality, params.quality]);
+
+  useEffect(() => {
+    rendererRef.current?.setClouds(params.clouds ?? clouds);
+  }, [clouds, params.clouds]);
 
   return (
     <div className="en-world" ref={hostRef} data-world-ready={ready ? "true" : "false"}>

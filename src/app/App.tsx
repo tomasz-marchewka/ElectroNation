@@ -13,10 +13,12 @@
 // dispatcher panel never move, so the screen keeps being one continuous view
 // (01 §2.3) — the report is a layer of reading, not a screen of its own.
 //
-// The 400 px column has three mutually exclusive states and never shows two of
+// The 400 px column has four mutually exclusive states and never shows two of
 // them at once: the dispatcher panel by default, the hex panel while a hex is
-// selected (01 §8 pt 6), and the routing panel while a line is being drawn
-// (01 §3.3) — which also takes over the map's clicks until it ends.
+// selected (01 §8 pt 6), the routing panel while a line is being drawn
+// (01 §3.3) — which also takes over the map's clicks until it ends — and
+// OPCJE GRY while the player has it open (docs/08 §7), over any of the others
+// until a hex is picked or it is closed.
 //
 // UI strings are Polish (player-facing); identifiers and comments stay English.
 
@@ -31,7 +33,6 @@ import {
 } from "../world/bridge";
 import { parseCaptureParams } from "../world/capture/params";
 import { Diagnostics } from "../world/hud/Diagnostics";
-import { SettingsStrip } from "../world/hud/SettingsStrip";
 import { ShowcaseCaption } from "../world/hud/ShowcaseCaption";
 import { WeatherStrip } from "../world/hud/WeatherStrip";
 import { WorldLegend } from "../world/hud/WorldLegend";
@@ -39,10 +40,9 @@ import { useWorldSettings } from "../world/hud/settingsStore";
 import { showcaseSpec } from "../world/showcase/registry";
 import { WorldView, webglAvailable } from "../world/WorldView";
 import { HexPanel } from "./components/HexPanel";
+import { OptionsPanel } from "./components/OptionsPanel";
 import { ReportStrip } from "./components/ReportStrip";
 import { RoutingPanel } from "./components/RoutingPanel";
-import { SessionBar } from "./components/SessionBar";
-import { ThemeSwitch } from "./components/ThemeSwitch";
 import { TopBar } from "./components/TopBar";
 import { formatMoneyPln } from "./format";
 import { daysLabel } from "./labels";
@@ -101,6 +101,9 @@ export function App() {
   const toggleReport = useGameStore((store) => store.toggleReport);
   const closeReport = useGameStore((store) => store.closeReport);
   const setReportScope = useGameStore((store) => store.setReportScope);
+  const optionsOpen = useGameStore((store) => store.optionsOpen);
+  const toggleOptions = useGameStore((store) => store.toggleOptions);
+  const closeOptions = useGameStore((store) => store.closeOptions);
   const stepReport = useGameStore((store) => store.stepReport);
   const timelineFrom = useGameStore((store) => store.timelineFrom);
   const selectTurn = useGameStore((store) => store.selectTurn);
@@ -108,6 +111,7 @@ export function App() {
   const showNow = useGameStore((store) => store.showNow);
   const replaceGame = useGameStore((store) => store.replaceGame);
   const settingsRenderer = useWorldSettings((store) => store.renderer);
+  const theme = useThemeStore((store) => store.theme);
 
   // Capture-mode parameters are read once: a URL names one world.
   const params = useMemo(
@@ -130,6 +134,11 @@ export function App() {
   useEffect(() => {
     if (params.theme) useThemeStore.getState().setTheme(params.theme);
   }, [params.theme]);
+
+  // Every token repaints off this attribute; nothing about the layout moves.
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
 
   // A capture URL that names a scenario, a day or a turn replaces the session
   // with that curated state and stops the autosave from being written over.
@@ -207,20 +216,21 @@ export function App() {
     [game, reportOpen, reportScope, reportAnchor],
   );
 
-  // ESC steps back one level: out of routing first, out of the hex panel next,
-  // out of a turn being read back last (01 §2.5).
+  // ESC steps back one level: out of the options first, out of routing next,
+  // then out of the hex panel, out of a turn being read back last (01 §2.5).
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       const store = useGameStore.getState();
-      if (store.routing) cancelRouting();
+      if (store.optionsOpen) closeOptions();
+      else if (store.routing) cancelRouting();
       else if (store.selectedHex) selectHex(null);
       else if (store.reportOpen) closeReport();
       else showNow();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [cancelRouting, closeReport, selectHex, showNow]);
+  }, [cancelRouting, closeOptions, closeReport, selectHex, showNow]);
 
   const onHexClick = routing ? clickRouting : selectHex;
   const onHexHover = routing ? hoverRouting : undefined;
@@ -292,9 +302,24 @@ export function App() {
           { label: "PROGNOZY", value: forecastSystemKpi(game) },
         ]}
         actions={
-          <button type="button" className="en-seg" aria-pressed={reportOpen} onClick={toggleReport}>
-            RAPORTY
-          </button>
+          <>
+            <button
+              type="button"
+              className="en-seg"
+              aria-pressed={reportOpen}
+              onClick={toggleReport}
+            >
+              RAPORTY
+            </button>
+            <button
+              type="button"
+              className="en-seg"
+              aria-pressed={optionsOpen}
+              onClick={toggleOptions}
+            >
+              OPCJE GRY
+            </button>
+          </>
         }
       />
 
@@ -318,14 +343,17 @@ export function App() {
             onScroll={scrollTimeline}
             onNow={showNow}
             atNow={atNow}
-          >
-            <SessionBar />
-            <ThemeSwitch />
-            {webgl && <SettingsStrip activeTier={worldStatus.tier} />}
-          </TimelineView>
+          />
         </div>
 
-        {routing ? (
+        {optionsOpen ? (
+          <OptionsPanel
+            webgl={webgl}
+            world3d={use3d}
+            activeTier={worldStatus.tier}
+            onClose={closeOptions}
+          />
+        ) : routing ? (
           <RoutingPanel
             game={game}
             session={routing}

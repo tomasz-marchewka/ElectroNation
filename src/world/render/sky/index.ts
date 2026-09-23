@@ -11,8 +11,14 @@ import * as THREE from "three";
 import type { WorldScene } from "../../bridge/worldScene";
 import { FLAT_TERRAIN } from "../core/ModuleRegistry";
 import { QUALITY_PROFILES } from "../core/Quality";
-import type { EnvironmentProvider, ModuleContext, QualityTier, WorldModule } from "../core/types";
-import { boardCenter } from "../core/units";
+import type {
+  CloudMode,
+  EnvironmentProvider,
+  ModuleContext,
+  QualityTier,
+  WorldModule,
+} from "../core/types";
+import { boardCenter, boardSize } from "../core/units";
 import { CLOUD_PERIOD_KM, CloudLayers } from "./Clouds";
 import { LightRig } from "./LightRig";
 import { Precipitation } from "./Precipitation";
@@ -93,6 +99,7 @@ export function createSkyModule(): WorldModule {
   let stage: ShowcaseStage | null = null;
   let stageKey: string | null = null;
   let configuredTier: QualityTier | null = null;
+  let cloudMode: CloudMode = "full";
   let lastKey: string | null = null;
   let boardKey: string | null = null;
   let transitioning = false;
@@ -137,7 +144,10 @@ export function createSkyModule(): WorldModule {
     provider.ambientIntensity = lighting.ambientIntensity;
     provider.daylight = shown.daylight;
     provider.fogColor.copy(lighting.fogColor);
-    if (provider.cloudShadow) provider.cloudShadow.strength = lighting.cloudShadowStrength;
+    // CHMURY BRAK takes the shadows too; the light under the cover stays the weather's.
+    if (provider.cloudShadow) {
+      provider.cloudShadow.strength = cloudMode === "none" ? 0 : lighting.cloudShadowStrength;
+    }
     rain?.setWeather(
       shown.precipitationKind,
       shown.precipitation,
@@ -180,17 +190,30 @@ export function createSkyModule(): WorldModule {
       rain = new Precipitation(ctx.rng("sky:precipitation"));
       ctx.root.add(rain.points);
       configure(ctx);
+      cloudMode = ctx.clouds;
+      clouds.setMode(cloudMode);
       ctx.registerEnvironment(provider);
     },
 
     update(scene, previous, ctx) {
       configure(ctx);
+      if (ctx.clouds !== cloudMode) {
+        cloudMode = ctx.clouds;
+        clouds?.setMode(cloudMode);
+        lightingDirty = true;
+      }
       ensureStage(scene, ctx);
       const board = `${scene.board.cols}x${scene.board.rows}`;
       if (board !== boardKey) {
         boardKey = board;
         const centre = boardCenter(scene.board.cols, scene.board.rows);
-        clouds?.setBoard(centre.x, centre.z);
+        const size = boardSize(scene.board.cols, scene.board.rows);
+        clouds?.setBoard(
+          centre.x - size.width / 2,
+          centre.z - size.depth / 2,
+          centre.x + size.width / 2,
+          centre.z + size.depth / 2,
+        );
       }
       const key = stateKey(scene);
       if (key === lastKey) {

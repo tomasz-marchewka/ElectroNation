@@ -74,6 +74,7 @@ export class ModuleRegistry {
       entry.ctx.environment = this.shared.environment;
       entry.ctx.quality = this.shared.quality;
       entry.ctx.motion = this.shared.motion;
+      entry.ctx.clouds = this.shared.clouds;
     }
   }
 
@@ -120,7 +121,7 @@ export class ModuleRegistry {
     }
   }
 
-  /** Re-applies quality and motion to every module through a fresh update. */
+  /** Re-applies quality, motion and clouds to every module through a fresh update. */
   refresh(): void {
     if (this.lastScene) this.update(this.lastScene, this.lastScene);
   }

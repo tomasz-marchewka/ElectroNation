@@ -232,3 +232,101 @@
 .en-turn.is-current:disabled:hover {
   color: var(--en-action-fg);
 }
+
+/* ── OPCJE GRY ──────────────────────────────────────────
+   The options take the right column the way the hex panel does. One row per
+   setting: the name in a key column, the segments after it and, under a
+   choice that needs one, a line saying what it does — the voice of .en-note. */
+.en-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--en-space-6);
+}
+
+.en-option {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--en-space-4);
+  row-gap: var(--en-space-2);
+  font-family: var(--en-font-mono);
+  font-size: var(--en-fs-micro);
+}
+
+.en-option__label {
+  color: var(--en-text-3);
+  letter-spacing: 1px;
+}
+
+.en-option__control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--en-space-2) var(--en-space-5);
+}
+
+.en-option__note {
+  grid-column: 2;
+  line-height: 1.4;
+  color: var(--en-text-4);
+}
+
+/* A level (GŁOŚNOŚĆ): the setpoint's track and thumb, the value after it. */
+.en-option__track {
+  position: relative;
+  display: block;
+  flex: 1;
+  min-width: 120px;
+  height: var(--en-track-h-sm);
+  background: var(--en-bg-track);
+}
+
+.en-option__fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: var(--en-text-3);
+}
+
+.en-option.is-muted .en-option__fill,
+.en-option.is-muted .en-setpoint__thumb {
+  background: var(--en-text-4);
+}
+
+.en-option__value {
+  width: 36px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--en-text-2);
+}
+
+/* What the renderer actually runs at: the settled tier and the frame rate. */
+.en-option__readout {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
+  color: var(--en-text-4);
+  white-space: nowrap;
+}
+
+.en-option__readout b {
+  font-weight: var(--en-fw-medium);
+  color: var(--en-text-2);
+}
+
+/* Why a group of choices does nothing right now (no WebGL2, the SVG map). */
+.en-options__note {
+  font-family: var(--en-font-mono);
+  font-size: var(--en-fs-micro);
+  line-height: 1.4;
+  color: var(--en-warn-text);
+}
+
+/* The panel is driven by mouse, and it must stay reachable by keyboard: the
+   browser's own focus ring is kept, lifted off the segment's edge. */
+.en-option .en-seg:focus-visible,
+.en-option__track:focus-within,
+.en-sessionbar .en-seg:focus-visible {
+  outline: 2px solid var(--en-info);
+  outline-offset: 1px;
+}

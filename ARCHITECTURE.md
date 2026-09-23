@@ -47,7 +47,7 @@ src/
       cities/        settlements scaled by households, lit by delivered power
       effects/       flow, overload, construction, blackout, selection, route preview
     interaction/     hex picking, camera control, route drawing
-    hud/             React overlay: shell, world-anchored labels, weather strip, settings
+    hud/             React overlay: shell, world-anchored labels, weather strip, settings store
     perf/            budget checks, fps meter, instancing helpers
     capture/         capture mode (URL params, pinned clock, ready signal, window.__en)
     showcase/        per-module showcase scenes (?showcase=<module>)
@@ -90,7 +90,9 @@ frame loop: registry.frame(dt, clock) → post-processing → canvas
 The HUD keeps today's panel view models (`src/app/panel/*`, `timeline`, `report`) — they are
 the tested contract of every panel that exists today — and re-exports them through
 `bridge/hud.ts`. What is new is the overlay shell, the world-anchored label layer, the weather
-strip, the settings strip (motion, quality) and the diagnostics line.
+strip, the options (OPCJE GRY — `app/components/OptionsPanel.tsx`: quality, clouds, motion,
+renderer, theme, sound, session; it takes the right column like the hex panel) and the
+diagnostics line.
 
 ## 4. The scene contract
 
@@ -172,7 +174,7 @@ holds. Mapping (bridge/weather.ts):
 
 | Input | Output |
 |---|---|
-| cloud cover | sky turbidity, cloud layer coverage, cloud shadows on terrain, PV collapse (already in GHI) |
+| cloud cover | sky turbidity, cloud layer coverage, cloud shadows on terrain, PV collapse (already in GHI); how much of the layer reaches the board is the player's `CHMURY` setting (below) |
 | regime + cloud + temperature | precipitation kind (rain / sleet / snow) and intensity, fog, haze |
 | daily mean temperature (+ regime) | snow cover 0..1 (lowland); terrain derives the snowline |
 | wind per class | turbine rotor state: off (farm disabled), still (< cut-in 3 m/s), spinning (speed ∝ power curve), feathered (≥ cut-out 25 m/s); cloud drift; precipitation slant |
@@ -180,6 +182,16 @@ holds. Mapping (bridge/weather.ts):
 
 Dunkelflaute must look like Dunkelflaute: fog/frost high → still rotors, flat grey or hard
 frosty light, dark PV. Storm → feathered rotors, driving rain, low scud.
+
+`CHMURY: PEŁNE / PRZEJRZYSTE / BRAK` (docs/08 §6) is a view setting, `CloudMode` =
+`full | clear | none` in `ModuleContext.clouds`. `full` draws the layer over the whole country;
+`clear` (the default) parts it over the board — the fragment shader measures where the view
+ray through a cloud meets the ground and drops the cloud when that point lies on the board,
+so from no angle does a cloud pixel cover a hex, and the layer closes again over a 45 km band
+outside it; `none` hides both layers and sets the cloud shadow strength to 0. The weather
+itself — light under the cover, fog, precipitation, PV — is the same in every mode. The
+coverage field fades octaves finer than ~2 px to their mean and hands the lumps' curl over to
+a slow warp from ~40 m a pixel, so a far view reads soft heaps instead of white speckle.
 
 ## 9. Legibility contract (state → encoding)
 
@@ -209,7 +221,7 @@ The handoff's "static interface" rule is repealed for the world layer only (docs
 | turn resolution transition (sun, lights, flows) | 1.5 s once | the HUD |
 | camera moves (fly-to, presets) | 0.6 s ease | — |
 
-Settings strip: `RUCH: PEŁNY / OGRANICZONY / BRAK`. `OGRANICZONY` (also the default when the OS
+OPCJE GRY: `RUCH: PEŁNY / OGRANICZONY / BRAK`. `OGRANICZONY` (also the default when the OS
 asks for reduced motion) stops breathing, particles and cloud drift; rotors and plumes still
 move because they carry state. `BRAK` freezes everything; state is then read from emission
 and silhouette alone, which is why every animated signal has a static twin.
@@ -227,11 +239,12 @@ interface WorldModule {
 ```
 
 `ModuleContext` gives a module its own root `Group`, the renderer, camera, quality tier,
-frame clock, PRNG factory, units, motion settings, and two providers registered by other
-modules: `terrain` (`heightAt`, `normalAt`, snowline) and `environment` (sun direction,
-sky colour, fog). Init order: terrain → sky → the rest in registration order. Every call is
-wrapped by the registry: a throwing module is disabled, its root hidden and its id reported
-through `ctx.diagnostics` to the HUD line `⚠ moduł <id> wyłączony — <error>`.
+frame clock, PRNG factory, units, motion settings, the cloud setting, and two providers
+registered by other modules: `terrain` (`heightAt`, `normalAt`, snowline) and `environment`
+(sun direction, sky colour, fog). Init order: terrain → sky → the rest in registration
+order. Every call is wrapped by the registry: a throwing module is disabled, its root hidden
+and its id reported through `ctx.diagnostics` to the HUD line `⚠ moduł <id> wyłączony —
+<error>`.
 
 Events (renderer → app): `hex:hover`, `hex:click`, `hex:context`, `camera:change`,
 `scene:ready`, `module:failed`, `perf:tier`. All through `WorldRenderer.events`.
@@ -253,9 +266,10 @@ Events (renderer → app): `hex:hover`, `hex:click`, `hex:context`, `camera:chan
 | medium | 1024 | bloom | one layer | half | full |
 | low | none | none | flat | none | reduced |
 
-Auto: start at medium, measure 120 frames, move a tier up or down; `?quality=` and the
-settings strip override. Instance everything that repeats (hex tiles, pylons, conductors,
-turbines, PV rows, city blocks). Strategic view budget: ≤ 800 draw calls, ≤ 3 M triangles.
+Auto: start at medium, measure 120 frames, move a tier up or down; `?quality=` and
+`JAKOŚĆ` in OPCJE GRY override. Instance everything that repeats (hex tiles, pylons,
+conductors, turbines, PV rows, city blocks). Strategic view budget: ≤ 800 draw calls, ≤ 3 M
+triangles.
 `perf/budget.ts` asserts the budget in capture logs; a module over budget is cut, not shipped
 at 25 fps. Measured numbers are reported as measured, with the GPU named.
 
@@ -273,7 +287,8 @@ URL parameters (capture mode, `?capture=1`): `seed`, `day`, `turn` (the turn 0..
 RESOLVED — absent means the day's first turn is pending and nothing is resolved), `regime`
 (weather override shown with a banner), `camera` (preset name: strategic, overview, north,
 closeup, golden, detail), `focus=col,row` (offset hex the close presets look at), `clock` (pinned
-ms), `quality`, `motion`, `scenario` (`start` | `midgame`, built in `bridge/showcase.ts`),
+ms), `quality`, `motion`, `clouds` (`full` | `clear` | `none`), `scenario` (`start` |
+`midgame`, built in `bridge/showcase.ts`),
 `showcase=<module>` (stages that module alone, HUD off, on the showcase's own day — 1, the
 judging day of `midgame`, unless `day` overrides it), `modules=a,b,c` (loads only these
 modules — a layer's cost is the difference between a capture with and without it),
@@ -335,7 +350,7 @@ trybie SVG`. A module failure never triggers the fallback; only a renderer failu
 | render/cities | `CitiesModule` | — | km | cities, time, sun |
 | render/effects | `EffectsModule` | — | km | overlay, lines.segments, sites, cities.blackout |
 | interaction | `attachInteraction(renderer, store)` | hex:hover/click, camera:change | px → km | board, overlay |
-| hud | `<Hud>`, `<WorldLabels>`, `<WeatherStrip>`, `<SettingsStrip>`, `<Diagnostics>` | — | — | labels, weather, time, notes |
+| hud | `<Hud>`, `<WorldLabels>`, `<WeatherStrip>`, `<Diagnostics>`, `useWorldSettings` (read by `OptionsPanel`) | — | — | labels, weather, time, notes |
 | perf | `budget`, `FpsMeter`, `instancing` | perf:tier | fps, calls | — |
 | capture | `captureParams`, `installCaptureApi` | — | — | all (read) |
 | bridge | `buildWorldScene`, `solarAzimuthDeg`, `sceneWeather`, `showcaseState`, `hud` re-exports | — | — | — |

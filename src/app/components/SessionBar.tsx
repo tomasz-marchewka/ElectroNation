@@ -1,7 +1,7 @@
-// Session actions: start over, write the state to a file, read one back. They
-// join the theme switch at the end of the chart legend, which is the screen's
-// utility strip (M8) — the top bar carries no actions (TopBar.prompt.md) and
-// the panel's one button is the primary one (ZATWIERDŹ TURĘ).
+// Session actions: start over, write the state to a file, read one back —
+// the GRA section of OPCJE GRY (OptionsPanel.tsx). None of them is the
+// screen's primary action (ZATWIERDŹ TURĘ), so they keep the segmented
+// control's small button; the notice line reads under them.
 //
 // "ZAPISZ / WCZYTAJ Z PLIKU", not "EKSPORT / IMPORT": in this game export and
 // import are cross-border power flows (01 §5.7), and the words are taken.
@@ -31,13 +31,6 @@ export function SessionBar() {
 
   return (
     <div className="en-sessionbar">
-      {notice && (
-        <span className={`en-sessionbar__note is-${notice.kind === "loaded" ? "ok" : "danger"}`}>
-          {notice.kind === "loaded" ? "✓ ZAPIS WCZYTANY" : `✕ ${loadErrorText(notice.error)}`}
-        </span>
-      )}
-      {confirming && <span className="en-sessionbar__note">NOWA GRA NADPISUJE AUTOZAPIS</span>}
-
       <span className="en-segmented">
         {confirming ? (
           <>
@@ -69,6 +62,13 @@ export function SessionBar() {
           </>
         )}
       </span>
+
+      {confirming && <span className="en-sessionbar__note">NOWA GRA NADPISUJE AUTOZAPIS</span>}
+      {notice && (
+        <span className={`en-sessionbar__note is-${notice.kind === "loaded" ? "ok" : "danger"}`}>
+          {notice.kind === "loaded" ? "✓ ZAPIS WCZYTANY" : `✕ ${loadErrorText(notice.error)}`}
+        </span>
+      )}
 
       <input
         ref={filePicker}

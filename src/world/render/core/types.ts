@@ -22,6 +22,13 @@ export interface MotionSettings {
   transitions: boolean;
 }
 
+/**
+ * The cloud setting of docs/08 §6: the whole layer over the country, a layer
+ * that parts over the board and leaves only its shadows there, or no clouds
+ * at all. A view preference — the weather the engine plays is the same.
+ */
+export type CloudMode = "full" | "clear" | "none";
+
 export function motionSettings(mode: MotionMode): MotionSettings {
   return {
     mode,
@@ -93,6 +100,7 @@ export interface ModuleContext {
   quality: QualityTier;
   clock: FrameClock;
   motion: MotionSettings;
+  clouds: CloudMode;
   /** Seeded stream: `rng("terrain:relief")`. Same seed → same numbers. */
   rng(stream: string): Rng;
   terrain: TerrainProvider;

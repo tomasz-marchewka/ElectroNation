@@ -1,5 +1,5 @@
 // The dispatcher screen frame (01 §8): the shell renders, the top bar reads
-// the engine state, the theme switch repaints the whole page.
+// the engine state, the theme switch in OPCJE GRY repaints the whole page.
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -81,6 +81,8 @@ describe("theme", () => {
     render(<App />);
     expect(document.documentElement.dataset.theme).toBe("dark");
 
+    // MOTYW lives in OPCJE GRY.
+    await userEvent.click(screen.getByText("OPCJE GRY"));
     await userEvent.click(screen.getByText("JASNY"));
     expect(document.documentElement.dataset.theme).toBe("light");
     expect(screen.getByText("JASNY").getAttribute("aria-pressed")).toBe("true");
@@ -91,6 +93,7 @@ describe("theme", () => {
 
   test("the preference is remembered in localStorage", async () => {
     render(<App />);
+    await userEvent.click(screen.getByText("OPCJE GRY"));
     await userEvent.click(screen.getByText("JASNY"));
     expect(localStorage.getItem("electronation.theme")).toBe("light");
   });
