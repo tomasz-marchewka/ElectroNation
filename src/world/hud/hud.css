@@ -64,6 +64,22 @@
   z-index: 2;
 }
 
+/* Inside the body, the panel, the report dock, the ribbon and the chart
+   legend are static boxes that follow the fixed map in DOM order; they paint
+   above it only as stacking contexts. Isolation makes that explicit rather
+   than a side effect of the blur — a build that lost backdrop-filter once
+   sank all four under the canvas. */
+.en-app--world .en-panel,
+.en-app--world .en-reportdock,
+.en-app--world .en-timeline,
+.en-app--world .en-chartlegend {
+  isolation: isolate;
+}
+
+/* Prefixed before standard, everywhere below: Lightning CSS (Vite's CSS
+   minifier) reads a -webkit- line AFTER the standard one as an override and
+   drops the standard property, which Chrome and Firefox need. */
+
 /* A weather override (capture): the top bar carries the DAY'S forecast while
    the strip shows the previewed truth, so the bar's value names itself — the
    PODGLĄD tag lives with the strip's banner, never on the contradicting value. */
@@ -102,16 +118,16 @@
    is new, and it never drops below 0,88. */
 .en-app--world .en-topbar {
   background: color-mix(in srgb, var(--en-bg-header) 92%, transparent);
-  backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
   border-bottom: var(--en-border-w) solid var(--en-border);
 }
 
 .en-app--world .en-panel {
   max-height: 100%;
   background: color-mix(in srgb, var(--en-bg-panel) 93%, transparent);
-  backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
   border-left: var(--en-border-w) solid var(--en-border);
 }
 
@@ -121,14 +137,14 @@
 
 .en-app--world .en-reportdock {
   background: color-mix(in srgb, var(--en-bg-panel) 94%, transparent);
-  backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
 }
 
 .en-app--world .en-timeline {
   background: color-mix(in srgb, var(--en-bg-header) 92%, transparent);
-  backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
   border-top: var(--en-border-w) solid var(--en-border);
 }
 
@@ -175,8 +191,8 @@
 }
 
 .en-app--world .en-chartlegend {
-  backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
 }
 
 /* The report strip stands under the ribbon and the panel, never on the scene. */
@@ -539,8 +555,8 @@
 
 .en-weather {
   background: color-mix(in srgb, var(--en-bg-header) 92%, transparent);
-  backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
   border: var(--en-border-w) solid var(--en-border);
   font-family: var(--en-font-mono);
   font-size: var(--en-fs-caption);
@@ -730,8 +746,8 @@
   line-height: var(--en-lh-normal);
   color: var(--en-text-3);
   background: color-mix(in srgb, var(--en-bg-app) 92%, transparent);
-  backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
   border: var(--en-border-w) solid var(--en-border);
   border-left-width: var(--en-border-w-accent);
   border-left-color: var(--en-text-4);
@@ -806,8 +822,8 @@
   max-width: min(500px, 34vw);
   padding: var(--en-space-3) var(--en-space-5) var(--en-space-4);
   background: color-mix(in srgb, var(--en-bg-app) 92%, transparent);
-  backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
   border: var(--en-border-w) solid var(--en-border);
   font-family: var(--en-font-mono);
   font-size: var(--en-fs-micro);
@@ -1079,8 +1095,8 @@
   gap: var(--en-space-3) var(--en-space-8);
   padding: var(--en-space-3) var(--en-space-6);
   background: color-mix(in srgb, var(--en-bg-app) 92%, transparent);
-  backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
   border: var(--en-border-w) solid var(--en-border);
   font-family: var(--en-font-mono);
   font-size: var(--en-fs-label);
