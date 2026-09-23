@@ -52,11 +52,14 @@ varying vec3 vEnWorldPos;
 /** Replaces map_fragment: depth tint, shore edge, foam and ice. */
 const SURFACE = /* glsl */ `
 vec2 enP = vEnWorldPos.xz;
-vec2 enHuv = ( enP - uHeightRect.xy ) * uHeightRect.zw;
-bool enInside = enHuv.x >= 0.0 && enHuv.x <= 1.0 && enHuv.y >= 0.0 && enHuv.y <= 1.0;
-vec2 enGround = texture2D( uHeightMap, clamp( enHuv, 0.0, 1.0 ) ).rg;
-float enBed = enInside ? enGround.r : -0.6;
-float enLake = enInside ? enGround.g : 0.0;
+// Past the height map the relief is the skirt's far value (the low plain off
+// a land edge, the open sea off a sea edge), which the border texels already
+// hold, so the clamped tap carries it to the horizon. Never assume open sea
+// there: a strategic view cannot part the plane in depth from a plain a few
+// dozen metres above it, and the water bled through the land in streaks.
+vec2 enGround = texture2D( uHeightMap, clamp( ( enP - uHeightRect.xy ) * uHeightRect.zw, 0.0, 1.0 ) ).rg;
+float enBed = enGround.r;
+float enLake = enGround.g;
 float enDepth = max( 0.0, -enBed );
 float enDeep = smoothstep( 0.0, 0.45, enDepth );
 // Shallow teal to a saturated deep blue: the sea must stay sea under the
