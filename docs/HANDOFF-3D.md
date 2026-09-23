@@ -281,8 +281,6 @@ Po każdej fali: `docs/STATUS.json`, tabela modułów w `ARCHITECTURE.md` §18,
   (headless = SwiftShader, fps nie jest bramką).
 - **Projekcja wydajności** (M3 Pro ≈ 2,5× GPU średniej klasy) to założenie zapisane
   w `src/world/perf/budget.ts`, nie pomiar na docelowym sprzęcie.
-- Vite 8 ostrzega, że `advancedChunks` jest przestarzałe (`codeSplitting`) — kosmetyka
-  w `vite.config.ts`.
 
 ## 8. Zasady, których trzeba dalej pilnować
 

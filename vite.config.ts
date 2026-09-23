@@ -7,12 +7,12 @@ export default defineConfig(({ command }) => ({
   base: command === "build" ? "/ElectroNation/" : "/",
   plugins: [react()],
   build: {
-    rollupOptions: {
+    rolldownOptions: {
       output: {
         // three.js is the one large dependency; kept apart from the game so a
         // game change never invalidates the cached renderer chunk (Vite 8 runs
-        // on rolldown, whose chunking API is `advancedChunks`).
-        advancedChunks: { groups: [{ name: "three", test: /node_modules[\\/]three[\\/]/ }] },
+        // on rolldown, whose manual chunking API is `codeSplitting.groups`).
+        codeSplitting: { groups: [{ name: "three", test: /node_modules[\\/]three[\\/]/ }] },
       },
     },
     chunkSizeWarningLimit: 1_200,
