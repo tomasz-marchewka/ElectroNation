@@ -2,20 +2,26 @@
 // ARCHITECTURE.md §5–§6, §18). Consumes the scene's `seed`, `board`, `time`
 // and `weather` slices and nothing else; registers the TerrainProvider every
 // other module and the camera rig read. One ground mesh with the eight-layer
-// splat material, one water surface, two instanced tree levels of detail.
-// The field is rebuilt only when the seed, the board or the quality tier
-// changes — the weather of a turn is a handful of uniforms.
+// splat material, one water surface, instanced trees in two levels of detail.
+// Every hex has its own look (looks.ts) — a character of its biome with its
+// own ground variant (variants.ts, painted on the GPU at init), its tone and
+// its own ground transform — drawn from the scene seed, and the looks of
+// neighbouring hexes meet in soft, wandering borders (blend.ts). The field is
+// rebuilt only when the seed, the board or the quality tier changes — the
+// weather of a turn is a handful of uniforms.
 
 import * as THREE from "three";
 import type { WorldScene } from "../../bridge/worldScene";
 import { QUALITY_PROFILES } from "../core/Quality";
 import type { ModuleContext, QualityTier, TerrainProvider, WorldModule } from "../core/types";
 import { boardCenter } from "../core/units";
+import { blendNoise, disposeBlendNoise } from "./blend";
 import { buildForest, type Forest } from "./forest";
 import { buildHeightField, fieldIndices, fieldPositions, type HeightField } from "./heightfield";
 import { clamp } from "./noise";
+import { boardLooks } from "./looks";
 import { iceAmount, snowlineKm, wetness } from "./snowline";
-import { createTerrainMaterial, type TerrainUniforms } from "./terrainMaterial";
+import { createLookTexture, createTerrainMaterial, type TerrainUniforms } from "./terrainMaterial";
 import { disposeTerrainTextures, terrainTextures, type TerrainTextureSet } from "./terrainTextures";
 import { createWater, type Water } from "./water";
 
@@ -28,9 +34,9 @@ const DEG = Math.PI / 180;
 /**
  * Per-tier ground detail (ARCHITECTURE.md §13 — the tiers must be real), read
  * from the one knobs table in `core/Quality.ts`: the camera distance [km]
- * under which the per-layer normal maps and the anti-tiling second copies
- * still pay for themselves, the highest layer index sampled (above it the
- * layer's mean colour is folded in), and the ground texture anisotropy.
+ * under which the per-layer normal maps and the second relief tap still pay
+ * for themselves, the highest layer index sampled (above it the layer's mean
+ * colour is folded in), and the ground texture anisotropy.
  */
 interface GroundDetail {
   normal: number;
@@ -81,6 +87,7 @@ export function createTerrainModule(): WorldModule {
   let builtKey: string | null = null;
   let ground: THREE.Mesh | null = null;
   let groundMaterial: THREE.MeshStandardMaterial | null = null;
+  let lookTexture: THREE.DataTexture | null = null;
   let uniforms: TerrainUniforms | null = null;
   let water: Water | null = null;
   let forest: Forest | null = null;
@@ -106,13 +113,15 @@ export function createTerrainModule(): WorldModule {
     if (ground && ctxRef) ctxRef.root.remove(ground);
     ground?.geometry.dispose();
     groundMaterial?.dispose();
+    lookTexture?.dispose();
     ground = null;
     groundMaterial = null;
+    lookTexture = null;
     uniforms = null;
     if (water && ctxRef) ctxRef.root.remove(water.mesh);
     water?.dispose();
     water = null;
-    if (forest && ctxRef) ctxRef.root.remove(forest.near, forest.far);
+    if (forest && ctxRef) ctxRef.root.remove(forest.group);
     forest?.dispose();
     forest = null;
     field = null;
@@ -120,8 +129,10 @@ export function createTerrainModule(): WorldModule {
 
   const rebuild = (scene: WorldScene, ctx: ModuleContext): void => {
     clear();
-    if (!textures) textures = terrainTextures();
+    if (!textures) throw new Error("terrain: textures not painted before the first scene");
     const profile = QUALITY_PROFILES[ctx.quality];
+    const looks = boardLooks(scene.board, ctx.rng("terrain:looks"));
+    const noise = blendNoise();
     field = buildHeightField(scene.board, ctx.rng("terrain:relief"), {
       cellKm: profile.terrainCellKm,
       skirtKm: SKIRT_KM,
@@ -130,12 +141,11 @@ export function createTerrainModule(): WorldModule {
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute("position", new THREE.BufferAttribute(fieldPositions(field), 3));
     geometry.setAttribute("normal", new THREE.BufferAttribute(field.normals, 3));
-    geometry.setAttribute("weightsA", new THREE.BufferAttribute(field.weightsA, 4));
-    geometry.setAttribute("weightsB", new THREE.BufferAttribute(field.weightsB, 4));
-    geometry.setAttribute("occlusion", new THREE.BufferAttribute(field.occlusion, 1));
+    geometry.setAttribute("cover", new THREE.BufferAttribute(field.cover, 4));
     geometry.setIndex(new THREE.BufferAttribute(fieldIndices(field), 1));
     geometry.computeBoundingSphere();
-    const built = createTerrainMaterial(textures);
+    lookTexture = createLookTexture(looks.grid);
+    const built = createTerrainMaterial(textures, looks.grid, lookTexture, noise.texture);
     groundMaterial = built.material;
     uniforms = built.uniforms;
     uniforms.uTrim.value = detailFor(ctx.quality).trim;
@@ -155,10 +165,12 @@ export function createTerrainModule(): WorldModule {
       ctx.rng("terrain:forest"),
       profile.detail,
       profile.shadows && ctx.quality === "high",
+      looks.byKey,
+      noise,
     );
     if (forest) {
       forest.setDistance(ctx.view.distanceKm);
-      ctx.root.add(forest.near, forest.far);
+      ctx.root.add(forest.group);
     }
   };
 
@@ -198,8 +210,15 @@ export function createTerrainModule(): WorldModule {
 
     init(ctx) {
       ctxRef = ctx;
-      textures = terrainTextures();
       ctx.registerTerrain(provider);
+      textures = terrainTextures(ctx.renderer);
+      // Not a module failure (the HUD line would say "disabled"): the ground
+      // is whole, it only loses the variants' variety.
+      if (textures.variantError) {
+        console.warn(
+          `terrain: ground variants fell back to the classic tiles — ${textures.variantError}`,
+        );
+      }
     },
 
     update(scene, _previous, ctx) {
@@ -214,7 +233,7 @@ export function createTerrainModule(): WorldModule {
 
     frame(_dt, ctx) {
       // Distance is the other quality knob: at the strategic view the per-layer
-      // normals and the anti-tiling copies are sub-pixel, so the tier's near
+      // normals and the second relief tap are sub-pixel, so the tier's near
       // distances switch them off and the ground textures drop anisotropy.
       const detail = detailFor(ctx.quality);
       const near = detail.normal > 0 && ctx.view.distanceKm < detail.normal;
@@ -272,6 +291,7 @@ export function createTerrainModule(): WorldModule {
     dispose() {
       clear();
       disposeTerrainTextures();
+      disposeBlendNoise();
       textures = null;
       builtKey = null;
       ctxRef = null;

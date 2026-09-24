@@ -91,6 +91,35 @@ Etykiety zakotwiczone w świecie drukują **dokładnie te same teksty**, które 
 SVG (`EC MODRZYCA CCGT · 320/400`, `KRASNÓW · 300 MW`, `BUDOWA · 2 DOBY`) — renderer nigdy
 nie wymyśla liczby.
 
+**Zróżnicowanie biomów.** Heksy jednego biomu nie są kopiami jednej kafli: każdy heks ma
+**charakter** swojego biomu z własnym **wariantem gruntu** — inną strukturą i paletą, nie tylko
+odcieniem:
+
+| Biom | Warianty |
+|---|---|
+| równina | mozaika pól, szachownica wąskich pasów (też w odcieniu żniw), łany — wielkie prostokątne pola, łąki i pastwiska z zadrzewieniami, drobne pola w sieci żywopłotów |
+| las | mieszany, bór w oddziałach z liniami oddziałowymi, liściasty, zręby i młodniki (z mniejszymi i rzadszymi drzewami) |
+| wyżyna | wrzosowisko, wrzos wypalany pasami, hala w kamiennych murkach, rumowisko |
+| góry | granit, wapień, łupek |
+| bagno | turzyce z oczkami, trzcinowisko z kanałami, osuszone torfowisko z rowami |
+
+Do tego każdy heks ma własny odcień w obrębie charakteru oraz własną skalę i przesunięcie
+tekstury; jej obrót idzie za **wolno zmiennym kierunkiem regionalnym**, więc pola, linie
+oddziałowe i rowy sąsiednich heksów biegną podobnie jak w prawdziwym krajobrazie. Charaktery
+skupiają się luźno w regiony (~4 heksy), ale zwykle dwóch sąsiadów na trzech się różni.
+
+**Granice biomów nachodzą na siebie.** Grunt heksa nie kończy się na jego obrysie: granica
+dwóch heksów wędruje wokół prostej krawędzi (typowo ±2 km, najdalej ~8 km) i jest ostra, ale
+nieregularna — nigdy nie jest przenikaniem dwóch wzorów. Dziki grunt (las, wrzosowisko,
+rumowisko, bagno) ma granicę postrzępioną w języki, zatoki i wysepki; dwa systemy pól spotykają
+się na łagodnym łuku, wzdłuż którego biegnie droga polna. Drzewa idą za gruntem lasu: wchodzą
+z nim w pola, cofają się tam, gdzie pole wcina się w las, a za skrajem lasu rzedną w kępy
+i pojedyncze drzewa na ~1 km. Woda nie bierze udziału w mieszaniu — brzeg wyznacza relief.
+**Środek heksa zawsze należy do niego**: w promieniu placu budowy (4 km) grunt jest wyłącznie
+jego, a do ~6 km żaden sąsiad nie przejmuje terenu; średnio ~86 % powierzchni heksa to jego
+własny biom. Rozrzut barw zostaje **w rodzinie barw biomu** — heks zawsze czyta się jako swój
+biom — i **nie niesie żadnej informacji o grze**: wynika wyłącznie z ziarna mapy.
+
 **Ocena.** W każdej rundzie krytyków czytelność jest punktowana **osobno** od plastyki
 (pytania na czas z samego zrzutu ekranu), a jej porażki nie da się odkupić wyższą oceną
 artystyczną.

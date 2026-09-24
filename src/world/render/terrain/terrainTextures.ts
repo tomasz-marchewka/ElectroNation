@@ -1,35 +1,25 @@
 // Procedural surfaces of the relief model (ARCHITECTURE.md §14): every ground
 // material is painted here from the seeded, tileable noise of
 // render/core/textures.ts — nothing is downloaded, nothing is bundled and
-// every session paints the same pixels. The eight ground layers live in two
-// texture arrays (albedo + roughness in alpha, tangent-space normals), so the
-// terrain shader blends them with two samplers instead of sixteen.
+// every session paints the same pixels. The eight classic ground layers are
+// painted on the CPU; their variants (variants.ts — strip fields, spruce in
+// compartments, burnt heather…) on the GPU (variantPainters.ts) and read back
+// into the same arrays. All of them live in two texture arrays (albedo +
+// roughness in alpha, tangent-space normals), so the terrain shader blends
+// them with two samplers instead of dozens.
 //
-// Legibility first (docs/08 §3): each layer has its own hue family, so a hex
-// reads as its biome from the strategic view — fresh green-and-straw fields,
-// dark saturated forest floor, ochre heather moor, olive-teal marsh, grey
-// granite, pale concrete, sand and snow.
+// Legibility first (docs/08 §3): each layer keeps its own hue family through
+// its variants, so a hex reads as its biome from the strategic view — green-
+// and-straw fields, dark forest, ochre-to-purple moor, olive marsh, grey rock,
+// pale concrete, sand and snow.
 
 import * as THREE from "three";
 import { worldRng, type Rng } from "../core/prng";
 import { fbm, normalMapFromHeight, proceduralTexture, type NoiseField } from "../core/textures";
+import { startVariantBake, type VariantBake } from "./variantPainters";
+import { LAYERS, SLICE_COUNT, VARIANTS, sliceOf } from "./variants";
 
 export const LAYER_SIZE = 512;
-
-/** Ground layers in the order of the vertex weights and the array slices. */
-export const LAYERS = [
-  "grass",
-  "canopy",
-  "rock",
-  "moor",
-  "wet",
-  "pavement",
-  "sand",
-  "snow",
-] as const;
-
-/** World size of one tile of each layer [km], LAYERS order. */
-export const LAYER_TILE_KM: readonly number[] = [9, 5.5, 11, 8, 6, 4.2, 6, 6];
 
 /**
  * World size of the range's relief normal tile [km]: its ridges run 5–8 km
@@ -337,6 +327,37 @@ function layerSpecs(): Record<(typeof LAYERS)[number], LayerSpec> {
   };
 }
 
+/**
+ * Tangent-space normals of a height map into the normal slice at `slice`,
+ * central differences with wrap-around — the one derivation for the CPU and
+ * the GPU painted slices alike.
+ */
+function normalsFromHeight(
+  heights: Float32Array,
+  bump: number,
+  slice: number,
+  normal: Uint8Array,
+): void {
+  const size = LAYER_SIZE;
+  const base = slice * size * size * 4;
+  for (let y = 0; y < size; y++) {
+    const yu = (y + 1) % size;
+    const yd = (y - 1 + size) % size;
+    for (let x = 0; x < size; x++) {
+      const xr = (x + 1) % size;
+      const xl = (x - 1 + size) % size;
+      const nx = -(heights[y * size + xr]! - heights[y * size + xl]!) * bump;
+      const ny = -(heights[yu * size + x]! - heights[yd * size + x]!) * bump;
+      const length = Math.hypot(nx, ny, 1);
+      const o = base + (y * size + x) * 4;
+      normal[o] = Math.round(((nx / length) * 0.5 + 0.5) * 255);
+      normal[o + 1] = Math.round(((ny / length) * 0.5 + 0.5) * 255);
+      normal[o + 2] = Math.round(((1 / length) * 0.5 + 0.5) * 255);
+      normal[o + 3] = 255;
+    }
+  }
+}
+
 /** Paints one layer into the albedo and normal slices at `slice`. */
 function paintLayer(
   name: string,
@@ -378,34 +399,22 @@ function paintLayer(
       albedo[o + 3] = Math.round(clamp01(rough) * 255);
     }
   }
-  for (let y = 0; y < size; y++) {
-    const yu = (y + 1) % size;
-    const yd = (y - 1 + size) % size;
-    for (let x = 0; x < size; x++) {
-      const xr = (x + 1) % size;
-      const xl = (x - 1 + size) % size;
-      const nx = -(heights[y * size + xr]! - heights[y * size + xl]!) * spec.bump;
-      const ny = -(heights[yu * size + x]! - heights[yd * size + x]!) * spec.bump;
-      const length = Math.hypot(nx, ny, 1);
-      const o = base + (y * size + x) * 4;
-      normal[o] = Math.round(((nx / length) * 0.5 + 0.5) * 255);
-      normal[o + 1] = Math.round(((ny / length) * 0.5 + 0.5) * 255);
-      normal[o + 2] = Math.round(((1 / length) * 0.5 + 0.5) * 255);
-      normal[o + 3] = 255;
-    }
-  }
+  normalsFromHeight(heights, spec.bump, slice, normal);
 }
 
 /**
- * Mean linear albedo and mean roughness of each layer, from the painted
+ * Mean linear albedo and mean roughness of each slice, from the painted
  * slices: what a tier that drops a layer's fetch multiplies by its weight.
- * The sRGB bytes are decoded the way the sampler decodes them, so a folded
- * layer lands at the same brightness as a sampled one.
+ * The sRGB bytes are decoded the way the sampler decodes them (one lookup
+ * table), so a folded layer lands at the same brightness as a sampled one.
  */
-function layerMeans(albedo: Uint8Array): THREE.Vector4[] {
+function sliceMeans(albedo: Uint8Array): THREE.Vector4[] {
   const pixels = LAYER_SIZE * LAYER_SIZE;
   const colour = new THREE.Color();
-  return LAYERS.map((_, slice) => {
+  const linear = new Float64Array(256);
+  for (let v = 0; v < 256; v++) linear[v] = colour.setRGB(v / 255, 0, 0, THREE.SRGBColorSpace).r;
+  const means: THREE.Vector4[] = [];
+  for (let slice = 0; slice < SLICE_COUNT; slice++) {
     let r = 0;
     let g = 0;
     let b = 0;
@@ -413,23 +422,18 @@ function layerMeans(albedo: Uint8Array): THREE.Vector4[] {
     const base = slice * pixels * 4;
     for (let i = 0; i < pixels; i++) {
       const o = base + i * 4;
-      colour.setRGB(
-        albedo[o]! / 255,
-        albedo[o + 1]! / 255,
-        albedo[o + 2]! / 255,
-        THREE.SRGBColorSpace,
-      );
-      r += colour.r;
-      g += colour.g;
-      b += colour.b;
-      a += albedo[o + 3]! / 255;
+      r += linear[albedo[o]!]!;
+      g += linear[albedo[o + 1]!]!;
+      b += linear[albedo[o + 2]!]!;
+      a += albedo[o + 3]!;
     }
-    return new THREE.Vector4(r / pixels, g / pixels, b / pixels, a / pixels);
-  });
+    means.push(new THREE.Vector4(r / pixels, g / pixels, b / pixels, a / 255 / pixels));
+  }
+  return means;
 }
 
 function arrayTexture(data: Uint8Array, colorSpace: THREE.ColorSpace): THREE.DataArrayTexture {
-  const texture = new THREE.DataArrayTexture(data, LAYER_SIZE, LAYER_SIZE, LAYERS.length);
+  const texture = new THREE.DataArrayTexture(data, LAYER_SIZE, LAYER_SIZE, SLICE_COUNT);
   texture.format = THREE.RGBAFormat;
   texture.type = THREE.UnsignedByteType;
   texture.wrapS = THREE.RepeatWrapping;
@@ -444,16 +448,18 @@ function arrayTexture(data: Uint8Array, colorSpace: THREE.ColorSpace): THREE.Dat
 }
 
 export interface TerrainTextureSet {
-  /** sRGB albedo, roughness in alpha; one slice per layer. */
+  /** sRGB albedo, roughness in alpha; one slice per classic layer and per variant (variants.ts). */
   albedo: THREE.DataArrayTexture;
-  /** Tangent-space normals; one slice per layer. */
+  /** Tangent-space normals; the same slices. */
   normal: THREE.DataArrayTexture;
   /**
-   * Linear mean albedo (rgb) and mean roughness (a) per layer, LAYERS order:
-   * the lower tiers drop a layer's fetch and fold this in instead, so the
-   * biome keeps its hue without paying for the tile.
+   * Linear mean albedo (rgb) and mean roughness (a) per slice: the lower
+   * tiers drop a layer's fetch and fold this in instead, so the biome and
+   * its variant keep their hue without paying for the tile.
    */
   layerMean: readonly THREE.Vector4[];
+  /** Null when the variants were painted; otherwise why they fell back to the classic tiles. */
+  variantError: string | null;
   /** Low-frequency variation over the whole country: R brightness, G snow edge, B hue. */
   macro: THREE.DataTexture;
   /** Ridged relief normal of the range, tile RELIEF_TILE_KM. */
@@ -464,20 +470,75 @@ export interface TerrainTextureSet {
   white: THREE.DataTexture;
   /** Milliseconds the generation took, for the diagnostics. */
   buildMs: number;
+  /** Of which the GPU painting of the variants and its read-back. */
+  bakeMs: number;
 }
 
 let cached: TerrainTextureSet | null = null;
+/** Terrain modules holding the set: each `terrainTextures` call, until its `disposeTerrainTextures`. */
+let holders = 0;
 
-/** The whole set, generated once per page and shared by every rebuild. */
-export function terrainTextures(): TerrainTextureSet {
-  if (cached) return cached;
+/**
+ * Paints the variants on the GPU into their slices. A painter that fails
+ * leaves every variant a copy of its layer's classic tile — the ground stays
+ * whole, it only loses its variety.
+ */
+function paintVariants(
+  bake: VariantBake | null,
+  albedo: Uint8Array,
+  normal: Uint8Array,
+): string | null {
+  const bytes = LAYER_SIZE * LAYER_SIZE * 4;
+  try {
+    if (!bake) throw new Error("variant painter: no GPU");
+    const baked = bake.finish();
+    VARIANTS.forEach((variant, index) => {
+      const slice = sliceOf(variant.layer, variant.id);
+      albedo.set(baked[index]!.albedo, slice * bytes);
+      normalsFromHeight(baked[index]!.height, variant.bump, slice, normal);
+    });
+    return null;
+  } catch (error) {
+    for (const variant of VARIANTS) {
+      const slice = sliceOf(variant.layer, variant.id);
+      const classic = LAYERS.indexOf(variant.layer);
+      albedo.copyWithin(slice * bytes, classic * bytes, (classic + 1) * bytes);
+      normal.copyWithin(slice * bytes, classic * bytes, (classic + 1) * bytes);
+    }
+    return error instanceof Error ? error.message : String(error);
+  }
+}
+
+/**
+ * The whole set, generated once per page and shared by every rebuild and
+ * every renderer (it is plain data once read back): the classic layers on
+ * the CPU, the variants on the first renderer's GPU. Each call holds it
+ * until the matching `disposeTerrainTextures`.
+ */
+export function terrainTextures(renderer: THREE.WebGLRenderer): TerrainTextureSet {
+  holders += 1;
+  cached ??= buildTerrainTextures(renderer);
+  return cached;
+}
+
+function buildTerrainTextures(renderer: THREE.WebGLRenderer): TerrainTextureSet {
   const started = performance.now();
+  // The variant painter compiles on the GPU while the CPU paints the classic layers.
+  let bake: VariantBake | null;
+  try {
+    bake = startVariantBake(renderer, LAYER_SIZE);
+  } catch {
+    bake = null;
+  }
   const pixels = LAYER_SIZE * LAYER_SIZE * 4;
-  const albedoData = new Uint8Array(pixels * LAYERS.length);
-  const normalData = new Uint8Array(pixels * LAYERS.length);
+  const albedoData = new Uint8Array(pixels * SLICE_COUNT);
+  const normalData = new Uint8Array(pixels * SLICE_COUNT);
   const specs = layerSpecs();
   LAYERS.forEach((name, slice) => paintLayer(name, specs[name], slice, albedoData, normalData));
-  const layerMean = layerMeans(albedoData);
+  const bakeStarted = performance.now();
+  const variantError = paintVariants(bake, albedoData, normalData);
+  const bakeMs = performance.now() - bakeStarted;
+  const layerMean = sliceMeans(albedoData);
 
   const macro = proceduralTexture({
     name: "terrain-macro",
@@ -525,24 +586,37 @@ export function terrainTextures(): TerrainTextureSet {
   const white = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1, THREE.RGBAFormat);
   white.needsUpdate = true;
 
-  cached = {
+  return {
     albedo: arrayTexture(albedoData, THREE.SRGBColorSpace),
     normal: arrayTexture(normalData, THREE.NoColorSpace),
     layerMean,
+    variantError,
     macro,
     relief,
     waves,
     white,
     buildMs: performance.now() - started,
+    bakeMs,
   };
-  return cached;
 }
 
-/** Releases the module's own textures; the core cache disposes the rest. */
+/**
+ * Lets go of a hold on the module's own textures; the core cache disposes
+ * the rest. The GPU copies go at once — a renderer being torn down keeps
+ * none, the next one uploads its own — but the painted data waits a task:
+ * React's StrictMode unmounts and remounts every effect in development, and
+ * painting the ground again would double every boot there (the variant bake
+ * alone takes seconds on a software rasteriser). A remount takes the set back
+ * before the task runs.
+ */
 export function disposeTerrainTextures(): void {
-  if (!cached) return;
-  cached.albedo.dispose();
-  cached.normal.dispose();
-  cached.white.dispose();
-  cached = null;
+  holders = Math.max(0, holders - 1);
+  const set = cached;
+  if (!set) return;
+  set.albedo.dispose();
+  set.normal.dispose();
+  set.white.dispose();
+  setTimeout(() => {
+    if (holders === 0 && cached === set) cached = null;
+  }, 0);
 }

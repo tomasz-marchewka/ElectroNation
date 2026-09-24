@@ -253,7 +253,11 @@ Events (renderer → app): `hex:hover`, `hex:click`, `hex:context`, `camera:chan
 
 - Renderer randomness: `ctx.rng("<module>:<purpose>")` → sfc32 stream seeded from
   `scene.seed` and the stream name. `Math.random` and `Date` are forbidden in `src/world`
-  (lint). Foliage scatter, cloud detail and city block layout regenerate identically.
+  (lint). Foliage scatter, cloud detail, city block layout and the per-hex ground looks
+  (`render/terrain/looks.ts`: a biome character with its ground variant, a tone and a tile
+  transform per hex) regenerate identically. The soft borders between hexes
+  (`render/terrain/blend.ts`) read a fixed-seed noise texture; the shader and the CPU (tree
+  placement) run the same arithmetic on it.
 - Frame clock: `ctx.clock.time` (seconds) drives every animation. `?clock=<ms>` pins it.
 - Procedural textures use a fixed seed; they are the same in every session.
 - Scene snapshots (`tests/unit/world/`) pin the bridge; capture PNGs pin the renderer.
@@ -276,7 +280,9 @@ at 25 fps. Measured numbers are reported as measured, with the GPU named.
 ## 14. Asset policy
 
 CC0 only: Poly Haven, ambientCG, or procedural. In this port everything is procedural
-(`render/core/textures.ts`, geometry built in code): the registry is unreachable from the
+(`render/core/textures.ts`, geometry built in code; the ground variants of
+`render/terrain/variants.ts` are painted once per page on the GPU and read back into the
+ground arrays, `render/terrain/variantPainters.ts`): the registry is unreachable from the
 build environment and downloads need explicit approval, so no external asset is bundled.
 Adding a CC0 texture is a change request to the integrator with source, licence and size.
 Fonts: IBM Plex from `@fontsource` (already bundled).

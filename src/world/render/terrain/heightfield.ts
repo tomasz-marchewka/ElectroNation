@@ -9,7 +9,10 @@
 // plains; shores ease to a beach and water basins deepen away from it; every
 // land hex gets a flat building pad around its centre. Beyond the board the
 // edge profile continues, fades over the skirt to a low plain or the open
-// sea, and a geometrically coarsening grid carries it to the horizon.
+// sea, and a geometrically coarsening grid carries it to the horizon. What
+// the vertices carry for the ground is only what follows the relief and the
+// water — a town's pavement, the beach, the seabed; the hexes' own ground and
+// its soft borders are drawn per pixel (blend.ts).
 //
 // Deterministic: the field depends on the board and the renderer PRNG stream
 // only; the noise is trig-free so any engine computes the same bits.
@@ -45,18 +48,6 @@ const KINDS: readonly TerrainKind[] = [
 ];
 const LAKE = KIND_INDEX.lake;
 const SEA = KIND_INDEX.sea;
-
-/** Material channels carried per vertex: two vec4 attributes. */
-export const MATERIAL_CHANNELS = [
-  "grass",
-  "canopy",
-  "rock",
-  "moor",
-  "wet",
-  "pavement",
-  "sand",
-  "seabed",
-] as const;
 
 /** Kernel radius of the hex blend: 1.2 × pitch — the six neighbours count, the ring beyond does not. */
 const KERNEL_KM = 1.2 * HEX_PITCH_KM;
@@ -97,11 +88,13 @@ interface HexCell {
   pad: number;
 }
 
-/** One sample of the field: the height and the material weights. */
+/** One sample of the field: the height and the ground cover. */
 export interface FieldSample {
   height: number;
-  /** MATERIAL_CHANNELS order, summing to about 1. */
-  weights: Float32Array;
+  /** Weights of a town's pavement, the beach and the seabed; the rest is the hexes' own ground. */
+  pavement: number;
+  beach: number;
+  seabed: number;
   /** 0 sea … 1 lake where there is water, 0 on land. */
   lakeness: number;
 }
@@ -115,11 +108,13 @@ export interface HeightField {
   /** Row-major (z outer, x inner) vertex data. */
   heights: Float32Array;
   normals: Float32Array;
-  weightsA: Float32Array;
-  weightsB: Float32Array;
+  /**
+   * Four per vertex: the pavement, beach and seabed weights (FieldSample),
+   * then the sky visibility 0..1 from the relief — valleys and hollows
+   * shaded, crests open.
+   */
+  cover: Float32Array;
   lakeness: Float32Array;
-  /** Sky visibility 0..1 from the relief: valleys and hollows shaded, crests open. */
-  occlusion: Float32Array;
   /** The uniform part of the grid — what the water reads as a texture. */
   inner: { ix0: number; iz0: number; nx: number; nz: number; x0: number; z0: number; cell: number };
   /** Board rectangle [km]. */
@@ -162,7 +157,12 @@ export function buildHeightField(board: WorldBoard, rng: Rng, options: FieldOpti
   const cells = new Map<string, HexCell>();
   const byOffset: HexCell[][] = [];
   for (const hex of board.hexes) {
-    const cell: HexCell = { hex, kind: KIND_INDEX[hex.terrain], neighbours: [], pad: Number.NaN };
+    const cell: HexCell = {
+      hex,
+      kind: KIND_INDEX[hex.terrain],
+      neighbours: [],
+      pad: Number.NaN,
+    };
     cells.set(hex.key, cell);
     (byOffset[hex.col] ??= [])[hex.row] = cell;
   }
@@ -215,7 +215,14 @@ export function buildHeightField(board: WorldBoard, rng: Rng, options: FieldOpti
 
   const weights = new Float64Array(8);
   const sharp = new Float64Array(8);
-  const sample: FieldSample = { height: 0, weights: new Float32Array(8), lakeness: 0 };
+  const newSample = (): FieldSample => ({
+    height: 0,
+    pavement: 0,
+    beach: 0,
+    seabed: 0,
+    lakeness: 0,
+  });
+  const sample = newSample();
 
   const sampleAt = (x: number, z: number, out: FieldSample, withPad: boolean): void => {
     const cx = clamp(x, rect.x0, rect.x1);
@@ -224,9 +231,8 @@ export function buildHeightField(board: WorldBoard, rng: Rng, options: FieldOpti
     const own = ownCellAt(cx, cz);
 
     // Two kernels over the same centres: a quadratic one blends the HEIGHT
-    // bands softly across a hex border, an eighth-power one keeps the
-    // MATERIAL of a hex its own to within ~3 km of the border, so the biome
-    // of every hex reads at one glance from the strategic view (docs/08 §3).
+    // bands softly across a hex border, an eighth-power one keeps a town's
+    // pavement and the water's share its own to within ~3 km of the border.
     weights.fill(0);
     sharp.fill(0);
     let sumW = 0;
@@ -310,7 +316,7 @@ export function buildHeightField(board: WorldBoard, rng: Rng, options: FieldOpti
       const dOwn = Math.hypot(cx - own.hex.x, cz - own.hex.z);
       if (dOwn < PAD_BLEND_KM) {
         if (Number.isNaN(own.pad)) {
-          const centre: FieldSample = { height: 0, weights: new Float32Array(8), lakeness: 0 };
+          const centre = newSample();
           sampleAt(own.hex.x, own.hex.z, centre, false);
           own.pad = centre.height;
         }
@@ -330,29 +336,18 @@ export function buildHeightField(board: WorldBoard, rng: Rng, options: FieldOpti
       height = lerp(height, far, t);
     }
 
-    // Material weights: land kinds normalised, then the beach, then the seabed.
+    // Ground cover: a town's pavement on the land, then the beach, then the
+    // seabed. The land that is left is the hexes' own ground.
     const landS = Math.max(1 - sharp[LAKE]! - sharp[SEA]!, 1e-6);
-    const grass = Math.max(0, sharp[KIND_INDEX.plains]! + sharp[KIND_INDEX.urban]! - pave) / landS;
-    const canopy = sharp[KIND_INDEX.forest]! / landS;
-    const rock = sharp[KIND_INDEX.mountains]! / landS;
-    const moor = sharp[KIND_INDEX.highlands]! / landS;
-    const wet = sharp[KIND_INDEX.swamp]! / landS;
-    const pavement = pave / landS;
     const beach =
       smoothstep(0.15, 0.42, wWater) *
       (1 - smoothstep(0.42, 0.56, wWater)) *
       (1 - smoothstep(0.8, 2.0, landBand));
     const seabed = smoothstep(0.44, 0.62, wWater);
     const land = (1 - beach) * (1 - seabed);
-    const w = out.weights;
-    w[0] = grass * land;
-    w[1] = canopy * land;
-    w[2] = rock * land;
-    w[3] = moor * land;
-    w[4] = wet * land;
-    w[5] = pavement * land;
-    w[6] = beach * (1 - seabed);
-    w[7] = seabed;
+    out.pavement = (pave / landS) * land;
+    out.beach = beach * (1 - seabed);
+    out.seabed = seabed;
     out.height = height;
     out.lakeness = wWater > 1e-6 ? weights[LAKE]! / wWater : 0;
   };
@@ -365,10 +360,8 @@ export function buildHeightField(board: WorldBoard, rng: Rng, options: FieldOpti
   const count = nx * nz;
   const heights = new Float32Array(count);
   const normals = new Float32Array(count * 3);
-  const weightsA = new Float32Array(count * 4);
-  const weightsB = new Float32Array(count * 4);
+  const cover = new Float32Array(count * 4);
   const lakeness = new Float32Array(count);
-  const occlusion = new Float32Array(count);
   let minHeight = Number.POSITIVE_INFINITY;
   let maxHeight = Number.NEGATIVE_INFINITY;
   for (let iz = 0; iz < nz; iz++) {
@@ -380,15 +373,9 @@ export function buildHeightField(board: WorldBoard, rng: Rng, options: FieldOpti
       heights[i] = sample.height;
       minHeight = Math.min(minHeight, sample.height);
       maxHeight = Math.max(maxHeight, sample.height);
-      const w = sample.weights;
-      weightsA[i * 4] = w[0]!;
-      weightsA[i * 4 + 1] = w[1]!;
-      weightsA[i * 4 + 2] = w[2]!;
-      weightsA[i * 4 + 3] = w[3]!;
-      weightsB[i * 4] = w[4]!;
-      weightsB[i * 4 + 1] = w[5]!;
-      weightsB[i * 4 + 2] = w[6]!;
-      weightsB[i * 4 + 3] = w[7]!;
+      cover[i * 4] = sample.pavement;
+      cover[i * 4 + 1] = sample.beach;
+      cover[i * 4 + 2] = sample.seabed;
       lakeness[i] = sample.lakeness;
     }
   }
@@ -432,7 +419,7 @@ export function buildHeightField(board: WorldBoard, rng: Rng, options: FieldOpti
           heights[zB * nx + xB]!) /
         8;
       const cavity = heights[iz * nx + ix]! - mean;
-      occlusion[iz * nx + ix] = lerp(
+      cover[(iz * nx + ix) * 4 + 3] = lerp(
         OCCLUSION_FLOOR,
         1,
         smoothstep(-OCCLUSION_DEPTH_KM, OCCLUSION_DEPTH_KM * 0.5, cavity),
@@ -476,10 +463,8 @@ export function buildHeightField(board: WorldBoard, rng: Rng, options: FieldOpti
     zs: az.xs,
     heights,
     normals,
-    weightsA,
-    weightsB,
+    cover,
     lakeness,
-    occlusion,
     inner: {
       ix0: ax.i0,
       iz0: az.i0,
@@ -497,7 +482,7 @@ export function buildHeightField(board: WorldBoard, rng: Rng, options: FieldOpti
       const cell = cells.get(`${hex.q},${hex.r}`);
       if (!cell) return 0;
       if (Number.isNaN(cell.pad)) {
-        const centre: FieldSample = { height: 0, weights: new Float32Array(8), lakeness: 0 };
+        const centre = newSample();
         sampleAt(cell.hex.x, cell.hex.z, centre, false);
         cell.pad = centre.height;
       }
