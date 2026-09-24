@@ -2,6 +2,110 @@
 
 Hand-over between pipeline steps. Rewritten at the end of every step.
 
+## Soft borders between hexes (2026-09-24)
+
+- **What (`blend.ts`).** The ground of a point is the blend of the three hexes around it —
+  the corners of its cell in the triangular lattice of hex centres (hex tiling on the
+  board's own grid). Each hex weighs in with its barycentric coordinate, pushed by its
+  channel of a slow noise (`BLEND_WANDER` 0.22: the border wanders ±2 km typically) and
+  frayed by a fine one (`BLEND_FRAY` 0.1 × the hex's fray: 1 for forest, heath, rock and
+  marsh — tongues, bays and islands; 0.3 for fields and towns, whose borders bend like the
+  road along them). A narrow band (`BLEND_WIDTH` 0.024, ±0.3 km; the shader widens it to
+  1.5 px) keeps the edge crisp. Water never takes part (the shore is the relief's). A
+  hex's colour (q − r) mod 3 picks its noise channel: every cell has one of each colour, so
+  a hex reads the same channel in all six cells around it and its weight is continuous.
+- **Noise.** 512² RGBA8, three fractal value-noise channels (lattice 10, 3 octaves over a
+  160 km tile: 16, 8, 4 km), each spread evenly over 0..1 by rank; the fine fray reads the
+  same texture over a 23 km tile turned 0.6 rad (2.3, 1.2, 0.6 km). Fixed seed, painted
+  once per page (~70 ms of CPU; the spread goes through a 4096-bin histogram).
+- **Readability (board of seed 7).** A hex keeps 86 % of its cell on average (p5 70 %,
+  worst 54 %); the flat pad (4 km) is always its own alone and no neighbour takes over
+  within 6 km. The weights never jump (a 10 m step moves one by ≤ 0.12).
+- **Shader.** `enHexCorners` (cell, barycentrics, colour) → the ground texel of the three
+  corners (slice, rock slice, layer, fray) → `enHexWeights`; the noise taps are skipped
+  where the lead of one hex is larger than the noise could close — deep inside a hex both,
+  and the fine one wherever only fields meet but near the border itself (pixel-exact:
+  measured 0/1 LSB difference). A hex that weighs in (`enGround`) fetches its tile map and
+  tone and takes its ground tap (normal when near, rock on steep faces, all in its own
+  frame); the tone is now per pixel. The layer shares for the relief, the steep faces and
+  the snow come from the same weights. The vertices carry only `cover` (pavement, beach,
+  seabed, sky visibility): 4 floats instead of 13. The farm track runs along the bent
+  border between two grass-layer hexes (distance from the pushed-weight gap).
+- **Tried and dropped.** A wide soft band (±2 km) read as a double exposure of two field
+  patterns; an interlock of the band by each ground's brightness changed little once the
+  band was narrow and cost ALU (captures `captures/looks/v3/try1..4`).
+- **Trees (`forest.ts`).** A jittered grid over the forests' reach, only near forest hexes;
+  the forest's share from the CPU mirror of the blend (`hexBlend`); the owner (character,
+  density, tone) is the forest hex pushing hardest. Past the edge trees stray in copses,
+  0.8 × e^(−d / 1 km). Every land hex's pad and every town (10.5 km) stay clear; the
+  virtual ring's copies of a forest edge grow none. Default board: 6 576 → 9 128 trees —
+  v2 left tree-less strips along every hex edge and the outer 7 % of each hex.
+- **Measured** (as below, interleaved against the v2 working tree, M3 Pro, 1600×900, high):
+  whole game strategic 6.12 → 6.40 ms (+4 %), closeup ~+1 %, forest closeup ~+1 %; terrain
+  alone strategic +3 %, closeup +4 %. Before the tap skips the terrain alone was +20 % at
+  strategic: the dependent noise taps were most of the cost.
+- Tests: `tests/unit/world/terrain-blend.test.ts` (noise spread, cell, partition of the
+  land, no noise = the hex grid, continuity, own share and pure middle, fields bend less
+  than wild ground, tree count, trees on the forest's ground and past its outline, no tree
+  on a pad or in a town); `terrain-looks.test.ts` updated (ground/rock/layer/fray, grid
+  layout, vertex cover). Captures: `captures/looks/v3/` (`before-*`, `after-*`,
+  `compare-*`).
+
+## Hex looks and ground variants (2026-09-23)
+
+- **Ground variants (`variants.ts`, `variantPainters.ts`).** Next to the eight classic
+  slices the ground arrays hold 14 variants with a structure and a palette of their own:
+  grass — strips (szachownica), large rectangular fields (łany, 16 km tile), meadows with
+  tree lines and ponds, a hedged small-field mosaic; canopy — spruce in compartments with
+  forest lines, broadleaf crowns, clear-cuts and plantations; rock — limestone, schist;
+  moor — heather burnt in strips, walled pasture, scree; wet — reeds with channels,
+  drained peat with ditches. 22 slices, each with its own tile size (`SLICE_TILE_KM`,
+  6–16 km: large structures take large tiles so they repeat less inside a hex).
+- **Painted on the GPU, read back.** One GLSL program holds every painter (tileable:
+  periodic value noise and cells, jittered bands for rectangles, strip directions on the
+  integer lattice); two passes per variant — sRGB albedo + roughness, then the height in
+  16 bits — are read back into the same byte arrays the CPU painters fill, and the CPU
+  derives the normals exactly as for the classic slices (`normalsFromHeight`). The program
+  is handed to the driver before the CPU paints the classic layers, so with
+  KHR_parallel_shader_compile it compiles meanwhile: texture build ~1.15 s in all
+  (~0.16 s of it the variants) on an M3 Pro. Cold, right after the shader changes, the
+  compile takes ~1.7 s, ~0.8 s of it not hidden — once, the driver caches it. A program
+  per painter compiled no faster cold and linked slower warm, so it stays one. The bake
+  is synchronous (a StrictMode remount must never see it half done: `compileAsync` polled
+  a disposed renderer's material and threw); a painter that fails leaves every variant a
+  copy of its classic slice and warns on the console.
+- **Every hex has its own look (`looks.ts`).** A character of its biome (plains 6,
+  forest 4, highlands 4, mountains 3, swamp 3) naming its variant, a tone jitter (value
+  ±10 %, hue ±4 %), its own tile scale and offset, and a rotation that follows a slow
+  regional direction (260 km) ±0.2 rad: field systems and forest lines of neighbours run
+  roughly the same way. Characters cluster loosely (100 km fields, jitter 0.3): about a
+  third of same-biome neighbours share one. Forest characters set the tree mix, density
+  and size (young stands: 55 % density, ¾ size).
+- **Look grid.** (cols + 8) × (rows + 8) hexes × 3 RGBA32F texels: the tile map folded on
+  the CPU (a = cos/scale, b = sin/scale, offsets — no trigonometry per pixel); since
+  09-24 then the ground slice, the rock slice for steep faces, the layer and the fray;
+  then the tone (tint, saturation). A town's ground is a neighbouring plain's variant.
+  The ring of virtual hexes continues the edge hexes' looks over the skirt.
+- **Shader.** Per slice the tile size comes from `uSliceTile`, the trimmed-tier mean from
+  `uLayerMean[slice]`. (Until 09-24 the variant switched at the hex edge with a farm
+  track on it and the tone rode the vertices — see the section above.) A ±5 % tone swell
+  over 4–5 km (world space) breaks repeats inside a hex.
+- Tests: `tests/unit/world/terrain-looks.test.ts` (slice table, characters → variants,
+  ground slices, grid layout, determinism, neighbours differ, loose clustering, tone
+  bounds). Contact sheet of all slices and captures:
+  `captures/looks/` (`atlas-*.png`, `v2/before-*`, `v2/after-*`, `v2/compare-*`).
+- **Measured** (headless Chromium on the real GPU — `--use-angle=metal --enable-gpu`, no
+  window — Apple M3 Pro, 1600×900, high; before = a clean HEAD export, the two
+  interleaved in one browser, 4 rounds × 3 × 120 frames; compare the ratios, the GPU
+  clock moves the absolute numbers between sessions): whole game strategic 5.72 →
+  6.00 ms (+7 %), closeup 5.41 → 5.52 ms (+4 %); terrain alone strategic 6.09 → 6.24 ms,
+  closeup 4.64 → 5.08 ms (the closeup share includes the round crowns). Ground arrays
+  22 slices: ~61 MB of GPU memory with mips (8 slices: ~22 MB) — the capture log's
+  estimate does not count texture arrays. Draw calls +2 near (broadleaf pair).
+- Finding: the terrain pass is ALU/register bound — even a per-pixel integer hash that
+  touches nothing but the colour cost ~0.4 ms; the look fetches themselves are cheap.
+  Anything else added per pixel here should be measured the same way.
+
 ## Step 3 (2026-09-21) — finishing + fix step: what changed
 
 - **GPU: fewer fetches, real tiers.** The `uNormalDetail` switch was never set from
