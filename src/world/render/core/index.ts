@@ -4,6 +4,7 @@
 export { CameraRig, CAMERA_LIMITS, type CameraPreset, type RigState } from "./CameraRig";
 export * from "./exaggeration";
 export { FrameClock, type FrameClockState } from "./FrameClock";
+export { glRendererName, isSoftwareRenderer } from "./gl";
 export { FLAT_TERRAIN, ModuleRegistry, defaultEnvironment } from "./ModuleRegistry";
 export { hash01, hashString, worldRng, type Rng } from "./prng";
 export {

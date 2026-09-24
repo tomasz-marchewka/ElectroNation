@@ -15,6 +15,7 @@
 // session on the same GPU. Nothing here depends on the game.
 
 import * as THREE from "three";
+import { glRendererName, isSoftwareRenderer } from "../core/gl";
 import { VARIANTS } from "./variants";
 
 const VERTEX = /* glsl */ `
@@ -585,14 +586,64 @@ export interface VariantBake {
 }
 
 /**
+ * A software rasteriser (render/core/gl.ts) paints the variants at this
+ * fraction of their size and the CPU scales them up: sixteen times fewer
+ * pixels on a "GPU" that is the CPU — blurrier variants, a boot seconds
+ * shorter.
+ */
+const SOFTWARE_DOWNSCALE = 4;
+
+/**
+ * Bilinear, tiling upscale of `channels` interleaved values per pixel from
+ * `from` × `from` to `to` × `to`: the wrap keeps the tile seamless.
+ */
+function upscale<T extends Uint8Array | Float32Array>(
+  source: T,
+  from: number,
+  to: number,
+  channels: number,
+  make: (length: number) => T,
+): T {
+  const out = make(to * to * channels);
+  const round = source instanceof Uint8Array;
+  for (let y = 0; y < to; y++) {
+    const v = ((y + 0.5) * from) / to - 0.5;
+    const y0 = Math.floor(v);
+    const ty = v - y0;
+    const r0 = (((y0 % from) + from) % from) * from;
+    const r1 = ((((y0 + 1) % from) + from) % from) * from;
+    for (let x = 0; x < to; x++) {
+      const u = ((x + 0.5) * from) / to - 0.5;
+      const x0 = Math.floor(u);
+      const tx = u - x0;
+      const c0 = ((x0 % from) + from) % from;
+      const c1 = (((x0 + 1) % from) + from) % from;
+      for (let k = 0; k < channels; k++) {
+        const a = source[(r0 + c0) * channels + k]!;
+        const b = source[(r0 + c1) * channels + k]!;
+        const c = source[(r1 + c0) * channels + k]!;
+        const d = source[(r1 + c1) * channels + k]!;
+        const value = (a + (b - a) * tx) * (1 - ty) + (c + (d - c) * tx) * ty;
+        out[(y * to + x) * channels + k] = round ? Math.round(value) : value;
+      }
+    }
+  }
+  return out;
+}
+
+/**
  * Starts the GPU bake of the variants at size × size: the painter program
  * is handed to the driver at once, so with KHR_parallel_shader_compile it
  * compiles while the CPU paints the classic layers, and `finish` finds it
  * ready. `finish` is synchronous on purpose: the whole paint happens in one
  * task, so a renderer torn down meanwhile (a remount) never sees it half done.
+ * The painters measure their lines in pixels of `size` (uSize) whatever the
+ * target, so a software rasteriser's smaller target keeps the proportions.
  */
 export function startVariantBake(renderer: THREE.WebGLRenderer, size: number): VariantBake {
-  const target = new THREE.WebGLRenderTarget(size, size, {
+  const software = isSoftwareRenderer(glRendererName(renderer.getContext()));
+  const paint = software ? size / SOFTWARE_DOWNSCALE : size;
+  const target = new THREE.WebGLRenderTarget(paint, paint, {
     format: THREE.RGBAFormat,
     type: THREE.UnsignedByteType,
     depthBuffer: false,
@@ -635,7 +686,7 @@ export function startVariantBake(renderer: THREE.WebGLRenderer, size: number): V
         renderer.xr.enabled = false;
         renderer.autoClear = true;
         renderer.setRenderTarget(target);
-        const pixels = new Uint8Array(size * size * 4);
+        const pixels = new Uint8Array(paint * paint * 4);
         const baked: BakedVariant[] = [];
         for (const variant of VARIANTS) {
           material.uniforms.uPainter!.value = variant.painter;
@@ -653,15 +704,22 @@ export function startVariantBake(renderer: THREE.WebGLRenderer, size: number): V
               throw new Error("variant painter: the shader does not compile");
             }
           }
-          renderer.readRenderTargetPixels(target, 0, 0, size, size, pixels);
-          const albedo = pixels.slice();
+          renderer.readRenderTargetPixels(target, 0, 0, paint, paint, pixels);
+          const albedo =
+            paint === size
+              ? pixels.slice()
+              : upscale(pixels, paint, size, 4, (length) => new Uint8Array(length));
           material.uniforms.uPass!.value = 1;
           renderer.render(scene, camera);
-          renderer.readRenderTargetPixels(target, 0, 0, size, size, pixels);
-          const height = new Float32Array(size * size);
-          for (let i = 0; i < height.length; i++) {
-            height[i] = (pixels[i * 4]! * 256 + pixels[i * 4 + 1]!) / 65535;
+          renderer.readRenderTargetPixels(target, 0, 0, paint, paint, pixels);
+          const painted = new Float32Array(paint * paint);
+          for (let i = 0; i < painted.length; i++) {
+            painted[i] = (pixels[i * 4]! * 256 + pixels[i * 4 + 1]!) / 65535;
           }
+          const height =
+            paint === size
+              ? painted
+              : upscale(painted, paint, size, 1, (length) => new Float32Array(length));
           baked.push({ albedo, height });
         }
         return baked;

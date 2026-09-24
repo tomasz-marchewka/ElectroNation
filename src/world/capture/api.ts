@@ -6,6 +6,7 @@ import type { WorldScene } from "../bridge/worldScene";
 import type { RenderStats } from "../perf/budget";
 import { budgetVerdict, type BudgetVerdict } from "../perf/budget";
 import type { CameraPreset } from "../render/core/CameraRig";
+import { glRendererName as glName, isSoftwareRenderer } from "../render/core/gl";
 import type { ModuleStatus } from "../render/core/types";
 import type { AxialHex } from "../render/core/units";
 import type { WorldRenderer } from "../render/core/WorldRenderer";
@@ -68,16 +69,10 @@ declare global {
 }
 
 export function glRendererName(renderer: WorldRenderer): string {
-  const gl = renderer.renderer.getContext();
-  const debug = gl.getExtension("WEBGL_debug_renderer_info");
-  if (!debug) return "unknown";
-  const name = gl.getParameter(debug.UNMASKED_RENDERER_WEBGL);
-  return typeof name === "string" ? name : "unknown";
+  return glName(renderer.renderer.getContext());
 }
 
-export function isSoftwareRenderer(name: string): boolean {
-  return /swiftshader|llvmpipe|software|mesa offscreen/i.test(name);
-}
+export { isSoftwareRenderer };
 
 export function installCaptureApi(renderer: WorldRenderer, hooks: CaptureHooks): CaptureApi {
   const api: CaptureApi = {

@@ -475,6 +475,8 @@ export interface TerrainTextureSet {
 }
 
 let cached: TerrainTextureSet | null = null;
+/** Terrain modules holding the set: each `terrainTextures` call, until its `disposeTerrainTextures`. */
+let holders = 0;
 
 /**
  * Paints the variants on the GPU into their slices. A painter that fails
@@ -510,9 +512,11 @@ function paintVariants(
 /**
  * The whole set, generated once per page and shared by every rebuild and
  * every renderer (it is plain data once read back): the classic layers on
- * the CPU, the variants on the first renderer's GPU.
+ * the CPU, the variants on the first renderer's GPU. Each call holds it
+ * until the matching `disposeTerrainTextures`.
  */
 export function terrainTextures(renderer: THREE.WebGLRenderer): TerrainTextureSet {
+  holders += 1;
   cached ??= buildTerrainTextures(renderer);
   return cached;
 }
@@ -596,11 +600,23 @@ function buildTerrainTextures(renderer: THREE.WebGLRenderer): TerrainTextureSet 
   };
 }
 
-/** Releases the module's own textures; the core cache disposes the rest. */
+/**
+ * Lets go of a hold on the module's own textures; the core cache disposes
+ * the rest. The GPU copies go at once — a renderer being torn down keeps
+ * none, the next one uploads its own — but the painted data waits a task:
+ * React's StrictMode unmounts and remounts every effect in development, and
+ * painting the ground again would double every boot there (the variant bake
+ * alone takes seconds on a software rasteriser). A remount takes the set back
+ * before the task runs.
+ */
 export function disposeTerrainTextures(): void {
-  if (!cached) return;
-  cached.albedo.dispose();
-  cached.normal.dispose();
-  cached.white.dispose();
-  cached = null;
+  holders = Math.max(0, holders - 1);
+  const set = cached;
+  if (!set) return;
+  set.albedo.dispose();
+  set.normal.dispose();
+  set.white.dispose();
+  setTimeout(() => {
+    if (holders === 0 && cached === set) cached = null;
+  }, 0);
 }

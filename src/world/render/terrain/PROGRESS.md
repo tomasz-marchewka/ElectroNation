@@ -31,6 +31,15 @@ Hand-over between pipeline steps. Rewritten at the end of every step.
   the snow come from the same weights. The vertices carry only `cover` (pavement, beach,
   seabed, sky visibility): 4 floats instead of 13. The farm track runs along the bent
   border between two grass-layer hexes (distance from the pushed-weight gap).
+- **Boot on a software rasteriser (CI).** The first CI run of this branch timed out in e2e
+  (5 min; `main` takes 3–3.8): the world boots on SwiftShader there, and every boot
+  painted the ground twice — React's StrictMode remounts the world in development and
+  `disposeTerrainTextures` dropped the painted set in between. The set is now held across
+  a remount (released a task later when nobody took it back; `terrain-textures.test.ts`),
+  and on a software rasteriser (`render/core/gl.ts`) the variants are painted at 128² and
+  scaled up on the CPU. Most of the software bake (~1.2 of ~1.4 s locally) is the
+  painter's compile, kept: it is the only place CI compiles the painter. Local e2e 90 s →
+  65 s (`main` 72 s); the real-GPU frames are pixel-identical.
 - **Tried and dropped.** A wide soft band (±2 km) read as a double exposure of two field
   patterns; an interlock of the band by each ground's brightness changed little once the
   band was narrow and cost ALU (captures `captures/looks/v3/try1..4`).
